@@ -1,7 +1,7 @@
 import { sampleContent } from "@towerlab/content";
 import { applyAction, createRun, observeRun, type Observation, type RunAction, type RunState } from "@towerlab/core";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   DEFAULT_LOCALE,
@@ -13,6 +13,7 @@ import {
   text,
   type Locale,
 } from "./i18n.js";
+import { createShopBindings, readShopAction } from "./shop.js";
 import { createMapTreeRows, deriveVisitedNodeIds, getEarlierEventsLine, getRecentLogView, type MapTreeCell } from "./view.js";
 
 export interface AppProps {
@@ -27,6 +28,8 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const [state, setState] = useState<RunState>(() => createRun(sampleContent, seed));
   const [actions, setActions] = useState<RunAction[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const stateRef = useRef(state);
+  const actionsRef = useRef(actions);
   const view = localizeObservation(observeRun(sampleContent, state), locale);
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
   const showRecentLog = rows >= 28;
@@ -34,8 +37,12 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
 
   const runAction = (action: RunAction) => {
     try {
-      setState((current) => applyAction(sampleContent, current, action));
-      setActions((current) => [...current, action]);
+      const nextState = applyAction(sampleContent, stateRef.current, action);
+      const nextActions = [...actionsRef.current, action];
+      stateRef.current = nextState;
+      actionsRef.current = nextActions;
+      setState(nextState);
+      setActions(nextActions);
       setError(null);
     } catch (actionError) {
       setError(getErrorMessage(actionError, locale));
@@ -43,7 +50,10 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   };
 
   const restart = () => {
-    setState(createRun(sampleContent, seed));
+    const nextState = createRun(sampleContent, seed);
+    stateRef.current = nextState;
+    actionsRef.current = [];
+    setState(nextState);
     setActions([]);
     setError(null);
   };
@@ -97,26 +107,10 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
     }
 
     if (view.phase === "shop") {
-      const removeChoices = view.removableDeckCards;
-      const leaveIndex = view.forSale.length + removeChoices.length;
-      const choiceIndex = readChoiceIndex(input, leaveIndex + 1);
-
-      if (choiceIndex === null) {
-        return;
+      const action = readShopAction(input, view);
+      if (action) {
+        runAction(action);
       }
-
-      if (choiceIndex < view.forSale.length) {
-        runAction({ type: "buyShop", saleIndex: choiceIndex });
-        return;
-      }
-
-      const removableIndex = choiceIndex - view.forSale.length;
-      if (removableIndex < removeChoices.length) {
-        runAction({ type: "removeDeckCard", deckIndex: removeChoices[removableIndex].deckIndex });
-        return;
-      }
-
-      runAction({ type: "leaveShop" });
       return;
     }
 
@@ -315,8 +309,9 @@ function PhaseBody({ observation, locale }: { observation: Observation; locale: 
   }
 
   if (observation.phase === "shop") {
-    const leaveIndex = observation.forSale.length + observation.removableDeckCards.length + 1;
-    const canAffordRemove = observation.gold >= observation.removeDeckCardCost;
+    const shopBindings = createShopBindings(observation);
+    const buyHotkeys = shopBindings.buyOptions.filter((option) => option.key !== null);
+    const removeHotkeys = shopBindings.removeOptions.filter((option) => option.key !== null);
 
     return (
       <>
@@ -324,22 +319,32 @@ function PhaseBody({ observation, locale }: { observation: Observation; locale: 
           {text(locale, "shop")}
         </Text>
         <Text wrap="truncate-end">{formatText(locale, "shopPrompt", { cost: observation.removeDeckCardCost })}</Text>
-        {observation.forSale.map((card, index) => (
-          <Text key={card.id} wrap="truncate-end">
-            {index + 1}. {text(locale, "buy")} {card.name}
+        <Text bold>{text(locale, "shopBuySection")}</Text>
+        {shopBindings.buyOptions.map((option) => (
+          <Text key={option.card.id} color={option.key ? undefined : "gray"} wrap="truncate-end">
+            {option.key ? `${option.key}. ` : "· "}
+            {option.card.name} [{option.card.cost}]
           </Text>
         ))}
-        {observation.removableDeckCards.map((entry, index) => (
-          <Text key={`${entry.deckIndex}-${entry.card.id}`} color={canAffordRemove ? undefined : "gray"} wrap="truncate-end">
-            {observation.forSale.length + index + 1}. {text(locale, "remove")} {entry.card.name}{" "}
-            {locale === "zh"
-              ? `（牌组 #${entry.deckIndex + 1}，${observation.removeDeckCardCost} ${text(locale, "gold")}）`
-              : `(deck #${entry.deckIndex + 1}) for ${observation.removeDeckCardCost} ${text(locale, "gold").toLowerCase()}`}
+        {shopBindings.buyOptions.length > 0 && buyHotkeys.length === 0 ? (
+          <Text dimColor wrap="truncate-end">
+            {text(locale, "shopNoAffordableBuys")}
+          </Text>
+        ) : null}
+        <Text bold>{formatText(locale, "shopRemoveSection", { cost: observation.removeDeckCardCost })}</Text>
+        {shopBindings.removeOptions.map((option) => (
+          <Text key={`${option.deckIndex}-${option.card.id}`} color={option.key ? undefined : "gray"} wrap="truncate-end">
+            {option.key ? `${option.key}. ` : "· "}
+            {text(locale, "remove")} {option.card.name} {formatText(locale, "shopDeckSlot", { index: option.deckIndex + 1 })}
           </Text>
         ))}
-        <Text color="yellow">
-          {leaveIndex}. {text(locale, "leaveShop")}
-        </Text>
+        {shopBindings.removeOptions.length > 0 && removeHotkeys.length === 0 ? (
+          <Text dimColor wrap="truncate-end">
+            {text(locale, "shopNoAffordableRemovals")}
+          </Text>
+        ) : null}
+        {shopBindings.removeOptions.length === 0 ? <Text dimColor wrap="truncate-end">{text(locale, "noRemovableCards")}</Text> : null}
+        <Text color="yellow">{shopBindings.leaveKey}. {text(locale, "leaveShop")}</Text>
         <Text dimColor wrap="truncate-end">
           {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
         </Text>
@@ -376,8 +381,7 @@ function Controls({ observation, locale }: { observation: Observation; locale: L
   }
 
   if (observation.phase === "shop") {
-    const optionCount = observation.forSale.length + observation.removableDeckCards.length + 1;
-    return <Text dimColor wrap="truncate-end">{formatText(locale, "controlsShop", { max: Math.min(9, optionCount) })}</Text>;
+    return <Text dimColor wrap="truncate-end">{text(locale, "controlsShop")}</Text>;
   }
 
   return <Text dimColor wrap="truncate-end">{text(locale, "controlsEnd")}</Text>;

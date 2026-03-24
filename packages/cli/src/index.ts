@@ -18,6 +18,7 @@ import { runBatchWithPolicy } from "./eval.js";
 import {
   DEFAULT_LOCALE,
   formatNodeLabel,
+  formatText,
   localizeErrorMessage,
   localizeObservation,
   localizePhaseLabel,
@@ -27,6 +28,7 @@ import {
   type Locale,
 } from "./i18n.js";
 import { BASELINE_POLICY_NAMES, getBaselinePolicy, type BaselinePolicyName } from "./policies.js";
+import { createShopBindings } from "./shop.js";
 import { createMapTreeRows, deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getMapLegendLines, getRecentLogView } from "./view.js";
 
 export { App, type AppProps } from "./app.js";
@@ -594,25 +596,36 @@ function renderObservation(observation: Observation, locale: Locale, visitedNode
 
     lines.push(`s. ${text(locale, "skipReward")}`);
   } else if (observation.phase === "shop") {
+    const shopBindings = createShopBindings(observation);
     lines.push(`${text(locale, "shop")}:`);
+    lines.push(text(locale, "shopBuySection"));
 
-    for (const [index, card] of observation.forSale.entries()) {
-      lines.push(`${index + 1}. ${text(locale, "buy")} ${card.name} [${card.cost}]`);
+    for (const option of shopBindings.buyOptions) {
+      lines.push(`${option.key ?? "·"}. ${option.card.name} [${option.card.cost}]`);
+    }
+
+    if (shopBindings.buyOptions.length > 0 && !shopBindings.buyOptions.some((option) => option.key !== null)) {
+      lines.push(text(locale, "shopNoAffordableBuys"));
     }
 
     lines.push("");
-    lines.push(text(locale, "deckRemoval"));
-    lines.push(`${text(locale, "cost")}: ${observation.removeDeckCardCost} ${text(locale, "removeCost")}.`);
+    lines.push(formatText(locale, "shopRemoveSection", { cost: observation.removeDeckCardCost }));
 
-    for (const entry of observation.removableDeckCards) {
-      lines.push(`${entry.deckIndex + 1}. ${text(locale, "remove")} ${entry.card.name} (${observation.removeDeckCardCost} ${text(locale, "gold").toLowerCase()})`);
+    for (const option of shopBindings.removeOptions) {
+      lines.push(
+        `${option.key ?? "·"}. ${text(locale, "remove")} ${option.card.name} ${formatText(locale, "shopDeckSlot", { index: option.deckIndex + 1 })}`,
+      );
     }
 
-    if (observation.removableDeckCards.length === 0) {
+    if (shopBindings.removeOptions.length > 0 && !shopBindings.removeOptions.some((option) => option.key !== null)) {
+      lines.push(text(locale, "shopNoAffordableRemovals"));
+    }
+
+    if (shopBindings.removeOptions.length === 0) {
       lines.push(text(locale, "noRemovableCards"));
     }
 
-    lines.push(`${observation.forSale.length + observation.removableDeckCards.length + 1}. ${text(locale, "leaveShop")}`);
+    lines.push(`${shopBindings.leaveKey}. ${text(locale, "leaveShop")}`);
   } else {
     lines.push(`${text(locale, "outcome")}: ${localizePhaseLabel(observation.phase, locale)}`);
   }
