@@ -12,6 +12,7 @@ export function App({ seed }: AppProps) {
   const [state, setState] = useState<RunState>(() => createRun(sampleContent, seed));
   const [error, setError] = useState<string | null>(null);
   const view = observeRun(sampleContent, state);
+  const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : "None";
 
   const runAction = (action: RunAction) => {
     try {
@@ -40,31 +41,63 @@ export function App({ seed }: AppProps) {
       }
 
       const handIndex = readChoiceIndex(input, view.hand.length);
-
       if (handIndex !== null) {
         runAction({ type: "playCard", handIndex });
       }
-
       return;
     }
 
     if (view.phase === "map") {
       const choiceIndex = readChoiceIndex(input, view.nextNodes.length);
-
       if (choiceIndex !== null) {
         runAction({ type: "choosePath", nodeId: view.nextNodes[choiceIndex].id });
       }
-
       return;
     }
 
     if (view.phase === "rest") {
       const choiceIndex = readChoiceIndex(input, view.restOptions.length);
-
       if (choiceIndex !== null) {
         runAction({ type: "chooseRest", optionId: view.restOptions[choiceIndex].id });
       }
+      return;
+    }
 
+    if (view.phase === "reward") {
+      if (input === "s") {
+        runAction({ type: "skipReward" });
+        return;
+      }
+
+      const rewardIndex = readChoiceIndex(input, view.cardChoices.length);
+      if (rewardIndex !== null) {
+        runAction({ type: "takeReward", rewardIndex });
+      }
+      return;
+    }
+
+    if (view.phase === "shop") {
+      const removeChoices = view.removableDeckCards;
+      const leaveIndex = view.forSale.length + removeChoices.length;
+      const choiceIndex = readChoiceIndex(input, leaveIndex + 1);
+
+      if (choiceIndex === null) {
+        return;
+      }
+
+      if (choiceIndex < view.forSale.length) {
+        runAction({ type: "buyShop", saleIndex: choiceIndex });
+        return;
+      }
+
+      const removableIndex = choiceIndex - view.forSale.length;
+      if (removableIndex < removeChoices.length) {
+        const deckIndex = removeChoices[removableIndex].deckIndex;
+        runAction({ type: "removeDeckCard", deckIndex });
+        return;
+      }
+
+      runAction({ type: "leaveShop" });
       return;
     }
 
@@ -85,6 +118,7 @@ export function App({ seed }: AppProps) {
         <Text>
           HP {view.hp}/{view.maxHp} | Gold {view.gold}
         </Text>
+        <Text dimColor>Relics: {relicNames}</Text>
       </Box>
 
       <Box marginTop={1} borderStyle="round" borderColor="yellow" paddingX={1} flexDirection="column">
@@ -175,15 +209,63 @@ function PhaseView({ observation }: { observation: Observation }) {
     );
   }
 
+  if (observation.phase === "reward") {
+    return (
+      <>
+        <Text bold color="yellow">
+          Reward
+        </Text>
+        <Text>Choose one card reward, or skip.</Text>
+        {observation.cardChoices.map((card, index) => (
+          <Text key={card.id}>
+            {index + 1}. {card.name} [{card.cost}] {card.description}
+          </Text>
+        ))}
+        <Text> s. Skip reward</Text>
+      </>
+    );
+  }
+
+  if (observation.phase === "shop") {
+    const leaveIndex = observation.forSale.length + observation.removableDeckCards.length + 1;
+    const canAffordRemove = observation.gold >= observation.removeDeckCardCost;
+    return (
+      <>
+        <Text bold color="yellow">
+          Shop
+        </Text>
+        <Text>
+          Buy, remove ({observation.removeDeckCardCost} gold each), or leave.
+        </Text>
+        {observation.forSale.map((card, index) => (
+          <Text key={card.id}>
+            {index + 1}. Buy {card.name}
+          </Text>
+        ))}
+        {observation.removableDeckCards.map((entry, index) => (
+          <Text
+            key={`${entry.deckIndex}-${entry.card.id}`}
+            color={canAffordRemove ? undefined : "gray"}
+          >
+            {observation.forSale.length + index + 1}. Remove {entry.card.name} (deck #{entry.deckIndex + 1}) for{" "}
+            {observation.removeDeckCardCost} gold
+          </Text>
+        ))}
+        <Text color="yellow">
+          {leaveIndex}. Leave shop
+        </Text>
+        <Text dimColor>Next: {observation.nextNodes.map((node) => `${node.id} (${node.kind})`).join(", ")}</Text>
+      </>
+    );
+  }
+
   return (
     <>
       <Text bold color={observation.phase === "victory" ? "green" : "red"}>
         {observation.phase === "victory" ? "Victory" : "Defeat"}
       </Text>
       <Text>
-        {observation.phase === "victory"
-          ? "The climb is complete."
-          : "The tower won this run."}
+        {observation.phase === "victory" ? "The climb is complete." : "The tower won this run."}
       </Text>
       <Text>Press r to restart with the same seed or q to quit.</Text>
     </>
@@ -201,6 +283,15 @@ function Controls({ observation }: { observation: Observation }) {
 
   if (observation.phase === "rest") {
     return <Text dimColor>Controls: 1-9 choose rest action, q quit</Text>;
+  }
+
+  if (observation.phase === "reward") {
+    return <Text dimColor>Controls: 1-9 choose reward, s skip, q quit</Text>;
+  }
+
+  if (observation.phase === "shop") {
+    const optionCount = observation.forSale.length + observation.removableDeckCards.length + 1;
+    return <Text dimColor>Controls: 1-{Math.min(9, optionCount)} choose shop action, q quit</Text>;
   }
 
   return <Text dimColor>Controls: r restart, q quit</Text>;

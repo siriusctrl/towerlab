@@ -1,5 +1,5 @@
-export type NodeKind = "battle" | "elite" | "rest" | "boss";
-export type RunPhase = "combat" | "map" | "rest" | "victory" | "defeat";
+export type NodeKind = "battle" | "elite" | "rest" | "shop" | "boss";
+export type RunPhase = "combat" | "map" | "rest" | "reward" | "shop" | "victory" | "defeat";
 export type RestOptionId = "recover" | "fortify";
 
 export interface MapNode {
@@ -7,6 +7,7 @@ export interface MapNode {
   kind: NodeKind;
   nextIds: string[];
   encounterId?: string;
+  relicReward?: string;
 }
 
 export interface CardDefinition {
@@ -34,9 +35,27 @@ export interface EnemyDefinition {
   intents: EnemyIntent[];
 }
 
+export type RelicKind =
+  | "combatEnergy"
+  | "combatStartBlock"
+  | "maxHp"
+  | "restHealBonus"
+  | "shopDiscount";
+
+export interface RelicDefinition {
+  id: string;
+  name: string;
+  description: string;
+  kind: RelicKind;
+  value: number;
+}
+
 export interface RunContent {
   cards: Record<string, CardDefinition>;
   enemies: Record<string, EnemyDefinition>;
+  relics: Record<string, RelicDefinition>;
+  rewardCardPool: string[];
+  shopCardPool: string[];
   starterDeck: string[];
   map: MapNode[];
 }
@@ -62,6 +81,15 @@ export interface CombatState {
   turn: number;
 }
 
+export interface RewardState {
+  cardChoices: string[];
+}
+
+export interface ShopState {
+  forSale: string[];
+  removableDeckIndices: number[];
+}
+
 export interface RunState {
   seed: number;
   rng: number;
@@ -72,7 +100,10 @@ export interface RunState {
   floor: number;
   currentNodeId: string;
   deck: string[];
+  relics: string[];
   combat?: CombatState;
+  reward?: RewardState;
+  shop?: ShopState;
   log: string[];
 }
 
@@ -99,6 +130,7 @@ interface ObservationBase {
   gold: number;
   floor: number;
   currentNode: MapNode;
+  relics: RelicDefinition[];
   log: string[];
 }
 
@@ -123,18 +155,43 @@ export interface RestObservation extends ObservationBase {
   nextNodes: MapNode[];
 }
 
+export interface RewardObservation extends ObservationBase {
+  phase: "reward";
+  cardChoices: CardDefinition[];
+  nextNodes: MapNode[];
+}
+
+export interface ShopObservation extends ObservationBase {
+  phase: "shop";
+  forSale: CardDefinition[];
+  removableDeckCards: { deckIndex: number; card: CardDefinition }[];
+  removeDeckCardCost: number;
+  nextNodes: MapNode[];
+}
+
 export interface EndObservation extends ObservationBase {
   phase: "victory" | "defeat";
   nextNodes: MapNode[];
 }
 
-export type Observation = CombatObservation | MapObservation | RestObservation | EndObservation;
+export type Observation =
+  | CombatObservation
+  | MapObservation
+  | RestObservation
+  | RewardObservation
+  | ShopObservation
+  | EndObservation;
 
 export type RunAction =
   | { type: "choosePath"; nodeId: string }
   | { type: "playCard"; handIndex: number }
   | { type: "endTurn" }
-  | { type: "chooseRest"; optionId: RestOptionId };
+  | { type: "chooseRest"; optionId: RestOptionId }
+  | { type: "skipReward" }
+  | { type: "takeReward"; rewardIndex: number }
+  | { type: "buyShop"; saleIndex: number }
+  | { type: "removeDeckCard"; deckIndex: number }
+  | { type: "leaveShop" };
 
 const DEFAULT_MAX_HP = 80;
 const STARTING_GOLD = 0;
@@ -143,6 +200,10 @@ const HAND_SIZE = 5;
 const REST_HEAL = 18;
 const REST_FORTIFY = 5;
 const LOG_LIMIT = 8;
+const REWARD_CARD_COUNT = 3;
+const SHOP_CARD_COUNT = 3;
+const SHOP_CARD_PRICE = 12;
+const SHOP_CARD_REMOVE_PRICE = 12;
 
 const REST_OPTIONS: RestOption[] = [
   {
@@ -176,6 +237,7 @@ export function createRun(content: RunContent, seed: number): RunState {
     floor: 1,
     currentNodeId: firstNode.id,
     deck: [...content.starterDeck],
+    relics: [],
     log: [],
   };
 
@@ -192,6 +254,16 @@ export function applyAction(content: RunContent, state: RunState, action: RunAct
       return endTurn(content, state);
     case "chooseRest":
       return chooseRest(content, state, action.optionId);
+    case "takeReward":
+      return takeReward(content, state, action.rewardIndex);
+    case "skipReward":
+      return skipReward(content, state);
+    case "buyShop":
+      return buyShop(content, state, action.saleIndex);
+    case "removeDeckCard":
+      return removeDeckCard(content, state, action.deckIndex);
+    case "leaveShop":
+      return leaveShop(content, state);
     default:
       return assertNever(action);
   }
@@ -207,6 +279,7 @@ export function observeRun(content: RunContent, state: RunState): Observation {
     gold: state.gold,
     floor: state.floor,
     currentNode,
+    relics: state.relics.map((id) => getRelic(content, id)),
     log: state.log,
   };
 
@@ -235,6 +308,14 @@ export function observeRun(content: RunContent, state: RunState): Observation {
 
   const nextNodes = currentNode.nextIds.map((nodeId) => getNode(content, nodeId));
 
+  if (state.phase === "map") {
+    return {
+      ...base,
+      phase: "map",
+      nextNodes,
+    };
+  }
+
   if (state.phase === "rest") {
     return {
       ...base,
@@ -244,10 +325,29 @@ export function observeRun(content: RunContent, state: RunState): Observation {
     };
   }
 
-  if (state.phase === "map") {
+  if (state.phase === "reward") {
+    const choices = state.reward?.cardChoices ?? [];
+
     return {
       ...base,
-      phase: "map",
+      phase: "reward",
+      cardChoices: choices.map((cardId) => getCard(content, cardId)),
+      nextNodes,
+    };
+  }
+
+  if (state.phase === "shop") {
+    const forSale = state.shop?.forSale ?? [];
+    const removableDeckCards = (state.shop?.removableDeckIndices ?? [])
+      .filter((index) => index >= 0 && index < state.deck.length)
+      .map((deckIndex) => ({ deckIndex, card: getCard(content, state.deck[deckIndex]) }));
+
+    return {
+      ...base,
+      phase: "shop",
+      forSale: forSale.map((cardId) => getCard(content, cardId)),
+      removableDeckCards,
+      removeDeckCardCost: SHOP_CARD_REMOVE_PRICE,
       nextNodes,
     };
   }
@@ -276,6 +376,8 @@ function choosePath(content: RunContent, state: RunState, nodeId: string): RunSt
       ...state,
       floor: state.floor + 1,
       currentNodeId: nextNode.id,
+      reward: undefined,
+      shop: undefined,
     },
     `Moved to ${describeNode(nextNode)}.`,
   );
@@ -296,7 +398,6 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
   }
 
   const card = getCard(content, cardId);
-
   if (card.cost > combat.energy) {
     throw new Error(`${card.name} costs ${card.cost} energy`);
   }
@@ -315,14 +416,13 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
     fragments.push(`gain ${card.block} block`);
   }
 
-  const nextHand = combat.hand.filter((_, index) => index !== handIndex);
   const nextState = appendLog(
     {
       ...state,
       combat: {
         ...combat,
         enemy,
-        hand: nextHand,
+        hand: combat.hand.filter((_, index) => index !== handIndex),
         discardPile: [...combat.discardPile, cardId],
         energy: combat.energy - card.cost,
         block,
@@ -360,7 +460,7 @@ function endTurn(content: RunContent, state: RunState): RunState {
     return nextState;
   }
 
-  return startPlayerTurn(nextState);
+  return startPlayerTurn(content, nextState);
 }
 
 function chooseRest(content: RunContent, state: RunState, optionId: RestOptionId): RunState {
@@ -372,11 +472,13 @@ function chooseRest(content: RunContent, state: RunState, optionId: RestOptionId
   let nextState = state;
 
   if (optionId === "recover") {
-    const healed = Math.min(REST_HEAL, state.maxHp - state.hp);
+    const healAmount = REST_HEAL + getRelicValue(content, state, "restHealBonus");
+    const healed = Math.min(healAmount, state.maxHp - state.hp);
+
     nextState = appendLog(
       {
         ...state,
-        hp: Math.min(state.maxHp, state.hp + REST_HEAL),
+        hp: Math.min(state.maxHp, state.hp + healAmount),
       },
       healed > 0 ? `Recovered ${healed} HP.` : "Recovered 0 HP.",
     );
@@ -393,7 +495,128 @@ function chooseRest(content: RunContent, state: RunState, optionId: RestOptionId
     return assertNever(optionId);
   }
 
-  return finishNode(nextState, currentNode);
+  return finishNode(content, nextState, currentNode);
+}
+
+function takeReward(content: RunContent, state: RunState, rewardIndex: number): RunState {
+  if (state.phase !== "reward") {
+    throw new Error("reward choices are only available after combat");
+  }
+
+  const choices = state.reward?.cardChoices ?? [];
+  const cardId = choices[rewardIndex];
+
+  if (!cardId) {
+    throw new Error(`reward index ${rewardIndex} is not available`);
+  }
+
+  const nextState = appendLog(
+    {
+      ...state,
+      deck: [...state.deck, cardId],
+      reward: undefined,
+    },
+    `Added ${getCard(content, cardId).name} to deck.`,
+  );
+
+  return finishNode(content, nextState, getNode(content, state.currentNodeId));
+}
+
+function skipReward(content: RunContent, state: RunState): RunState {
+  if (state.phase !== "reward") {
+    throw new Error("reward choices are only available after combat");
+  }
+
+  return finishNode(
+    content,
+    appendLog({ ...state, reward: undefined }, "Skipped reward."),
+    getNode(content, state.currentNodeId),
+  );
+}
+
+function buyShop(content: RunContent, state: RunState, saleIndex: number): RunState {
+  if (state.phase !== "shop") {
+    throw new Error("shop actions are only available at shop nodes");
+  }
+
+  const shop = state.shop;
+  if (!shop) {
+    throw new Error("shop state is missing");
+  }
+
+  const cardId = shop.forSale[saleIndex];
+  if (!cardId) {
+    throw new Error(`shop card index ${saleIndex} is not available`);
+  }
+
+  const price = Math.max(1, SHOP_CARD_PRICE - getRelicValue(content, state, "shopDiscount"));
+  if (state.gold < price) {
+    throw new Error(`Need ${price} gold to buy ${getCard(content, cardId).name}`);
+  }
+
+  return appendLog(
+    {
+      ...state,
+      gold: state.gold - price,
+      deck: [...state.deck, cardId],
+      shop: {
+        ...shop,
+        forSale: shop.forSale.filter((_, index) => index !== saleIndex),
+        removableDeckIndices: buildRemovableDeckIndices([...state.deck, cardId]),
+      },
+    },
+    `Bought ${getCard(content, cardId).name} for ${price} gold.`,
+  );
+}
+
+function removeDeckCard(content: RunContent, state: RunState, deckIndex: number): RunState {
+  if (state.phase !== "shop") {
+    throw new Error("deck removal is only available at shop nodes");
+  }
+
+  const shop = state.shop;
+  if (!shop) {
+    throw new Error("shop state is missing");
+  }
+
+  if (state.deck[deckIndex] === undefined) {
+    throw new Error(`deck index ${deckIndex} is not available`);
+  }
+
+  if (!shop.removableDeckIndices.includes(deckIndex)) {
+    throw new Error(`deck index ${deckIndex} cannot be removed now`);
+  }
+
+  if (state.gold < SHOP_CARD_REMOVE_PRICE) {
+    throw new Error(`Need ${SHOP_CARD_REMOVE_PRICE} gold to remove ${getCard(content, state.deck[deckIndex]).name}`);
+  }
+
+  const nextDeck = [...state.deck];
+  const removedCardId = nextDeck[deckIndex];
+  nextDeck.splice(deckIndex, 1);
+  const removedCardName = getCard(content, removedCardId).name;
+
+  return appendLog(
+    {
+      ...state,
+      deck: nextDeck,
+      gold: state.gold - SHOP_CARD_REMOVE_PRICE,
+      shop: {
+        ...shop,
+        removableDeckIndices: buildRemovableDeckIndices(nextDeck),
+      },
+    },
+    `Removed ${removedCardName} from deck for ${SHOP_CARD_REMOVE_PRICE} gold.`,
+  );
+}
+
+function leaveShop(content: RunContent, state: RunState): RunState {
+  if (state.phase !== "shop") {
+    throw new Error("can only leave when in shop");
+  }
+
+  const currentNode = getNode(content, state.currentNodeId);
+  return finishNode(content, appendLog({ ...state, shop: undefined }, "Left the shop."), currentNode);
 }
 
 function enterNode(content: RunContent, state: RunState, node: MapNode): RunState {
@@ -403,12 +626,42 @@ function enterNode(content: RunContent, state: RunState, node: MapNode): RunStat
         ...state,
         phase: "rest",
         combat: undefined,
+        reward: undefined,
+        shop: undefined,
       },
       "Choose how to use the campfire.",
     );
   }
 
+  if (node.kind === "shop") {
+    const shopState = createShopState(content, state);
+    return appendLog(
+      {
+        ...state,
+        phase: "shop",
+        combat: undefined,
+        reward: undefined,
+        shop: shopState.shop,
+        rng: shopState.rng,
+      },
+      "You found a shop. Browse the offers.",
+    );
+  }
+
   return startCombat(content, state, node);
+}
+
+function createShopState(content: RunContent, state: RunState): { shop: ShopState; rng: number } {
+  const cardSelection = selectCardsFromPool(content.shopCardPool, SHOP_CARD_COUNT, state.rng);
+  const existingForSale = cardSelection.cards.filter((cardId) => content.cards[cardId]);
+
+  return {
+    shop: {
+      forSale: existingForSale,
+      removableDeckIndices: buildRemovableDeckIndices(state.deck),
+    },
+    rng: cardSelection.rng,
+  };
 }
 
 function startCombat(content: RunContent, state: RunState, node: MapNode): RunState {
@@ -421,6 +674,7 @@ function startCombat(content: RunContent, state: RunState, node: MapNode): RunSt
   const enemyDefinition = getEnemyDefinition(content, enemyId);
   const shuffledDeck = shuffle([...state.deck], state.rng);
   const drawn = drawCards(shuffledDeck.items, [], HAND_SIZE, shuffledDeck.rng);
+  const playerStartingBlock = getRelicValue(content, state, "combatStartBlock");
   const enemy: EnemyState = {
     id: enemyDefinition.id,
     name: enemyDefinition.name,
@@ -442,10 +696,12 @@ function startCombat(content: RunContent, state: RunState, node: MapNode): RunSt
         drawPile: drawn.drawPile,
         hand: drawn.drawn,
         discardPile: drawn.discardPile,
-        energy: STARTING_ENERGY,
-        block: 0,
+        energy: STARTING_ENERGY + getRelicValue(content, state, "combatEnergy"),
+        block: playerStartingBlock,
         turn: 1,
       },
+      reward: undefined,
+      shop: undefined,
     },
     `${enemy.name} appears. Intent: ${getCurrentIntent(enemy).description}.`,
   );
@@ -455,7 +711,8 @@ function finishCombat(content: RunContent, state: RunState): RunState {
   const combat = getCombat(state);
   const currentNode = getNode(content, state.currentNodeId);
   const reward = combat.enemy.goldReward;
-  const nextState = appendLog(
+
+  let nextState: RunState = appendLog(
     {
       ...state,
       gold: state.gold + reward,
@@ -464,10 +721,27 @@ function finishCombat(content: RunContent, state: RunState): RunState {
     `Defeated ${combat.enemy.name} and gained ${reward} gold.`,
   );
 
-  return finishNode(nextState, currentNode);
+  nextState = grantRelicReward(content, nextState, currentNode);
+  const rewardSelection = getRewardChoices(content, nextState);
+
+  if (rewardSelection.cards.length === 0) {
+    return finishNode(content, nextState, currentNode);
+  }
+
+  return appendLog(
+    {
+      ...nextState,
+      rng: rewardSelection.rng,
+      phase: "reward",
+      reward: {
+        cardChoices: rewardSelection.cards,
+      },
+    },
+    "Won a reward. Choose a card reward or skip.",
+  );
 }
 
-function finishNode(state: RunState, currentNode: MapNode): RunState {
+function finishNode(content: RunContent, state: RunState, currentNode: MapNode): RunState {
   if (currentNode.nextIds.length === 0) {
     const finalPhase = state.hp > 0 ? "victory" : "defeat";
     const message = finalPhase === "victory"
@@ -480,6 +754,8 @@ function finishNode(state: RunState, currentNode: MapNode): RunState {
       {
         ...state,
         phase: finalPhase,
+        reward: undefined,
+        shop: undefined,
       },
       message,
     );
@@ -489,9 +765,66 @@ function finishNode(state: RunState, currentNode: MapNode): RunState {
     {
       ...state,
       phase: "map",
+      reward: undefined,
+      shop: undefined,
     },
     "Choose the next path.",
   );
+}
+
+function grantRelicReward(content: RunContent, state: RunState, currentNode: MapNode): RunState {
+  const relicId = currentNode.relicReward;
+
+  if (!relicId) {
+    return state;
+  }
+
+  if (state.relics.includes(relicId)) {
+    return appendLog(state, `Relic ${getRelic(content, relicId).name} already acquired.`);
+  }
+
+  const relic = getRelic(content, relicId);
+  let nextState = {
+    ...state,
+    relics: [...state.relics, relicId],
+  };
+
+  if (relic.kind === "maxHp") {
+    nextState = {
+      ...nextState,
+      maxHp: state.maxHp + relic.value,
+      hp: state.hp + relic.value,
+    };
+  }
+
+  return appendLog(nextState, `Acquired relic ${relic.name}.`);
+}
+
+function getRewardChoices(content: RunContent, state: RunState): { cards: string[]; rng: number } {
+  const cardSelection = selectCardsFromPool(content.rewardCardPool, REWARD_CARD_COUNT, state.rng);
+  const cardChoices = cardSelection.cards.filter((cardId) => content.cards[cardId]);
+
+  return {
+    cards: cardChoices,
+    rng: cardSelection.rng,
+  };
+}
+
+function getRelic(content: RunContent, relicId: string): RelicDefinition {
+  const relic = content.relics[relicId];
+
+  if (!relic) {
+    throw new Error(`unknown relic: ${relicId}`);
+  }
+
+  return relic;
+}
+
+function getRelicValue(content: RunContent, state: RunState, kind: RelicKind): number {
+  return state.relics.reduce((total, relicId) => {
+    const relic = getRelic(content, relicId);
+    return relic.kind === kind ? total + relic.value : total;
+  }, 0);
 }
 
 function resolveEnemyTurn(state: RunState): RunState {
@@ -554,7 +887,7 @@ function resolveEnemyTurn(state: RunState): RunState {
   return nextState;
 }
 
-function startPlayerTurn(state: RunState): RunState {
+function startPlayerTurn(content: RunContent, state: RunState): RunState {
   const combat = getCombat(state);
   const drawn = drawCards(combat.drawPile, combat.discardPile, HAND_SIZE, state.rng);
   const nextEnemy = combat.enemy;
@@ -568,7 +901,7 @@ function startPlayerTurn(state: RunState): RunState {
         drawPile: drawn.drawPile,
         discardPile: drawn.discardPile,
         hand: drawn.drawn,
-        energy: STARTING_ENERGY,
+        energy: STARTING_ENERGY + getRelicValue(content, state, "combatEnergy"),
         block: 0,
         turn: combat.turn + 1,
         enemy: nextEnemy,
@@ -679,6 +1012,8 @@ function getEnemyDefinition(content: RunContent, enemyId: string): EnemyDefiniti
 function validateContent(content: RunContent): void {
   validateDeck(content);
   validateMap(content);
+  validatePools(content);
+  validateRelics(content);
 }
 
 function validateDeck(content: RunContent): void {
@@ -701,19 +1036,21 @@ function validateMap(content: RunContent): void {
 
     seenNodeIds.add(node.id);
 
-    if (node.kind === "rest") {
+    if (node.kind === "rest" || node.kind === "shop") {
       if (node.encounterId) {
-        throw new Error(`rest node ${node.id} must not define an encounterId`);
+        throw new Error(`${node.kind} node ${node.id} must not define an encounterId`);
+      }
+    } else {
+      if (!node.encounterId) {
+        throw new Error(`${node.kind} node ${node.id} must define an encounterId`);
       }
 
-      continue;
+      getEnemyDefinition(content, node.encounterId);
     }
 
-    if (!node.encounterId) {
-      throw new Error(`${node.kind} node ${node.id} must define an encounterId`);
+    if (node.relicReward) {
+      getRelic(content, node.relicReward);
     }
-
-    getEnemyDefinition(content, node.encounterId);
   }
 
   for (const node of content.map) {
@@ -723,6 +1060,54 @@ function validateMap(content: RunContent): void {
       }
     }
   }
+}
+
+function validatePools(content: RunContent): void {
+  for (const cardId of content.rewardCardPool) {
+    getCard(content, cardId);
+  }
+
+  for (const cardId of content.shopCardPool) {
+    getCard(content, cardId);
+  }
+}
+
+function validateRelics(content: RunContent): void {
+  for (const relic of Object.values(content.relics)) {
+    if (relic.value <= 0) {
+      throw new Error(`relic ${relic.id} must have a positive value`);
+    }
+
+    if (
+      relic.kind !== "combatEnergy" &&
+      relic.kind !== "combatStartBlock" &&
+      relic.kind !== "maxHp" &&
+      relic.kind !== "restHealBonus" &&
+      relic.kind !== "shopDiscount"
+    ) {
+      throw new Error(`relic ${relic.id} has unsupported kind: ${String(relic.kind)}`);
+    }
+  }
+}
+
+function selectCardsFromPool(cardPool: string[], count: number, rng: number): { cards: string[]; rng: number } {
+  if (cardPool.length === 0 || count <= 0) {
+    return {
+      cards: [],
+      rng,
+    };
+  }
+
+  const available = [...new Set(cardPool)];
+  const shuffled = shuffle(available, rng);
+  return {
+    cards: shuffled.items.slice(0, Math.min(count, shuffled.items.length)),
+    rng: shuffled.rng,
+  };
+}
+
+function buildRemovableDeckIndices(deck: string[]): number[] {
+  return deck.map((_, index) => index);
 }
 
 function appendLog(state: RunState, message: string): RunState {
@@ -742,17 +1127,18 @@ function normalizeSeed(seed: number): number {
 }
 
 function shuffle<T>(items: T[], seed: number): ShuffleResult<T> {
+  const nextItems = [...items];
   let nextSeed = seed;
 
-  for (let index = items.length - 1; index > 0; index -= 1) {
+  for (let index = nextItems.length - 1; index > 0; index -= 1) {
     const value = nextRandom(nextSeed);
     nextSeed = value.seed;
     const swapIndex = Math.floor(value.value * (index + 1));
-    [items[index], items[swapIndex]] = [items[swapIndex], items[index]];
+    [nextItems[index], nextItems[swapIndex]] = [nextItems[swapIndex], nextItems[index]];
   }
 
   return {
-    items,
+    items: nextItems,
     rng: nextSeed,
   };
 }

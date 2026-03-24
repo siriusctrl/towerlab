@@ -31,6 +31,7 @@ function renderObservation(observation: Observation): string {
     `Phase: ${observation.phase}`,
     `HP: ${observation.hp}/${observation.maxHp}  Gold: ${observation.gold}  Floor: ${observation.floor}`,
     `Node: ${observation.currentNode.id} (${observation.currentNode.kind})`,
+    `Relics: ${observation.relics.map((relic) => relic.name).join(", ") || "None"}`,
     "",
   ];
 
@@ -58,6 +59,34 @@ function renderObservation(observation: Observation): string {
     for (const [index, option] of observation.restOptions.entries()) {
       lines.push(`${index + 1}. ${option.label} - ${option.description}`);
     }
+  } else if (observation.phase === "reward") {
+    lines.push("Reward:");
+
+    for (const [index, card] of observation.cardChoices.entries()) {
+      lines.push(`${index + 1}. ${card.name} [${card.cost}] ${card.description}`);
+    }
+
+    lines.push("s. Skip");
+  } else if (observation.phase === "shop") {
+    lines.push("Shop:");
+
+    for (const [index, card] of observation.forSale.entries()) {
+      lines.push(`${index + 1}. Buy ${card.name} [${card.cost}]`);
+    }
+
+    lines.push("");
+    lines.push("Deck removal:");
+    lines.push(`Cost: ${observation.removeDeckCardCost} gold each.`);
+
+    for (const entry of observation.removableDeckCards) {
+      lines.push(`${entry.deckIndex + 1}. Remove ${entry.card.name} (${observation.removeDeckCardCost} gold)`);
+    }
+
+    if (observation.removableDeckCards.length === 0) {
+      lines.push("No removable cards are available.");
+    }
+
+    lines.push(`${observation.forSale.length + observation.removableDeckCards.length + 1}. Leave shop`);
   } else {
     lines.push(`Outcome: ${observation.phase === "victory" ? "Victory" : "Defeat"}`);
   }

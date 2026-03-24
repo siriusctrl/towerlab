@@ -51,7 +51,10 @@ corepack pnpm cli -- --seed 7
 `pnpm cli` launches the playable MVP slice. In a real terminal it starts the Ink UI; without a TTY it prints a deterministic opening snapshot instead. Controls are shown in the terminal:
 - combat: number keys play cards, `e` ends the turn
 - map/rest: number keys choose the option
-- `q` quits, `r` restarts after win/loss
+- reward: number keys pick reward, `s` skips reward
+- shop: number keys buy or remove a card, or leave
+- `q` quits
+- `r` restarts after win/loss
 
 ## Why TypeScript
 

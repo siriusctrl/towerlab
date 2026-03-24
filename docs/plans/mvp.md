@@ -12,13 +12,13 @@ Ship a reviewable playable terminal slice of TowerLab.
 - sample enemies and intents
 - sample tower map with branching
 - Ink-based interactive CLI
-- deterministic combat, map, and rest transitions
+- deterministic combat, map, reward, shop, and rest transitions
 - deterministic tests for run setup and combat flow
+- shop encounter flow and deck rewards
+- basic relic effects and validation
 
 ## Not included in v0
 
-- shops
-- relic system
 - events
 - HTTP proxy
 - benchmark runner
