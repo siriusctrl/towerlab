@@ -538,6 +538,8 @@ export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE): s
 }
 
 function renderObservation(observation: Observation, locale: Locale): string {
+  const mapSection = renderMapSection(observation.currentNode.id, locale);
+
   const lines = [
     text(locale, "snapshotTitle"),
     `${text(locale, "seed")}: ${observation.seed}`,
@@ -545,6 +547,8 @@ function renderObservation(observation: Observation, locale: Locale): string {
     `${text(locale, "hp")}: ${observation.hp}/${observation.maxHp}  ${text(locale, "gold")}: ${observation.gold}  ${text(locale, "floor")}: ${observation.floor}`,
     `${text(locale, "node")}: ${observation.currentNode.id} (${localizeNodeKind(observation.currentNode.kind, locale)})`,
     `${text(locale, "relics")}: ${observation.relics.map((relic) => relic.name).join(", ") || text(locale, "none")}`,
+    "",
+    ...mapSection,
     "",
   ];
 
@@ -561,7 +565,7 @@ function renderObservation(observation: Observation, locale: Locale): string {
       lines.push(`${index + 1}. ${card.name} [${card.cost}] ${card.description}`);
     }
   } else if (observation.phase === "map") {
-    lines.push(text(locale, "paths"));
+    lines.push(`${text(locale, "paths")}`);
 
     for (const [index, node] of observation.nextNodes.entries()) {
       lines.push(`${index + 1}. ${node.id} (${localizeNodeKind(node.kind, locale)})`);
@@ -611,4 +615,24 @@ function renderObservation(observation: Observation, locale: Locale): string {
   }
 
   return lines.join("\n");
+}
+
+function renderMapSection(currentNodeId: string, locale: Locale): string[] {
+  const mapNodes = sampleContent.map;
+  const currentNode = mapNodes.find((node) => node.id === currentNodeId);
+  const nextNodeIds = new Set(currentNode ? currentNode.nextIds : []);
+
+  const lines = [`${text(locale, "map")}:`];
+
+  for (const node of mapNodes) {
+    const isCurrent = node.id === currentNodeId;
+    const isNextChoice = nextNodeIds.has(node.id);
+    const marker = isCurrent ? "▶" : isNextChoice ? "→" : " ";
+    const nextTargets = node.nextIds.length > 0 ? ` -> ${node.nextIds.join(", ")}` : "";
+    lines.push(
+      `${marker} ${node.id} (${localizeNodeKind(node.kind, locale)})${nextTargets}`,
+    );
+  }
+
+  return lines;
 }

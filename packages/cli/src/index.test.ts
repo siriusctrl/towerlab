@@ -26,6 +26,19 @@ describe("headless CLI", () => {
     expect(snapshot).toContain("日志:");
   });
 
+  test("non-tty snapshot shows full map with current node and next choices", () => {
+    const snapshot = renderSnapshot(7, "zh");
+    const lines = snapshot.split("\n");
+
+    expect(snapshot).toContain("地图:");
+    expect(lines).toContain("▶ gate (战斗) -> forge, hall");
+    expect(lines).toContain("→ forge (精英) -> market");
+    expect(lines).toContain("→ hall (战斗) -> restCamp, market");
+    expect(lines).toContain("  restCamp (营火) -> summit");
+    expect(lines).toContain("  market (商店) -> summit");
+    expect(lines).toContain("  summit (首领)");
+  });
+
   test("step applies a single action after replaying prior actions", () => {
     const observe = JSON.parse(
       runHeadless(["--json", "observe", "--seed", "9", "--actions", JSON.stringify([{ type: "endTurn" }])]),
