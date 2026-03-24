@@ -11,7 +11,8 @@ Responsibilities:
 - state types
 - seeded randomness
 - run creation and node progression
-- combat transitions
+- combat, reward, and shop transitions
+- relic application and simple deterministic effects
 - pure observation shaping
 
 ### `packages/content`

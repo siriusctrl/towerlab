@@ -83,6 +83,9 @@ function createCombatContent(): RunContent {
       strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
       defend: { id: "defend", name: "Defend", cost: 1, description: "Gain 5 block.", block: 5 },
     },
+    relics: {},
+    rewardCardPool: [],
+    shopCardPool: [],
     enemies: {
       guard: {
         id: "guard",
@@ -105,6 +108,9 @@ function createBossContent(): RunContent {
     cards: {
       strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
     },
+    relics: {},
+    rewardCardPool: [],
+    shopCardPool: [],
     enemies: {
       core: {
         id: "core",
