@@ -13,8 +13,22 @@ import {
   text,
   type Locale,
 } from "./i18n.js";
-import { createShopBindings, readShopAction } from "./shop.js";
-import { createMapTreeRows, deriveVisitedNodeIds, getEarlierEventsLine, getRecentLogView, type MapTreeCell } from "./view.js";
+import {
+  SHOP_MENU_BACK_KEY,
+  SHOP_MENU_BUY_KEY,
+  SHOP_MENU_REMOVE_KEY,
+  createShopBindings,
+  type ShopMenuMode,
+  readShopAction,
+} from "./shop.js";
+import {
+  createMapTreeRows,
+  deriveVisitedNodeIds,
+  getEarlierEventsLine,
+  getMapLegendLines,
+  getRecentLogView,
+  type MapTreeCell,
+} from "./view.js";
 
 export interface AppProps {
   seed: number;
@@ -30,6 +44,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const [error, setError] = useState<string | null>(null);
   const stateRef = useRef(state);
   const actionsRef = useRef(actions);
+  const [shopMenu, setShopMenu] = useState<ShopMenuMode>("top");
   const view = localizeObservation(observeRun(sampleContent, state), locale);
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
   const showRecentLog = rows >= 28;
@@ -56,7 +71,14 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
     setState(nextState);
     setActions([]);
     setError(null);
+    setShopMenu("top");
   };
+
+  useEffect(() => {
+    if (view.phase !== "shop") {
+      setShopMenu("top");
+    }
+  }, [view.phase]);
 
   useInput((input, key) => {
     if ((key.ctrl && input === "c") || input === "q") {
@@ -107,9 +129,15 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
     }
 
     if (view.phase === "shop") {
-      const action = readShopAction(input, view);
-      if (action) {
-        runAction(action);
+      const result = readShopAction(input, view, shopMenu);
+
+      if (result) {
+        if (result.type === "openMenu") {
+          setShopMenu(result.menu);
+          return;
+        }
+
+        runAction(result.action);
       }
       return;
     }
@@ -138,7 +166,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
       </Box>
 
       <Box marginTop={1} borderStyle="round" borderColor="yellow" paddingX={1} flexDirection="column" flexGrow={1} overflow="hidden">
-        <PhaseView observation={view} actions={actions} locale={locale} />
+        <PhaseView observation={view} actions={actions} locale={locale} shopMenu={shopMenu} />
       </Box>
 
       {showRecentLog ? (
@@ -148,7 +176,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
       ) : null}
 
       <Box marginTop={1} flexDirection="column" flexShrink={0} overflow="hidden">
-        <Controls observation={view} locale={locale} />
+        <Controls observation={view} locale={locale} shopMenu={shopMenu} />
         {error ? (
           <Text color="red" wrap="truncate-end">
             {text(locale, "inputError")}: {error}
@@ -184,14 +212,24 @@ function useTerminalDimensions(stdout: NodeJS.WriteStream): { columns: number; r
   return dimensions;
 }
 
-function PhaseView({ observation, actions, locale }: { observation: Observation; actions: RunAction[]; locale: Locale }) {
+function PhaseView({
+  observation,
+  actions,
+  locale,
+  shopMenu,
+}: {
+  observation: Observation;
+  actions: RunAction[];
+  locale: Locale;
+  shopMenu: ShopMenuMode;
+}) {
   const showMap = observation.phase === "map";
 
   return (
     <>
       {showMap ? <MapTreeView observation={observation} actions={actions} locale={locale} /> : null}
       <Box marginTop={showMap ? 1 : 0} flexDirection="column" overflow="hidden">
-        <PhaseBody observation={observation} locale={locale} />
+        <PhaseBody observation={observation} locale={locale} shopMenu={shopMenu} />
       </Box>
     </>
   );
@@ -200,12 +238,18 @@ function PhaseView({ observation, actions, locale }: { observation: Observation;
 function MapTreeView({ observation, actions, locale }: { observation: Observation; actions: RunAction[]; locale: Locale }) {
   const visitedNodeIds = deriveVisitedNodeIds(sampleContent.map, actions);
   const mapRows = createMapTreeRows(sampleContent.map, observation, locale, visitedNodeIds);
+  const legendLines = getMapLegendLines(locale);
 
   return (
     <>
       <Text bold color="magenta">
         {text(locale, "map")}
       </Text>
+      {legendLines.map((line, index) => (
+        <Text key={`legend-${index}`} dimColor wrap="truncate-end">
+          {line}
+        </Text>
+      ))}
       {mapRows.map((row, rowIndex) => (
         <Text key={rowIndex} wrap="truncate-end">
           {row.map((cell, cellIndex) => (
@@ -224,7 +268,7 @@ function MapTreeView({ observation, actions, locale }: { observation: Observatio
   );
 }
 
-function PhaseBody({ observation, locale }: { observation: Observation; locale: Locale }) {
+function PhaseBody({ observation, locale, shopMenu }: { observation: Observation; locale: Locale; shopMenu: ShopMenuMode }) {
   if (observation.phase === "combat") {
     return (
       <>
@@ -309,9 +353,74 @@ function PhaseBody({ observation, locale }: { observation: Observation; locale: 
   }
 
   if (observation.phase === "shop") {
-    const shopBindings = createShopBindings(observation);
-    const buyHotkeys = shopBindings.buyOptions.filter((option) => option.key !== null);
-    const removeHotkeys = shopBindings.removeOptions.filter((option) => option.key !== null);
+    const topBindings = createShopBindings(observation);
+    const submenuBindings = createShopBindings(
+      observation,
+      shopMenu === "buy" ? "buy" : shopMenu === "remove" ? "remove" : "flat",
+    );
+    const canBuyAny = topBindings.buyOptions.some((option) => option.key !== null);
+    const canRemoveAny = topBindings.removeOptions.some((option) => option.key !== null);
+
+    if (shopMenu === "buy") {
+      return (
+        <>
+          <Text bold color="yellow">
+            {text(locale, "shop")}
+          </Text>
+          <Text bold>{text(locale, "shopBuySection")}</Text>
+          {submenuBindings.buyOptions.map((option) => (
+            <Text key={option.card.id} color={option.key ? undefined : "gray"} wrap="truncate-end">
+              {option.key ? `${option.key}. ` : "· "}
+              {option.card.name} [{option.card.cost}]
+            </Text>
+          ))}
+          {submenuBindings.buyOptions.length > 0 && !canBuyAny ? (
+            <Text dimColor wrap="truncate-end">
+              {text(locale, "shopNoAffordableBuys")}
+            </Text>
+          ) : null}
+          <Text dimColor wrap="truncate-end">
+            {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
+          </Text>
+          <Text color="yellow">
+            {SHOP_MENU_BACK_KEY}. {text(locale, "shopBack")}
+          </Text>
+        </>
+      );
+    }
+
+    if (shopMenu === "remove") {
+      return (
+        <>
+          <Text bold color="yellow">
+            {text(locale, "shop")}
+          </Text>
+          <Text bold>{formatText(locale, "shopRemoveSection", { cost: observation.removeDeckCardCost })}</Text>
+          {submenuBindings.removeOptions.map((option) => (
+            <Text
+              key={`${option.deckIndex}-${option.card.id}`}
+              color={option.key ? undefined : "gray"}
+              wrap="truncate-end"
+            >
+              {option.key ? `${option.key}. ` : "· "}
+              {text(locale, "remove")} {option.card.name} {formatText(locale, "shopDeckSlot", { index: option.deckIndex + 1 })}
+            </Text>
+          ))}
+          {submenuBindings.removeOptions.length > 0 && !canRemoveAny ? (
+            <Text dimColor wrap="truncate-end">
+              {text(locale, "shopNoAffordableRemovals")}
+            </Text>
+          ) : null}
+          {submenuBindings.removeOptions.length === 0 ? <Text dimColor wrap="truncate-end">{text(locale, "noRemovableCards")}</Text> : null}
+          <Text dimColor wrap="truncate-end">
+            {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
+          </Text>
+          <Text color="yellow">
+            {SHOP_MENU_BACK_KEY}. {text(locale, "shopBack")}
+          </Text>
+        </>
+      );
+    }
 
     return (
       <>
@@ -319,34 +428,26 @@ function PhaseBody({ observation, locale }: { observation: Observation; locale: 
           {text(locale, "shop")}
         </Text>
         <Text wrap="truncate-end">{formatText(locale, "shopPrompt", { cost: observation.removeDeckCardCost })}</Text>
-        <Text bold>{text(locale, "shopBuySection")}</Text>
-        {shopBindings.buyOptions.map((option) => (
-          <Text key={option.card.id} color={option.key ? undefined : "gray"} wrap="truncate-end">
-            {option.key ? `${option.key}. ` : "· "}
-            {option.card.name} [{option.card.cost}]
-          </Text>
-        ))}
-        {shopBindings.buyOptions.length > 0 && buyHotkeys.length === 0 ? (
+        <Text bold color={canBuyAny ? undefined : "gray"}>{SHOP_MENU_BUY_KEY}. {text(locale, "shopBuySection")}</Text>
+        {!canBuyAny && topBindings.buyOptions.length > 0 ? (
           <Text dimColor wrap="truncate-end">
             {text(locale, "shopNoAffordableBuys")}
           </Text>
         ) : null}
-        <Text bold>{formatText(locale, "shopRemoveSection", { cost: observation.removeDeckCardCost })}</Text>
-        {shopBindings.removeOptions.map((option) => (
-          <Text key={`${option.deckIndex}-${option.card.id}`} color={option.key ? undefined : "gray"} wrap="truncate-end">
-            {option.key ? `${option.key}. ` : "· "}
-            {text(locale, "remove")} {option.card.name} {formatText(locale, "shopDeckSlot", { index: option.deckIndex + 1 })}
-          </Text>
-        ))}
-        {shopBindings.removeOptions.length > 0 && removeHotkeys.length === 0 ? (
+        <Text bold color={canRemoveAny ? undefined : "gray"}>
+          {SHOP_MENU_REMOVE_KEY}. {formatText(locale, "shopRemoveSection", { cost: observation.removeDeckCardCost })}
+        </Text>
+        {!canRemoveAny && topBindings.removeOptions.length > 0 ? (
           <Text dimColor wrap="truncate-end">
             {text(locale, "shopNoAffordableRemovals")}
           </Text>
         ) : null}
-        {shopBindings.removeOptions.length === 0 ? <Text dimColor wrap="truncate-end">{text(locale, "noRemovableCards")}</Text> : null}
-        <Text color="yellow">{shopBindings.leaveKey}. {text(locale, "leaveShop")}</Text>
+        {topBindings.removeOptions.length === 0 ? <Text dimColor wrap="truncate-end">{text(locale, "noRemovableCards")}</Text> : null}
         <Text dimColor wrap="truncate-end">
           {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
+        </Text>
+        <Text color="yellow">
+          {topBindings.leaveKey}. {text(locale, "leaveShop")}
         </Text>
       </>
     );
@@ -363,7 +464,7 @@ function PhaseBody({ observation, locale }: { observation: Observation; locale: 
   );
 }
 
-function Controls({ observation, locale }: { observation: Observation; locale: Locale }) {
+function Controls({ observation, locale, shopMenu }: { observation: Observation; locale: Locale; shopMenu: ShopMenuMode }) {
   if (observation.phase === "combat") {
     return <Text dimColor wrap="truncate-end">{text(locale, "controlsCombat")}</Text>;
   }
@@ -381,6 +482,14 @@ function Controls({ observation, locale }: { observation: Observation; locale: L
   }
 
   if (observation.phase === "shop") {
+    if (shopMenu === "buy") {
+      return <Text dimColor wrap="truncate-end">{text(locale, "controlsShopBuy")}</Text>;
+    }
+
+    if (shopMenu === "remove") {
+      return <Text dimColor wrap="truncate-end">{text(locale, "controlsShopRemove")}</Text>;
+    }
+
     return <Text dimColor wrap="truncate-end">{text(locale, "controlsShop")}</Text>;
   }
 

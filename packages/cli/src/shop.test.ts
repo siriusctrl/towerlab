@@ -46,15 +46,51 @@ describe("shop bindings", () => {
 
     expect(bindings.buyOptions.every((option) => option.key === null)).toBe(true);
     expect(bindings.removeOptions.every((option) => option.key === null)).toBe(true);
-    expect(readShopAction("1", observation)).toBeNull();
-    expect(readShopAction("a", observation)).toBeNull();
-    expect(readShopAction("0", observation)).toEqual({ type: "leaveShop" });
+    expect(readShopAction("1", observation, "top")).toBeNull();
+    expect(readShopAction("2", observation, "top")).toBeNull();
+    expect(readShopAction("a", observation, "top")).toBeNull();
+    expect(readShopAction("0", observation, "top")).toEqual({
+      type: "runAction",
+      action: { type: "leaveShop" },
+    });
   });
 
   test("maps hotkeys back to concrete shop actions", () => {
     const observation = createShopObservation(99, 3);
 
-    expect(readShopAction("2", observation)).toEqual({ type: "buyShop", saleIndex: 1 });
-    expect(readShopAction("c", observation)).toEqual({ type: "removeDeckCard", deckIndex: 2 });
+    expect(readShopAction("1", observation, "top")).toEqual({
+      type: "openMenu",
+      menu: "buy",
+    });
+    expect(readShopAction("2", observation, "top")).toEqual({
+      type: "openMenu",
+      menu: "remove",
+    });
+    expect(readShopAction("2", observation, "buy")).toEqual({
+      type: "runAction",
+      action: { type: "buyShop", saleIndex: 1 },
+    });
+    expect(readShopAction("c", observation, "remove")).toEqual({
+      type: "runAction",
+      action: { type: "removeDeckCard", deckIndex: 2 },
+    });
+    expect(readShopAction("b", observation, "buy")).toEqual({ type: "openMenu", menu: "top" });
+    expect(readShopAction("b", observation, "remove")).toEqual({ type: "openMenu", menu: "top" });
+  });
+
+  test("keeps top-level options unselectable when actions are unaffordable", () => {
+    const observation = createShopObservation(5, 4);
+
+    expect(readShopAction("1", observation, "top")).toBeNull();
+    expect(readShopAction("2", observation, "top")).toBeNull();
+  });
+
+  test("binds createShopBindings to submenu modes", () => {
+    const observation = createShopObservation(99, 4);
+    const buyBindings = createShopBindings(observation, "buy");
+    const removeBindings = createShopBindings(observation, "remove");
+
+    expect(buyBindings.removeOptions.every((option) => option.key === null)).toBe(true);
+    expect(removeBindings.buyOptions.every((option) => option.key === null)).toBe(true);
   });
 });

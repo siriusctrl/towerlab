@@ -31,7 +31,9 @@ Controls:
 - map: `1-9` choose the indexed path
 - rest: `1-9` choose the indexed campfire action
 - reward: `1-9` take the indexed reward, `s` skips
-- shop: `1-9` buy, remove, or leave
+- shop top menu: `1` buy, `2` remove, `0` leave
+- shop buy menu: `1-9` buy the indexed card, `b` goes back
+- shop remove menu: `a-z` remove the indexed deck card, `b` goes back
 - `q` quits
 - `r` restarts after victory or defeat
 
@@ -46,11 +48,14 @@ Markers:
 - `⌂` rest
 - `$` shop
 - `★` boss
-- gray nodes are already spent or no longer reachable
-- green is the current node
-- yellow numbered nodes are the current map choices
+- `@` current node
+- `1-9` current map choices
+- `+` passed nodes
+- `.` future nodes on the current route
+- `x` closed nodes that are no longer reachable
 
 The tree is rendered from content data, not from renderer-local state.
+The terminal view uses self-describing node tokens instead of connector art so the route stays readable in monochrome terminals as well.
 
 ## Recent Activity
 

@@ -4,8 +4,8 @@ import { formatText, localizeNodeKind, type Locale } from "./i18n.js";
 
 export const RECENT_LOG_LIMIT = 4;
 
-const MAP_SLOT_SPACING = 4;
-const MAP_CELL_WIDTH = 5;
+const MAP_SLOT_SPACING = 3;
+const MAP_CELL_WIDTH = 4;
 
 export type MapCellStatus = "closed" | "connector" | "current" | "empty" | "future" | "next" | "past";
 
@@ -30,19 +30,7 @@ type MapNodeView = {
 
 export function createMapTreeRows(map: MapNode[], observation: Observation, locale: Locale, visitedNodeIds: string[] = []): MapTreeRow[] {
   const layerViews = buildLayerViews(map, observation, visitedNodeIds);
-  const rows: MapTreeRow[] = [];
-
-  for (let layerIndex = 0; layerIndex < layerViews.length; layerIndex += 1) {
-    const layer = layerViews[layerIndex];
-    rows.push(createNodeRow(layer));
-
-    const nextLayer = layerViews[layerIndex + 1];
-    if (nextLayer) {
-      rows.push(createConnectorRow(layer, nextLayer));
-    }
-  }
-
-  return rows;
+  return layerViews.map((layer) => createNodeRow(layer));
 }
 
 export function formatMapLines(rows: MapTreeRow[]): string[] {
@@ -60,10 +48,11 @@ export function getMapLegendLines(locale: Locale): string[] {
       boss: "★",
     }),
     [
-      formatText(locale, "mapLegendPastLine", { marker: "灰" }),
-      formatText(locale, "mapLegendCurrentLine", { marker: "绿" }),
-      formatText(locale, "mapLegendNextLine", { marker: "黄" }),
-      formatText(locale, "mapLegendFutureLine", { marker: "亮" }),
+      formatText(locale, "mapLegendCurrentLine", { marker: "@" }),
+      formatText(locale, "mapLegendNextLine", { marker: "1" }),
+      formatText(locale, "mapLegendPastLine", { marker: "+" }),
+      formatText(locale, "mapLegendFutureLine", { marker: "." }),
+      formatText(locale, "mapLegendClosedLine", { marker: "x" }),
     ].join("  "),
   ];
 }
@@ -144,74 +133,8 @@ function createNodeRow(layer: MapNodeView[]): MapTreeRow {
   return cells;
 }
 
-function createConnectorRow(layer: MapNodeView[], nextLayer: MapNodeView[]): MapTreeRow {
-  const maxPosition = Math.max(
-    layer.reduce((value, node) => Math.max(value, node.position), 0),
-    nextLayer.reduce((value, node) => Math.max(value, node.position), 0),
-  );
-  const cells = Array.from({ length: maxPosition + 1 }, () => createCell(" ".repeat(MAP_CELL_WIDTH), "empty"));
-  const nextById = new Map(nextLayer.map((node) => [node.node.id, node]));
-
-  for (const node of layer) {
-    for (const nextId of node.node.nextIds) {
-      const target = nextById.get(nextId);
-
-      if (!target) {
-        continue;
-      }
-
-      drawConnector(cells, node.position, target.position);
-    }
-  }
-
-  return cells;
-}
-
-function drawConnector(cells: MapTreeRow, from: number, to: number): void {
-  if (from === to) {
-    mergeConnector(cells, from, "│");
-    return;
-  }
-
-  const start = Math.min(from, to);
-  const end = Math.max(from, to);
-  const leftChar = from < to ? "╲" : "╱";
-  const rightChar = from < to ? "╱" : "╲";
-
-  if (end - start === 1) {
-    mergeConnector(cells, from < to ? end : start, leftChar);
-    return;
-  }
-
-  mergeConnector(cells, start + 1, leftChar);
-
-  for (let position = start + 2; position < end - 1; position += 1) {
-    mergeConnector(cells, position, "─");
-  }
-
-  mergeConnector(cells, end - 1, rightChar);
-}
-
-function mergeConnector(cells: MapTreeRow, position: number, char: string): void {
-  const cell = cells[position];
-
-  if (!cell) {
-    return;
-  }
-
-  const existing = cell.text.trim();
-  const mergedChar = existing.length > 0 && existing !== char ? "┼" : char;
-  cells[position] = createCell(centerText(mergedChar, MAP_CELL_WIDTH), "connector");
-}
-
 function getNodeToken(node: MapNodeView): string {
-  const icon = getNodeIcon(node.node.kind);
-
-  if (node.status === "next" && typeof node.nextOrder === "number") {
-    return `${Math.min(node.nextOrder + 1, 9)}${icon}`;
-  }
-
-  return icon;
+  return `${getNodeStatusPrefix(node)}${getNodeIcon(node.node.kind)}`;
 }
 
 function getNodeIcon(kind: MapNode["kind"]): string {
@@ -448,13 +371,34 @@ function getNodeStatus(
 
 export function getMapStatusSummary(locale: Locale): string {
   return [
-    formatText(locale, "mapLegendPastLine", { marker: "gray" }),
-    formatText(locale, "mapLegendCurrentLine", { marker: "green" }),
-    formatText(locale, "mapLegendNextLine", { marker: "yellow" }),
-    formatText(locale, "mapLegendFutureLine", { marker: "bright" }),
+    formatText(locale, "mapLegendCurrentLine", { marker: "@" }),
+    formatText(locale, "mapLegendNextLine", { marker: "1" }),
+    formatText(locale, "mapLegendPastLine", { marker: "+" }),
+    formatText(locale, "mapLegendFutureLine", { marker: "." }),
+    formatText(locale, "mapLegendClosedLine", { marker: "x" }),
   ].join("  ");
 }
 
 export function getNodeSummary(node: MapNode, locale: Locale): string {
   return `${getNodeIcon(node.kind)} ${localizeNodeKind(node.kind, locale)}`;
+}
+
+function getNodeStatusPrefix(node: MapNodeView): string {
+  if (node.status === "current") {
+    return "@";
+  }
+
+  if (node.status === "next") {
+    return String(Math.min((node.nextOrder ?? 0) + 1, 9));
+  }
+
+  if (node.status === "past") {
+    return "+";
+  }
+
+  if (node.status === "future") {
+    return ".";
+  }
+
+  return "x";
 }

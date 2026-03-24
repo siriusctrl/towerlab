@@ -19,14 +19,9 @@ describe("cli view helpers", () => {
       nextNodes: [sampleContent.map[1], sampleContent.map[2]],
     };
 
-    const tree = formatMapLines(createMapTreeRows(sampleContent.map, observation, "en", deriveVisitedNodeIds(sampleContent.map, []))).join("\n");
+    const tree = formatMapLines(createMapTreeRows(sampleContent.map, observation, "en", deriveVisitedNodeIds(sampleContent.map, [])));
 
-    expect(tree).toContain("◎");
-    expect(tree).toContain("1●");
-    expect(tree).toContain("2◆");
-    expect(tree).toContain("⌂");
-    expect(tree).toContain("$");
-    expect(tree).toContain("★");
+    expect(tree).toEqual(["             @◎", " 1●                      2◆", " .●          .⌂          .$", "             .★"]);
   });
 
   test("map view marks current, future, and closed branches after choosing a path", () => {
@@ -62,13 +57,9 @@ describe("cli view helpers", () => {
         "en",
         deriveVisitedNodeIds(sampleContent.map, [{ type: "choosePath", nodeId: "gate" }]),
       ),
-    ).join("\n");
+    );
 
-    expect(tree).toContain("◎");
-    expect(tree).toContain("●");
-    expect(tree).toContain("⌂");
-    expect(tree).toContain("$");
-    expect(tree).toContain("★");
+    expect(tree).toEqual(["             +◎", " @●                      x◆", " x●          1⌂          2$", "             .★"]);
   });
 
   test("recent log view truncates older entries and reports hidden count", () => {

@@ -40,12 +40,12 @@ describe("headless CLI", () => {
     const lines = snapshot.split("\n");
 
     expect(snapshot).toContain("地图:");
-    expect(snapshot).toContain("◎");
-    expect(snapshot).toContain("1●");
-    expect(snapshot).toContain("2◆");
-    expect(snapshot).toContain("⌂");
-    expect(snapshot).toContain("$");
-    expect(snapshot).toContain("★");
+    expect(lines).toContain("◎ 起点  ● 战斗  ◆ 精英  ⌂ 营地  $ 商店  ★ 首领");
+    expect(lines).toContain("@ 当前  1 下一步  + 已走过  . 未来  x 已错过");
+    expect(lines).toContain("             @◎");
+    expect(lines).toContain(" 1●                      2◆");
+    expect(lines).toContain(" .●          .⌂          .$");
+    expect(lines).toContain("             .★");
     expect(lines).toContain("路径：");
     expect(lines).toContain("1. 城门 (战斗)");
     expect(lines).toContain("2. 熔炉 (精英)");
