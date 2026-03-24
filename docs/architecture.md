@@ -11,6 +11,7 @@ Responsibilities:
 - state types
 - seeded randomness
 - run creation and node progression
+- legal action enumeration for the current observation
 - combat, reward, and shop transitions
 - relic application and simple deterministic effects
 - pure observation shaping
@@ -34,6 +35,8 @@ Responsibilities:
 - create a run from a seed
 - drive pure core actions for the current observation
 - print a deterministic snapshot when the CLI is not attached to a TTY
+- expose a deterministic headless JSON mode for agents and batch tooling
+- host simple baseline policies and batch evaluation helpers
 
 ## Dependency rules
 

@@ -1,6 +1,6 @@
 # M3 — Agent Interface + Replay
 
-- Status: `active`
+- Status: `done`
 
 ## Goal
 
@@ -42,6 +42,11 @@ A real harness needs explicit legal actions, replayable state transitions, and a
 3. trace format for run steps and terminal outcomes
 4. replay utility that can rebuild a run from recorded actions
 5. docs describing the agent-facing surface
+
+## Agent Surface Doc
+
+The concrete surface is tracked in [`docs/agent-interface.md`](../agent-interface.md).
+This milestone is complete once that surface is implemented and verified in both core and CLI.
 
 ## Review bias
 

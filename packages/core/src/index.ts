@@ -193,6 +193,17 @@ export type RunAction =
   | { type: "removeDeckCard"; deckIndex: number }
   | { type: "leaveShop" };
 
+export interface TraceStep {
+  action: RunAction | null;
+  observation: Observation;
+}
+
+export interface RunTrace {
+  seed: number;
+  actions: RunAction[];
+  steps: TraceStep[];
+}
+
 const DEFAULT_MAX_HP = 80;
 const STARTING_GOLD = 0;
 const STARTING_ENERGY = 3;
@@ -356,6 +367,89 @@ export function observeRun(content: RunContent, state: RunState): Observation {
     ...base,
     phase: state.phase,
     nextNodes,
+  };
+}
+
+export function legalActions(content: RunContent, state: RunState): RunAction[] {
+  if (state.phase === "combat") {
+    const combat = getCombat(state);
+    const actions: RunAction[] = combat.hand.flatMap((cardId, handIndex) => {
+      const card = getCard(content, cardId);
+      return card.cost <= combat.energy ? [{ type: "playCard", handIndex }] : [];
+    });
+
+    return [...actions, { type: "endTurn" }];
+  }
+
+  if (state.phase === "map") {
+    const currentNode = getNode(content, state.currentNodeId);
+    return currentNode.nextIds.map((nodeId) => ({ type: "choosePath", nodeId }));
+  }
+
+  if (state.phase === "rest") {
+    return REST_OPTIONS.map((option) => ({ type: "chooseRest", optionId: option.id }));
+  }
+
+  if (state.phase === "reward") {
+    const choices = state.reward?.cardChoices ?? [];
+    return [
+      ...choices.map((_, rewardIndex): RunAction => ({ type: "takeReward", rewardIndex })),
+      { type: "skipReward" },
+    ];
+  }
+
+  if (state.phase === "shop") {
+    const shop = state.shop;
+
+    if (!shop) {
+      throw new Error("shop state is missing");
+    }
+
+    const cardPrice = Math.max(1, SHOP_CARD_PRICE - getRelicValue(content, state, "shopDiscount"));
+    const cardActions = shop.forSale.flatMap((_, saleIndex): RunAction[] =>
+      state.gold >= cardPrice ? [{ type: "buyShop", saleIndex }] : [],
+    );
+    const removeActions = shop.removableDeckIndices.flatMap((deckIndex): RunAction[] =>
+      state.gold >= SHOP_CARD_REMOVE_PRICE ? [{ type: "removeDeckCard", deckIndex }] : [],
+    );
+
+    return [...cardActions, ...removeActions, { type: "leaveShop" }];
+  }
+
+  return [];
+}
+
+export function replayRun(content: RunContent, seed: number, actions: RunAction[]): RunState {
+  let state = createRun(content, seed);
+
+  for (const action of actions) {
+    state = applyAction(content, state, action);
+  }
+
+  return state;
+}
+
+export function traceRun(content: RunContent, seed: number, actions: RunAction[]): RunTrace {
+  let state = createRun(content, seed);
+  const steps: TraceStep[] = [
+    {
+      action: null,
+      observation: observeRun(content, state),
+    },
+  ];
+
+  for (const action of actions) {
+    state = applyAction(content, state, action);
+    steps.push({
+      action,
+      observation: observeRun(content, state),
+    });
+  }
+
+  return {
+    seed,
+    actions: [...actions],
+    steps,
   };
 }
 

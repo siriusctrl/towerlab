@@ -1,6 +1,6 @@
 # M4 — Batch Eval + Baseline Bots
 
-- Status: `planned`
+- Status: `done`
 
 ## Goal
 
@@ -20,6 +20,25 @@ After M3 exposes a clean agent interface, the next step is to make large-scale e
   - simple greedy combat bot
   - simple route/deck heuristic bot
 - replay inspection for failed and successful seeds
+
+## Current Target Surface
+
+The concrete working contract is tracked in [`docs/evaluation.md`](../evaluation.md).
+
+The intended M4 CLI shape is a deterministic JSON batch mode with named policies, for example:
+
+- `towerlab --json batch --policy random --seeds 7,8,9`
+- `towerlab --json batch --policy greedy --seed-start 1 --count 20`
+- `towerlab --json batch --policy heuristic --seed-start 100 --count 50`
+
+The batch output should stay machine-readable and compact:
+
+- aggregate metrics for wins, losses, ending gold, ending HP, and path choices
+- per-run summaries with at least `seed`, terminal outcome, and `actions`
+
+That keeps replay inspection simple because any returned run can be fed back into the existing replay flow.
+
+This milestone is complete once the batch mode, baseline policies, replay-friendly per-run summaries, and machine-readable aggregate metrics are implemented and verified.
 
 ## Explicit non-goals
 

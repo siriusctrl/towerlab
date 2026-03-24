@@ -1,0 +1,219 @@
+import { describe, expect, it } from "vitest";
+
+import {
+  applyAction,
+  createRun,
+  legalActions,
+  observeRun,
+  replayRun,
+  traceRun,
+  type RunAction,
+  type RunContent,
+  type RunState,
+} from "../src/index.js";
+
+const content: RunContent = {
+  cards: {
+    strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
+    defend: { id: "defend", name: "Defend", cost: 1, description: "Gain 5 block.", block: 5 },
+    bash: { id: "bash", name: "Bash", cost: 2, description: "Deal 9 damage.", damage: 9 },
+    overload: { id: "overload", name: "Overload", cost: 4, description: "Deal 20 damage.", damage: 20 },
+  },
+  enemies: {
+    scout: {
+      id: "scout",
+      name: "Scout",
+      maxHp: 12,
+      goldReward: 12,
+      intents: [{ kind: "attack", description: "Poke for 2", damage: 2 }],
+    },
+    captain: {
+      id: "captain",
+      name: "Captain",
+      maxHp: 18,
+      goldReward: 14,
+      intents: [{ kind: "attack", description: "Strike for 3", damage: 3 }],
+    },
+    core: {
+      id: "core",
+      name: "Core",
+      maxHp: 12,
+      goldReward: 25,
+      intents: [{ kind: "attack", description: "Pulse for 3", damage: 3 }],
+    },
+  },
+  relics: {
+    merchantTag: {
+      id: "merchantTag",
+      name: "Merchant Tag",
+      description: "Shop cards cost 1 less.",
+      kind: "shopDiscount",
+      value: 1,
+    },
+  },
+  rewardCardPool: ["bash", "defend", "strike"],
+  shopCardPool: ["bash", "strike"],
+  starterDeck: ["strike", "defend", "bash", "overload", "strike"],
+  map: [
+    { id: "gate", kind: "battle", encounterId: "scout", nextIds: ["camp", "market"] },
+    { id: "camp", kind: "rest", nextIds: ["summit"] },
+    { id: "market", kind: "shop", nextIds: ["summit"] },
+    { id: "summit", kind: "boss", encounterId: "core", nextIds: [] },
+  ],
+};
+
+describe("legalActions", () => {
+  it("enumerates playable combat actions plus endTurn", () => {
+    const state = createRun(content, 5);
+    const view = observeRun(content, state);
+    const actions = legalActions(content, state);
+
+    if (view.phase !== "combat") {
+      throw new Error(`expected combat phase, received ${view.phase}`);
+    }
+
+    const overloadIndex = view.hand.findIndex((card) => card.id === "overload");
+    const affordableIndexes = view.hand
+      .map((card, handIndex) => (card.cost <= view.energy ? handIndex : null))
+      .filter((handIndex): handIndex is number => handIndex !== null);
+
+    expect(actions).toContainEqual({ type: "endTurn" });
+    for (const handIndex of affordableIndexes) {
+      expect(actions).toContainEqual({ type: "playCard", handIndex });
+    }
+    expect(overloadIndex).toBeGreaterThanOrEqual(0);
+    expect(actions).not.toContainEqual({ type: "playCard", handIndex: overloadIndex });
+    expect(actions.every((action) => action.type === "playCard" || action.type === "endTurn")).toBe(true);
+  });
+
+  it("enumerates route, rest, reward, shop, and terminal actions", () => {
+    let state = createRun(content, 5);
+    state = winCurrentCombat(content, state);
+
+    const rewardState = state;
+    expect(legalActions(content, rewardState)).toEqual([
+      { type: "takeReward", rewardIndex: 0 },
+      { type: "takeReward", rewardIndex: 1 },
+      { type: "takeReward", rewardIndex: 2 },
+      { type: "skipReward" },
+    ]);
+
+    state = applyAction(content, state, { type: "skipReward" });
+
+    expect(legalActions(content, state)).toEqual([
+      { type: "choosePath", nodeId: "camp" },
+      { type: "choosePath", nodeId: "market" },
+    ]);
+
+    const restState = applyAction(content, state, { type: "choosePath", nodeId: "camp" });
+    expect(legalActions(content, restState)).toEqual([
+      { type: "chooseRest", optionId: "recover" },
+      { type: "chooseRest", optionId: "fortify" },
+    ]);
+
+    const shopState = applyAction(content, state, { type: "choosePath", nodeId: "market" });
+    expect(legalActions(content, shopState)).toEqual([
+      { type: "buyShop", saleIndex: 0 },
+      { type: "buyShop", saleIndex: 1 },
+      { type: "removeDeckCard", deckIndex: 0 },
+      { type: "removeDeckCard", deckIndex: 1 },
+      { type: "removeDeckCard", deckIndex: 2 },
+      { type: "removeDeckCard", deckIndex: 3 },
+      { type: "removeDeckCard", deckIndex: 4 },
+      { type: "leaveShop" },
+    ]);
+
+    const brokeShopState: RunState = {
+      ...shopState,
+      gold: 0,
+    };
+    expect(legalActions(content, brokeShopState)).toEqual([{ type: "leaveShop" }]);
+
+    const victoryState = replayRun(content, 5, completeRunActions(5));
+    expect(legalActions(content, victoryState)).toEqual([]);
+  });
+});
+
+describe("replayRun", () => {
+  it("rebuilds the same final state from seed plus action history", () => {
+    const actions = completeRunActions(5);
+    const replayed = replayRun(content, 5, actions);
+
+    let stepped = createRun(content, 5);
+    for (const action of actions) {
+      stepped = applyAction(content, stepped, action);
+    }
+
+    expect(replayed).toEqual(stepped);
+    expect(observeRun(content, replayed)).toEqual(observeRun(content, stepped));
+  });
+});
+
+describe("traceRun", () => {
+  it("records the initial observation and each resulting observation", () => {
+    const actions = completeRunActions(5);
+    const trace = traceRun(content, 5, actions);
+    const finalState = replayRun(content, 5, actions);
+
+    expect(trace.seed).toBe(5);
+    expect(trace.actions).toEqual(actions);
+    expect(trace.steps).toHaveLength(actions.length + 1);
+    expect(trace.steps[0]?.action).toBeNull();
+    expect(trace.steps[0]?.observation).toEqual(observeRun(content, createRun(content, 5)));
+    expect(trace.steps.at(-1)?.observation).toEqual(observeRun(content, finalState));
+
+    for (const [index, action] of actions.entries()) {
+      expect(trace.steps[index + 1]?.action).toEqual(action);
+    }
+  });
+});
+
+function completeRunActions(seed: number): RunAction[] {
+  let state = createRun(content, seed);
+  const actions: RunAction[] = [];
+
+  while (state.phase !== "victory" && state.phase !== "defeat") {
+    const action = chooseAction(content, state);
+    actions.push(action);
+    state = applyAction(content, state, action);
+  }
+
+  return actions;
+}
+
+function chooseAction(runContent: RunContent, state: RunState): RunAction {
+  const actions = legalActions(runContent, state);
+
+  if (state.phase === "combat") {
+    return actions.find((action) => action.type === "playCard") ?? { type: "endTurn" };
+  }
+
+  if (state.phase === "map") {
+    return actions[0]!;
+  }
+
+  if (state.phase === "rest") {
+    return { type: "chooseRest", optionId: "recover" };
+  }
+
+  if (state.phase === "reward") {
+    return { type: "skipReward" };
+  }
+
+  if (state.phase === "shop") {
+    return { type: "leaveShop" };
+  }
+
+  throw new Error(`no action available for phase ${state.phase}`);
+}
+
+function winCurrentCombat(runContent: RunContent, state: RunState): RunState {
+  let nextState = state;
+
+  while (nextState.phase === "combat") {
+    const action = chooseAction(runContent, nextState);
+    nextState = applyAction(runContent, nextState, action);
+  }
+
+  return nextState;
+}

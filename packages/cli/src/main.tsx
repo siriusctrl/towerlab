@@ -1,11 +1,21 @@
 import { render } from "ink";
 
-import { App, readSeed, renderSnapshot } from "./index.js";
+import { App, isHeadlessMode, readSeed, renderSnapshot, runHeadless } from "./index.js";
 
 const seed = readSeed(process.argv.slice(2));
 
-if (process.stdout.isTTY && process.stdin.isTTY) {
-  render(<App seed={seed} />);
-} else {
-  console.log(renderSnapshot(seed));
+const args = process.argv.slice(2);
+
+try {
+  if (isHeadlessMode(args)) {
+    console.log(runHeadless(args));
+  } else if (process.stdout.isTTY && process.stdin.isTTY) {
+    render(<App seed={seed} />);
+  } else {
+    console.log(renderSnapshot(seed));
+  }
+} catch (error) {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(message);
+  process.exit(1);
 }

@@ -21,8 +21,8 @@ Use it the way harness engineering plans are meant to be used:
 |---|---|---|---|
 | M1 | done | First playable terminal slice | [`mvp.md`](./mvp.md) |
 | M2 | done | Progression systems: rewards, shop, relics, route tradeoffs | [`m2-progression-systems.md`](./m2-progression-systems.md) |
-| M3 | active | Agent interface + replay | [`m3-agent-interface-replay.md`](./m3-agent-interface-replay.md) |
-| M4 | planned | Batch eval + baseline bots | [`m4-batch-eval-baselines.md`](./m4-batch-eval-baselines.md) |
+| M3 | done | Agent interface + replay | [`m3-agent-interface-replay.md`](./m3-agent-interface-replay.md) |
+| M4 | done | Batch eval + baseline bots | [`m4-batch-eval-baselines.md`](./m4-batch-eval-baselines.md) |
 
 ## Working agreement
 
@@ -34,5 +34,5 @@ When a contributor starts or finishes milestone work:
 
 ## Current recommendation
 
-The next highest-value work is **M3: Agent interface + replay**.
-That is the point where TowerLab stops being only a good TUI game and starts becoming a clean benchmark harness.
+There is no active post-M4 milestone yet.
+If work continues, land the next benchmark-oriented scope as a new milestone doc rather than leaving it as chat-only intent.
