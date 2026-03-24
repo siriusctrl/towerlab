@@ -108,4 +108,46 @@ describe("headless CLI", () => {
       "--policy, --seeds, --seed-start, and --count are only valid in batch mode",
     );
   });
+
+  test("malformed JSON arguments fail loudly", () => {
+    expect(() => runHeadless(["--json", "observe", "--seed", "9", "--actions", "{not-json}"])).toThrow(
+      "Invalid JSON action list: {not-json}",
+    );
+    expect(() => runHeadless(["--json", "step", "--seed", "9", "--action", "{\"type\":123}"])).toThrow(
+      "Invalid action shape: {\"type\":123}",
+    );
+  });
+
+  test("unsupported batch arguments are rejected loudly", () => {
+    expect(() => runHeadless(["--json", "batch", "--policy", "bogus", "--seeds", "1,2"])).toThrow(
+      "--policy must be one of random, greedy, heuristic",
+    );
+    expect(() => runHeadless(["--json", "batch", "--policy", "random"])).toThrow(
+      "batch mode requires --seeds or --seed-start with --count",
+    );
+  });
+
+  test("illegal step and replay actions surface the core errors", () => {
+    expect(() =>
+      runHeadless([
+        "--json",
+        "step",
+        "--seed",
+        "9",
+        "--action",
+        JSON.stringify({ type: "playCard", handIndex: 99 }),
+      ]),
+    ).toThrow("hand index 99 is not available");
+
+    expect(() =>
+      runHeadless([
+        "--json",
+        "replay",
+        "--seed",
+        "9",
+        "--actions",
+        JSON.stringify([{ type: "choosePath", nodeId: "market" }]),
+      ]),
+    ).toThrow("path choices are only available on the map");
+  });
 });

@@ -70,4 +70,46 @@ describe("eval helper", () => {
 
     expect(aggregatePathChoices).toBe(totalPathChoices);
   });
+
+  test("runSeedWithPolicy reports a null action as an error", () => {
+    const result = runSeedWithPolicy({
+      policyName: "null-policy",
+      policy: () => null,
+      seed: 7,
+      maxSteps: 10,
+    });
+
+    expect(result.outcome).toBe("error");
+    expect(result.error).toBe("policy returned no action");
+    expect(result.actions).toEqual([]);
+    expect(result.steps).toBe(0);
+  });
+
+  test("runSeedWithPolicy reports an illegal action as an error", () => {
+    const result = runSeedWithPolicy({
+      policyName: "illegal-policy",
+      policy: () => ({ type: "choosePath", nodeId: "market" }),
+      seed: 7,
+      maxSteps: 10,
+    });
+
+    expect(result.outcome).toBe("error");
+    expect(result.error).toBe("policy returned an illegal action");
+    expect(result.actions).toEqual([]);
+    expect(result.steps).toBe(0);
+  });
+
+  test("runSeedWithPolicy reports max-step exhaustion as an error", () => {
+    const result = runSeedWithPolicy({
+      policyName: "stall-policy",
+      policy: () => ({ type: "endTurn" }),
+      seed: 7,
+      maxSteps: 1,
+    });
+
+    expect(result.outcome).toBe("error");
+    expect(result.error).toBe("max steps reached (1)");
+    expect(result.actions).toEqual([{ type: "endTurn" }]);
+    expect(result.steps).toBe(1);
+  });
 });

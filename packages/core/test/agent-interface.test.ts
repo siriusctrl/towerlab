@@ -132,6 +132,29 @@ describe("legalActions", () => {
     const victoryState = replayRun(content, 5, completeRunActions(5));
     expect(legalActions(content, victoryState)).toEqual([]);
   });
+
+  it("respects shop discounts when deciding whether buy actions are legal", () => {
+    let state = createRun(content, 5);
+    state = winCurrentCombat(content, state);
+    state = applyAction(content, state, { type: "skipReward" });
+    state = applyAction(content, state, { type: "choosePath", nodeId: "market" });
+
+    if (state.phase !== "shop") {
+      throw new Error(`expected shop phase, received ${state.phase}`);
+    }
+
+    const discountedState: RunState = {
+      ...state,
+      gold: 11,
+      relics: ["merchantTag"],
+    };
+
+    expect(legalActions(content, discountedState)).toEqual([
+      { type: "buyShop", saleIndex: 0 },
+      { type: "buyShop", saleIndex: 1 },
+      { type: "leaveShop" },
+    ]);
+  });
 });
 
 describe("replayRun", () => {
