@@ -27,7 +27,7 @@ import {
   type Locale,
 } from "./i18n.js";
 import { BASELINE_POLICY_NAMES, getBaselinePolicy, type BaselinePolicyName } from "./policies.js";
-import { createMapListEntries, formatMapLine, getEarlierEventsLine, getMapLegend, getRecentLogView } from "./view.js";
+import { createMapListEntries, deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getMapLegendLines, getRecentLogView } from "./view.js";
 
 export { App, type AppProps } from "./app.js";
 
@@ -537,13 +537,15 @@ function getHeadlessUsage(locale: Locale): { commands: string[]; examples: strin
 export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE): string {
   const state = createRun(sampleContent, seed);
   const observation = localizeObservation(observeRun(sampleContent, state), locale);
+  const visitedNodeIds = deriveVisitedNodeIds(sampleContent.map, []);
 
-  return renderObservation(observation, locale);
+  return renderObservation(observation, locale, visitedNodeIds);
 }
 
-function renderObservation(observation: Observation, locale: Locale): string {
-  const mapSection = createMapListEntries(sampleContent.map, observation).map((entry) => formatMapLine(entry, locale));
+function renderObservation(observation: Observation, locale: Locale, visitedNodeIds: string[] = []): string {
+  const mapSection = formatMapLines(createMapListEntries(sampleContent.map, observation, visitedNodeIds), locale);
   const recentLog = getRecentLogView(observation.log);
+  const mapLegendLines = getMapLegendLines(locale);
 
   const lines = [
     text(locale, "snapshotTitle"),
@@ -554,7 +556,7 @@ function renderObservation(observation: Observation, locale: Locale): string {
     `${text(locale, "relics")}: ${observation.relics.map((relic) => relic.name).join(", ") || text(locale, "none")}`,
     "",
     `${text(locale, "map")}:`,
-    getMapLegend(locale),
+    ...mapLegendLines,
     ...mapSection,
     "",
   ];

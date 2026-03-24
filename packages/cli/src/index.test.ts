@@ -39,10 +39,12 @@ describe("headless CLI", () => {
     const lines = snapshot.split("\n");
 
     expect(snapshot).toContain("地图:");
-    expect(lines).toContain("1. ▶ 城门 (战斗)");
-    expect(lines).toContain("2. → 熔炉 (精英)   → 大厅 (战斗)");
-    expect(lines).toContain("3. · 营地 (营火)   · 集市 (商店)");
-    expect(lines).toContain("4. · 顶峰 (首领)");
+    expect(lines).toContain("1. ▶ 战 城门");
+    expect(lines).toContain("2. → 精 熔炉");
+    expect(lines).toContain("   → 战 大厅");
+    expect(lines).toContain("3. · 营 营地");
+    expect(lines).toContain("   · 商 集市");
+    expect(lines).toContain("4. · 首 顶峰");
   });
 
   test("step applies a single action after replaying prior actions", () => {

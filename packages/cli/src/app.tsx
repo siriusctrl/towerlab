@@ -1,7 +1,7 @@
 import { sampleContent } from "@towerlab/content";
 import { applyAction, createRun, observeRun, type Observation, type RunAction, type RunState } from "@towerlab/core";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   DEFAULT_LOCALE,
@@ -13,7 +13,7 @@ import {
   text,
   type Locale,
 } from "./i18n.js";
-import { createMapListEntries, formatMapLine, getEarlierEventsLine, getMapLegend, getRecentLogView } from "./view.js";
+import { createMapListEntries, deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getMapLegendLines, getRecentLogView } from "./view.js";
 
 export interface AppProps {
   seed: number;
@@ -23,15 +23,20 @@ export interface AppProps {
 export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
+  const { columns, rows } = useTerminalDimensions(stdout);
   const [state, setState] = useState<RunState>(() => createRun(sampleContent, seed));
+  const [actions, setActions] = useState<RunAction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const view = localizeObservation(observeRun(sampleContent, state), locale);
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
-  const isWideLayout = (stdout.columns ?? 80) >= 110;
+  const isWideLayout = columns >= 110;
+  const sidebarWidth = isWideLayout ? Math.min(38, Math.max(30, Math.floor(columns * 0.34))) : undefined;
+  const recentLogLimit = rows >= 30 ? 5 : rows >= 24 ? 4 : 3;
 
   const runAction = (action: RunAction) => {
     try {
       setState((current) => applyAction(sampleContent, current, action));
+      setActions((current) => [...current, action]);
       setError(null);
     } catch (actionError) {
       setError(getErrorMessage(actionError, locale));
@@ -40,6 +45,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
 
   const restart = () => {
     setState(createRun(sampleContent, seed));
+    setActions([]);
     setError(null);
   };
 
@@ -121,49 +127,92 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   });
 
   return (
-    <Box flexDirection="column" paddingX={1}>
-      <Box borderStyle="round" borderColor="cyan" paddingX={1} flexDirection="column">
+    <Box flexDirection="column" width={columns} height={rows} overflow="hidden">
+      <Box borderStyle="round" borderColor="cyan" paddingX={1} flexDirection="column" flexShrink={0} overflow="hidden">
         <Text bold color="cyan">
           {text(locale, "snapshotTitle")}
         </Text>
-        <Text>
+        <Text wrap="truncate-end">
           {text(locale, "seed")} {view.seed} | {text(locale, "floor")} {view.floor} | {text(locale, "node")}{" "}
           {formatNodeLabel(view.currentNode, locale)}
         </Text>
-        <Text>
+        <Text wrap="truncate-end">
           {text(locale, "hp")} {view.hp}/{view.maxHp} | {text(locale, "gold")} {view.gold}
         </Text>
-        <Text dimColor>
+        <Text dimColor wrap="truncate-end">
           {text(locale, "relics")}: {relicNames}
         </Text>
       </Box>
 
-      <Box marginTop={1} flexDirection={isWideLayout ? "row" : "column"}>
-        <Box flexGrow={1} marginRight={isWideLayout ? 1 : 0} borderStyle="round" borderColor="yellow" paddingX={1} flexDirection="column">
+      <Box marginTop={1} flexDirection={isWideLayout ? "row" : "column"} flexGrow={1} overflow="hidden">
+        <Box
+          flexGrow={1}
+          flexBasis={0}
+          marginRight={isWideLayout ? 1 : 0}
+          marginBottom={isWideLayout ? 0 : 1}
+          borderStyle="round"
+          borderColor="yellow"
+          paddingX={1}
+          flexDirection="column"
+          overflow="hidden"
+        >
           <PhaseView observation={view} locale={locale} />
         </Box>
 
-        <Box width={isWideLayout ? 40 : undefined} flexShrink={0} marginTop={isWideLayout ? 0 : 1} flexDirection="column">
-          <Box borderStyle="round" borderColor="magenta" paddingX={1} flexDirection="column">
-            <MapPanel observation={view} locale={locale} />
+        <Box width={sidebarWidth} flexGrow={isWideLayout ? 0 : 1} flexShrink={0} flexDirection="column" overflow="hidden">
+          <Box borderStyle="round" borderColor="magenta" paddingX={1} flexDirection="column" flexShrink={0} overflow="hidden">
+            <MapPanel observation={view} actions={actions} locale={locale} />
           </Box>
 
-          <Box marginTop={1} borderStyle="round" borderColor="green" paddingX={1} flexDirection="column">
-            <RecentLogPanel observation={view} locale={locale} />
+          <Box
+            marginTop={1}
+            borderStyle="round"
+            borderColor="green"
+            paddingX={1}
+            flexDirection="column"
+            flexGrow={1}
+            overflow="hidden"
+          >
+            <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
           </Box>
         </Box>
       </Box>
 
-      <Box marginTop={1} flexDirection="column">
+      <Box marginTop={1} flexDirection="column" flexShrink={0} overflow="hidden">
         <Controls observation={view} locale={locale} />
         {error ? (
-          <Text color="red">
+          <Text color="red" wrap="truncate-end">
             {text(locale, "inputError")}: {error}
           </Text>
         ) : null}
       </Box>
     </Box>
   );
+}
+
+function useTerminalDimensions(stdout: NodeJS.WriteStream): { columns: number; rows: number } {
+  const [dimensions, setDimensions] = useState(() => ({
+    columns: stdout.columns ?? 80,
+    rows: stdout.rows ?? 24,
+  }));
+
+  useEffect(() => {
+    const updateDimensions = () => {
+      setDimensions({
+        columns: stdout.columns ?? 80,
+        rows: stdout.rows ?? 24,
+      });
+    };
+
+    updateDimensions();
+    stdout.on("resize", updateDimensions);
+
+    return () => {
+      stdout.off("resize", updateDimensions);
+    };
+  }, [stdout]);
+
+  return dimensions;
 }
 
 function PhaseView({ observation, locale }: { observation: Observation; locale: Locale }) {
@@ -296,47 +345,56 @@ function PhaseView({ observation, locale }: { observation: Observation; locale: 
 
 function Controls({ observation, locale }: { observation: Observation; locale: Locale }) {
   if (observation.phase === "combat") {
-    return <Text dimColor>{text(locale, "controlsCombat")}</Text>;
+    return <Text dimColor wrap="truncate-end">{text(locale, "controlsCombat")}</Text>;
   }
 
   if (observation.phase === "map") {
-    return <Text dimColor>{text(locale, "controlsMap")}</Text>;
+    return <Text dimColor wrap="truncate-end">{text(locale, "controlsMap")}</Text>;
   }
 
   if (observation.phase === "rest") {
-    return <Text dimColor>{text(locale, "controlsRest")}</Text>;
+    return <Text dimColor wrap="truncate-end">{text(locale, "controlsRest")}</Text>;
   }
 
   if (observation.phase === "reward") {
-    return <Text dimColor>{text(locale, "controlsReward")}</Text>;
+    return <Text dimColor wrap="truncate-end">{text(locale, "controlsReward")}</Text>;
   }
 
   if (observation.phase === "shop") {
     const optionCount = observation.forSale.length + observation.removableDeckCards.length + 1;
-    return <Text dimColor>{formatText(locale, "controlsShop", { max: Math.min(9, optionCount) })}</Text>;
+    return <Text dimColor wrap="truncate-end">{formatText(locale, "controlsShop", { max: Math.min(9, optionCount) })}</Text>;
   }
 
-  return <Text dimColor>{text(locale, "controlsEnd")}</Text>;
+  return <Text dimColor wrap="truncate-end">{text(locale, "controlsEnd")}</Text>;
 }
 
-function MapPanel({ observation, locale }: { observation: Observation; locale: Locale }) {
-  const mapEntries = createMapListEntries(sampleContent.map, observation);
+function MapPanel({ observation, actions, locale }: { observation: Observation; actions: RunAction[]; locale: Locale }) {
+  const visitedNodeIds = deriveVisitedNodeIds(sampleContent.map, actions);
+  const mapEntries = createMapListEntries(sampleContent.map, observation, visitedNodeIds);
+  const mapLines = formatMapLines(mapEntries, locale);
+  const legendLines = getMapLegendLines(locale);
 
   return (
     <>
       <Text bold color="magenta">
         {text(locale, "map")}
       </Text>
-      <Text dimColor>{getMapLegend(locale)}</Text>
-      {mapEntries.map((entry) => (
-        <Text key={entry.depth}>{formatMapLine(entry, locale)}</Text>
+      {legendLines.map((line) => (
+        <Text key={line} dimColor wrap="truncate-end">
+          {line}
+        </Text>
+      ))}
+      {mapLines.map((line) => (
+        <Text key={line} wrap="truncate-end">
+          {line}
+        </Text>
       ))}
     </>
   );
 }
 
-function RecentLogPanel({ observation, locale }: { observation: Observation; locale: Locale }) {
-  const recentLog = getRecentLogView(observation.log);
+function RecentLogPanel({ observation, locale, limit }: { observation: Observation; locale: Locale; limit: number }) {
+  const recentLog = getRecentLogView(observation.log, limit);
   const earlierEvents = getEarlierEventsLine(recentLog.hiddenCount, locale);
 
   return (
@@ -345,9 +403,15 @@ function RecentLogPanel({ observation, locale }: { observation: Observation; loc
         {text(locale, "recentLog")}
       </Text>
       {recentLog.entries.map((entry, index) => (
-        <Text key={`${index}-${entry}`}>- {entry}</Text>
+        <Text key={`${index}-${entry}`} wrap="truncate-end">
+          - {entry}
+        </Text>
       ))}
-      {earlierEvents ? <Text dimColor>{earlierEvents}</Text> : null}
+      {earlierEvents ? (
+        <Text dimColor wrap="truncate-end">
+          {earlierEvents}
+        </Text>
+      ) : null}
     </>
   );
 }

@@ -140,8 +140,11 @@ const localeText = {
     leaveShop: "Leave shop",
     log: "Log",
     map: "Map",
+    mapLegendClosedLine: "{marker} closed",
     mapLegendCurrentLine: "{marker} current",
+    mapLegendFutureLine: "{marker} future",
     mapLegendNextLine: "{marker} next",
+    mapLegendPastLine: "{marker} passed",
     recentLog: "Recent Activity",
     next: "Next",
     node: "Node",
@@ -201,8 +204,11 @@ const localeText = {
     leaveShop: "离开商店",
     log: "日志",
     map: "地图",
+    mapLegendClosedLine: "{marker} 已错过",
     mapLegendCurrentLine: "{marker} 当前",
+    mapLegendFutureLine: "{marker} 未来",
     mapLegendNextLine: "{marker} 下一步",
+    mapLegendPastLine: "{marker} 已走过",
     recentLog: "最近事件",
     next: "后续节点",
     node: "节点",
@@ -378,6 +384,52 @@ export function formatNodeLabel(
   locale: Locale,
 ): string {
   return `${localizeNodeName(node.id, locale)} (${localizeNodeKind(node.kind, locale)})`;
+}
+
+export function localizeNodeKindBadge(kind: string, locale: Locale): string {
+  if (locale === "zh") {
+    if (kind === "battle") {
+      return "战";
+    }
+
+    if (kind === "elite") {
+      return "精";
+    }
+
+    if (kind === "rest") {
+      return "营";
+    }
+
+    if (kind === "shop") {
+      return "商";
+    }
+
+    if (kind === "boss") {
+      return "首";
+    }
+  }
+
+  if (kind === "battle") {
+    return "F";
+  }
+
+  if (kind === "elite") {
+    return "E";
+  }
+
+  if (kind === "rest") {
+    return "R";
+  }
+
+  if (kind === "shop") {
+    return "S";
+  }
+
+  if (kind === "boss") {
+    return "B";
+  }
+
+  return kind.slice(0, 1).toUpperCase();
 }
 
 export function localizePhaseLabel(phase: Observation["phase"], locale: Locale): string {

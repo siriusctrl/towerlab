@@ -22,6 +22,7 @@ Language can be selected with `--lang en|zh`.
 ## Interactive Mode
 
 When stdout and stdin are attached to a TTY, `pnpm cli` starts the Ink interface.
+The TUI enters the terminal alternate screen, redraws on terminal resize, and restores the previous screen on exit.
 
 Controls:
 - combat: `1-9` play the indexed card, `e` ends the turn
@@ -37,10 +38,12 @@ Controls:
 The TUI and non-TTY snapshot both show the full tower map.
 
 Markers:
+- `✓` nodes already taken on the current route
 - `▶` current node
 - `→` immediate next node when a path is not currently selectable
 - `[1]`, `[2]`, ... immediate map choices during map phase
-- `·` other nodes in the tower
+- `·` future nodes still reachable from the current route
+- `×` nodes that belong to branches the current run can no longer reach
 
 The map is rendered from content data, not from renderer-local state.
 
