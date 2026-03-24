@@ -32,6 +32,7 @@ Responsibilities:
 - load sample content
 - create a run from a seed
 - drive pure core actions for the current observation
+- print a deterministic snapshot when the CLI is not attached to a TTY
 
 ## Dependency rules
 

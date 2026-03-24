@@ -7,7 +7,7 @@
     "build": "corepack pnpm -r build",
     "test": "corepack pnpm -r test",
     "typecheck": "corepack pnpm -r typecheck",
-    "cli": "corepack pnpm --filter @towerlab/cli dev"
+    "cli": "corepack pnpm -r build && node packages/cli/dist/cli/src/main.js"
   },
   "devDependencies": {
     "@types/node": "^22.13.9",

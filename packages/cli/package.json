@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/cli/src/index.js",
+  "types": "dist/cli/src/index.d.ts",
   "bin": {
-    "towerlab": "dist/main.js"
+    "towerlab": "dist/cli/src/main.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

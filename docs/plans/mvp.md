@@ -27,5 +27,5 @@ Ship a reviewable playable terminal slice of TowerLab.
 
 - `pnpm typecheck` passes
 - `pnpm test` passes
-- `pnpm cli -- --seed 7` launches a deterministic playable run
+- `pnpm cli -- --seed 7` launches a deterministic playable run in a TTY and prints a deterministic opening snapshot otherwise
 - package boundaries remain simple and obvious
