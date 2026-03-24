@@ -57,3 +57,10 @@ Start here, then follow the relevant docs:
 - Use direct engineering judgment.
 - Keep implementations small and legible.
 - Optimize for code that future agents can read in one pass.
+- Hold the requested quality bar. Do not quietly retreat to a weaker, partial, or more convenient option just to finish faster.
+- If the original goal appears infeasible, blocked by constraints, or materially more complex than requested, stop and discuss the constraint before lowering the target.
+- For tasks that can be cleanly parallelized, prefer spawning subagents instead of doing all work on a single thread.
+- Use subagents aggressively when the work can be split into clear, low-conflict chunks with separable ownership.
+- For broad reasoning, tricky review, architectural judgment, or ambiguous debugging, prefer Codex subagents running `gpt-5.4` with `high` or `xhigh` reasoning.
+- For explicit, bounded, coding-centric implementation tasks, prefer Codex subagents running `gpt-5.3-codex-spark` because it is usually faster.
+- The main agent should stay responsible for decomposition, integration, final review, verification, and merge-quality decisions.
