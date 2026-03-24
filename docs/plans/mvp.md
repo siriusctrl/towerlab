@@ -2,20 +2,21 @@
 
 ## Goal
 
-Ship the smallest playable terminal slice of TowerLab.
+Ship a reviewable playable terminal slice of TowerLab.
 
 ## Included in v0
 
 - seeded run creation
 - sample starter deck
 - sample card data
+- sample enemies and intents
 - sample tower map with branching
-- ASCII observation rendering
-- deterministic tests for run setup
+- Ink-based interactive CLI
+- deterministic combat, map, and rest transitions
+- deterministic tests for run setup and combat flow
 
 ## Not included in v0
 
-- full battle loop
 - shops
 - relic system
 - events
@@ -26,5 +27,5 @@ Ship the smallest playable terminal slice of TowerLab.
 
 - `pnpm typecheck` passes
 - `pnpm test` passes
-- `pnpm cli -- --seed 7` prints a deterministic opening state
+- `pnpm cli -- --seed 7` launches a deterministic playable run in a TTY and prints a deterministic opening snapshot otherwise
 - package boundaries remain simple and obvious

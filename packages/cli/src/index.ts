@@ -1,27 +1,72 @@
-import type { Observation } from "@towerlab/core";
+import { sampleContent } from "@towerlab/content";
+import { createRun, observeRun, type Observation } from "@towerlab/core";
 
-export function renderObservation(observation: Observation): string {
-  const nextNodeLine = observation.nextNodes.length === 0
-    ? "none"
-    : observation.nextNodes.map((node) => `${node.id}:${node.kind}`).join(", ");
+export { App, type AppProps } from "./app.js";
 
-  const handLines = observation.hand
-    .map((card, index) => `${index + 1}. ${card.name} [${card.cost}] - ${card.description}`)
-    .join("\n");
+export function readSeed(args: string[]): number {
+  const seedFlagIndex = args.indexOf("--seed");
 
-  return [
-    "# TowerLab",
-    "",
+  if (seedFlagIndex === -1) {
+    return 7;
+  }
+
+  const rawSeed = args[seedFlagIndex + 1];
+  const seed = Number(rawSeed);
+
+  if (!Number.isInteger(seed)) {
+    throw new Error("--seed must be an integer");
+  }
+
+  return seed;
+}
+
+export function renderSnapshot(seed: number): string {
+  return renderObservation(observeRun(sampleContent, createRun(sampleContent, seed)));
+}
+
+function renderObservation(observation: Observation): string {
+  const lines = [
+    "TowerLab",
     `Seed: ${observation.seed}`,
-    `HP: ${observation.hp}/${observation.maxHp}`,
-    `Gold: ${observation.gold}`,
-    `Floor: ${observation.floor}`,
-    `Current node: ${observation.currentNode.id} (${observation.currentNode.kind})`,
-    `Next nodes: ${nextNodeLine}`,
-    `Draw pile: ${observation.drawPileCount}`,
-    `Discard pile: ${observation.discardPileCount}`,
+    `Phase: ${observation.phase}`,
+    `HP: ${observation.hp}/${observation.maxHp}  Gold: ${observation.gold}  Floor: ${observation.floor}`,
+    `Node: ${observation.currentNode.id} (${observation.currentNode.kind})`,
     "",
-    "Opening hand:",
-    handLines,
-  ].join("\n");
+  ];
+
+  if (observation.phase === "combat") {
+    lines.push(
+      `Enemy: ${observation.enemy.name} HP ${observation.enemy.hp}/${observation.enemy.maxHp} Block ${observation.enemy.block}`,
+      `Intent: ${observation.enemy.intent.description}`,
+      `You: Energy ${observation.energy}  Block ${observation.block}  Draw ${observation.drawPileCount}  Discard ${observation.discardPileCount}`,
+      "",
+      "Hand:",
+    );
+
+    for (const [index, card] of observation.hand.entries()) {
+      lines.push(`${index + 1}. ${card.name} [${card.cost}] ${card.description}`);
+    }
+  } else if (observation.phase === "map") {
+    lines.push("Paths:");
+
+    for (const [index, node] of observation.nextNodes.entries()) {
+      lines.push(`${index + 1}. ${node.id} (${node.kind})`);
+    }
+  } else if (observation.phase === "rest") {
+    lines.push("Rest:");
+
+    for (const [index, option] of observation.restOptions.entries()) {
+      lines.push(`${index + 1}. ${option.label} - ${option.description}`);
+    }
+  } else {
+    lines.push(`Outcome: ${observation.phase === "victory" ? "Victory" : "Defeat"}`);
+  }
+
+  lines.push("", "Log:");
+
+  for (const entry of observation.log) {
+    lines.push(`- ${entry}`);
+  }
+
+  return lines.join("\n");
 }

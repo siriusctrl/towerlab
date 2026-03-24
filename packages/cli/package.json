@@ -3,19 +3,24 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/cli/src/index.js",
+  "types": "dist/cli/src/index.d.ts",
   "bin": {
-    "towerlab": "dist/main.js"
+    "towerlab": "dist/cli/src/main.js"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "dev": "tsx src/main.ts",
+    "dev": "tsx src/main.tsx",
     "test": "echo 'no tests in @towerlab/cli'",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@towerlab/content": "workspace:*",
-    "@towerlab/core": "workspace:*"
+    "@towerlab/core": "workspace:*",
+    "ink": "^6.8.0",
+    "react": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.14"
   }
 }
