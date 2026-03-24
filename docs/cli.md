@@ -23,6 +23,7 @@ Language can be selected with `--lang en|zh`.
 
 When stdout and stdin are attached to a TTY, `pnpm cli` starts the Ink interface.
 The TUI enters the terminal alternate screen, redraws on terminal resize, and restores the previous screen on exit.
+The layout also adapts between stacked and side-by-side panels based on terminal width.
 
 Controls:
 - combat: `1-9` play the indexed card, `e` ends the turn
@@ -53,6 +54,7 @@ The CLI keeps a compact recent-activity panel instead of rendering the full log 
 
 - only the most recent entries are shown
 - if older entries exist, the UI shows how many earlier events were collapsed
+- on tighter terminals, the panel may be hidden so combat and map information stay readable
 - core replay state still preserves the log behavior defined by `packages/core`
 
 ## Non-TTY Snapshot Mode

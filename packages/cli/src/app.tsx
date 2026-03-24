@@ -29,8 +29,9 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const [error, setError] = useState<string | null>(null);
   const view = localizeObservation(observeRun(sampleContent, state), locale);
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
-  const isWideLayout = columns >= 110;
-  const sidebarWidth = isWideLayout ? Math.min(38, Math.max(30, Math.floor(columns * 0.34))) : undefined;
+  const isSideBySideLayout = columns >= 76;
+  const sidebarWidth = isSideBySideLayout ? Math.min(34, Math.max(26, Math.floor(columns * 0.35))) : undefined;
+  const showRecentLog = isSideBySideLayout || rows >= 28;
   const recentLogLimit = rows >= 30 ? 5 : rows >= 24 ? 4 : 3;
 
   const runAction = (action: RunAction) => {
@@ -144,12 +145,12 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
         </Text>
       </Box>
 
-      <Box marginTop={1} flexDirection={isWideLayout ? "row" : "column"} flexGrow={1} overflow="hidden">
+      <Box marginTop={1} flexDirection={isSideBySideLayout ? "row" : "column"} flexGrow={1} alignItems="stretch" overflow="hidden">
         <Box
           flexGrow={1}
           flexBasis={0}
-          marginRight={isWideLayout ? 1 : 0}
-          marginBottom={isWideLayout ? 0 : 1}
+          marginRight={isSideBySideLayout ? 1 : 0}
+          marginBottom={isSideBySideLayout ? 0 : 1}
           borderStyle="round"
           borderColor="yellow"
           paddingX={1}
@@ -159,22 +160,24 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
           <PhaseView observation={view} locale={locale} />
         </Box>
 
-        <Box width={sidebarWidth} flexGrow={isWideLayout ? 0 : 1} flexShrink={0} flexDirection="column" overflow="hidden">
+        <Box width={sidebarWidth} flexGrow={0} flexShrink={0} flexDirection="column" overflow="hidden">
           <Box borderStyle="round" borderColor="magenta" paddingX={1} flexDirection="column" flexShrink={0} overflow="hidden">
             <MapPanel observation={view} actions={actions} locale={locale} />
           </Box>
 
-          <Box
-            marginTop={1}
-            borderStyle="round"
-            borderColor="green"
-            paddingX={1}
-            flexDirection="column"
-            flexGrow={1}
-            overflow="hidden"
-          >
-            <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
-          </Box>
+          {showRecentLog ? (
+            <Box
+              marginTop={1}
+              borderStyle="round"
+              borderColor="green"
+              paddingX={1}
+              flexDirection="column"
+              flexGrow={1}
+              overflow="hidden"
+            >
+              <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
+            </Box>
+          ) : null}
         </Box>
       </Box>
 

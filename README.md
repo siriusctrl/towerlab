@@ -71,7 +71,7 @@ corepack pnpm cli -- --json create --seed 7 --lang zh
 - `r` restarts after win/loss
 
 CLI language can be selected with `--lang en` or `--lang zh` for both the interactive TTY UI and the snapshot/headless flows.
-The TUI also shows the full tower map and keeps only recent log entries in the sidebar so the main combat/shop view stays readable.
+The TUI runs in the terminal alternate screen, adapts to terminal resize, shows the full tower map, and keeps only recent log entries so the main combat/shop view stays readable.
 Detailed CLI usage lives in `docs/cli.md`.
 
 The same entrypoint also exposes the headless harness surface. The current target shape is:
