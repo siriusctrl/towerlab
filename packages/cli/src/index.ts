@@ -5,6 +5,7 @@ import {
   applyAction,
   createRun,
   legalActions,
+  type MapNode,
   observeRun,
   replayRun,
   traceRun,
@@ -26,6 +27,7 @@ import {
   type Locale,
 } from "./i18n.js";
 import { BASELINE_POLICY_NAMES, getBaselinePolicy, type BaselinePolicyName } from "./policies.js";
+import { createMapListEntries, formatMapLine, getEarlierEventsLine, getMapLegend, getRecentLogView } from "./view.js";
 
 export { App, type AppProps } from "./app.js";
 
@@ -53,6 +55,7 @@ type HeadlessSnapshot = {
   seed: number;
   actions: RunAction[];
   locale: Locale;
+  map: MapNode[];
   state: RunState;
   observation: Observation;
   legalActions: RunAction[];
@@ -221,6 +224,7 @@ function createSnapshot(seed: number, actions: RunAction[], state: RunState, loc
     seed,
     actions,
     locale,
+    map: sampleContent.map,
     state,
     observation: localizeObservation(observeRun(sampleContent, state), locale),
     legalActions: legalActions(sampleContent, state),
@@ -538,7 +542,8 @@ export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE): s
 }
 
 function renderObservation(observation: Observation, locale: Locale): string {
-  const mapSection = renderMapSection(observation.currentNode.id, locale);
+  const mapSection = createMapListEntries(sampleContent.map, observation).map((entry) => formatMapLine(entry, locale));
+  const recentLog = getRecentLogView(observation.log);
 
   const lines = [
     text(locale, "snapshotTitle"),
@@ -548,6 +553,8 @@ function renderObservation(observation: Observation, locale: Locale): string {
     `${text(locale, "node")}: ${observation.currentNode.id} (${localizeNodeKind(observation.currentNode.kind, locale)})`,
     `${text(locale, "relics")}: ${observation.relics.map((relic) => relic.name).join(", ") || text(locale, "none")}`,
     "",
+    `${text(locale, "map")}:`,
+    getMapLegend(locale),
     ...mapSection,
     "",
   ];
@@ -608,31 +615,16 @@ function renderObservation(observation: Observation, locale: Locale): string {
     lines.push(`${text(locale, "outcome")}: ${localizePhaseLabel(observation.phase, locale)}`);
   }
 
-  lines.push("", `${text(locale, "log")}:`);
+  lines.push("", `${text(locale, "recentLog")}:`);
 
-  for (const entry of observation.log) {
+  for (const entry of recentLog.entries) {
     lines.push(`- ${entry}`);
   }
 
-  return lines.join("\n");
-}
-
-function renderMapSection(currentNodeId: string, locale: Locale): string[] {
-  const mapNodes = sampleContent.map;
-  const currentNode = mapNodes.find((node) => node.id === currentNodeId);
-  const nextNodeIds = new Set(currentNode ? currentNode.nextIds : []);
-
-  const lines = [`${text(locale, "map")}:`];
-
-  for (const node of mapNodes) {
-    const isCurrent = node.id === currentNodeId;
-    const isNextChoice = nextNodeIds.has(node.id);
-    const marker = isCurrent ? "▶" : isNextChoice ? "→" : " ";
-    const nextTargets = node.nextIds.length > 0 ? ` -> ${node.nextIds.join(", ")}` : "";
-    lines.push(
-      `${marker} ${node.id} (${localizeNodeKind(node.kind, locale)})${nextTargets}`,
-    );
+  const earlierEvents = getEarlierEventsLine(recentLog.hiddenCount, locale);
+  if (earlierEvents) {
+    lines.push(earlierEvents);
   }
 
-  return lines;
+  return lines.join("\n");
 }

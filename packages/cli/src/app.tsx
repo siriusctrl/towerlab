@@ -1,6 +1,6 @@
 import { sampleContent } from "@towerlab/content";
 import { applyAction, createRun, observeRun, type Observation, type RunAction, type RunState } from "@towerlab/core";
-import { Box, Text, useApp, useInput } from "ink";
+import { Box, Text, useApp, useInput, useStdout } from "ink";
 import { useState } from "react";
 
 import {
@@ -13,6 +13,7 @@ import {
   text,
   type Locale,
 } from "./i18n.js";
+import { createMapListEntries, formatMapLine, getEarlierEventsLine, getMapLegend, getRecentLogView } from "./view.js";
 
 export interface AppProps {
   seed: number;
@@ -21,10 +22,12 @@ export interface AppProps {
 
 export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const { exit } = useApp();
+  const { stdout } = useStdout();
   const [state, setState] = useState<RunState>(() => createRun(sampleContent, seed));
   const [error, setError] = useState<string | null>(null);
   const view = localizeObservation(observeRun(sampleContent, state), locale);
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
+  const isWideLayout = (stdout.columns ?? 80) >= 110;
 
   const runAction = (action: RunAction) => {
     try {
@@ -135,17 +138,20 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
         </Text>
       </Box>
 
-      <Box marginTop={1} borderStyle="round" borderColor="yellow" paddingX={1} flexDirection="column">
-        <PhaseView observation={view} locale={locale} />
-      </Box>
+      <Box marginTop={1} flexDirection={isWideLayout ? "row" : "column"}>
+        <Box flexGrow={1} marginRight={isWideLayout ? 1 : 0} borderStyle="round" borderColor="yellow" paddingX={1} flexDirection="column">
+          <PhaseView observation={view} locale={locale} />
+        </Box>
 
-      <Box marginTop={1} borderStyle="round" borderColor="green" paddingX={1} flexDirection="column">
-        <Text bold color="green">
-          {text(locale, "log")}
-        </Text>
-        {view.log.map((entry, index) => (
-          <Text key={`${index}-${entry}`}>- {entry}</Text>
-        ))}
+        <Box width={isWideLayout ? 40 : undefined} flexShrink={0} marginTop={isWideLayout ? 0 : 1} flexDirection="column">
+          <Box borderStyle="round" borderColor="magenta" paddingX={1} flexDirection="column">
+            <MapPanel observation={view} locale={locale} />
+          </Box>
+
+          <Box marginTop={1} borderStyle="round" borderColor="green" paddingX={1} flexDirection="column">
+            <RecentLogPanel observation={view} locale={locale} />
+          </Box>
+        </Box>
       </Box>
 
       <Box marginTop={1} flexDirection="column">
@@ -311,6 +317,39 @@ function Controls({ observation, locale }: { observation: Observation; locale: L
   }
 
   return <Text dimColor>{text(locale, "controlsEnd")}</Text>;
+}
+
+function MapPanel({ observation, locale }: { observation: Observation; locale: Locale }) {
+  const mapEntries = createMapListEntries(sampleContent.map, observation);
+
+  return (
+    <>
+      <Text bold color="magenta">
+        {text(locale, "map")}
+      </Text>
+      <Text dimColor>{getMapLegend(locale)}</Text>
+      {mapEntries.map((entry) => (
+        <Text key={entry.depth}>{formatMapLine(entry, locale)}</Text>
+      ))}
+    </>
+  );
+}
+
+function RecentLogPanel({ observation, locale }: { observation: Observation; locale: Locale }) {
+  const recentLog = getRecentLogView(observation.log);
+  const earlierEvents = getEarlierEventsLine(recentLog.hiddenCount, locale);
+
+  return (
+    <>
+      <Text bold color="green">
+        {text(locale, "recentLog")}
+      </Text>
+      {recentLog.entries.map((entry, index) => (
+        <Text key={`${index}-${entry}`}>- {entry}</Text>
+      ))}
+      {earlierEvents ? <Text dimColor>{earlierEvents}</Text> : null}
+    </>
+  );
 }
 
 function readChoiceIndex(input: string, limit: number): number | null {

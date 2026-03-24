@@ -17,13 +17,19 @@ describe("headless CLI", () => {
     const output = JSON.parse(runHeadless(["--json", "create", "--seed", "7", "--lang", "zh"]));
 
     expect(output.locale).toBe("zh");
+    expect(output.map).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: "gate" }),
+        expect.objectContaining({ id: "summit" }),
+      ]),
+    );
     expect(output.observation.hand[0].name).toBe("打击");
     expect(output.observation.log[0]).toContain("进入");
 
     const snapshot = renderSnapshot(7, "zh");
     expect(snapshot).toContain("种子: 7");
     expect(snapshot).toContain("阶段: 战斗");
-    expect(snapshot).toContain("日志:");
+    expect(snapshot).toContain("最近事件:");
   });
 
   test("non-tty snapshot shows full map with current node and next choices", () => {
@@ -31,12 +37,10 @@ describe("headless CLI", () => {
     const lines = snapshot.split("\n");
 
     expect(snapshot).toContain("地图:");
-    expect(lines).toContain("▶ gate (战斗) -> forge, hall");
-    expect(lines).toContain("→ forge (精英) -> market");
-    expect(lines).toContain("→ hall (战斗) -> restCamp, market");
-    expect(lines).toContain("  restCamp (营火) -> summit");
-    expect(lines).toContain("  market (商店) -> summit");
-    expect(lines).toContain("  summit (首领)");
+    expect(lines).toContain("1. ▶ gate (战斗)");
+    expect(lines).toContain("2. → forge (精英)   → hall (战斗)");
+    expect(lines).toContain("3. · restCamp (营火)   · market (商店)");
+    expect(lines).toContain("4. · summit (首领)");
   });
 
   test("step applies a single action after replaying prior actions", () => {
