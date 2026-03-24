@@ -10,7 +10,8 @@ Pure game logic and deterministic state transitions.
 Responsibilities:
 - state types
 - seeded randomness
-- initial run creation
+- run creation and node progression
+- combat transitions
 - pure observation shaping
 
 ### `packages/content`
@@ -18,17 +19,19 @@ Static game content.
 
 Responsibilities:
 - card definitions
+- enemy definitions
 - starter deck
 - sample map
 
 ### `packages/cli`
-ASCII renderer and local entrypoint.
+Ink renderer and local entrypoint.
 
 Responsibilities:
 - render human-readable state
+- collect keyboard input
 - load sample content
 - create a run from a seed
-- print the current observation
+- drive pure core actions for the current observation
 
 ## Dependency rules
 

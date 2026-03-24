@@ -1,13 +1,10 @@
-import { sampleContent } from "@towerlab/content";
-import { createRun, observeRun } from "@towerlab/core";
+import { render } from "ink";
 
-import { renderObservation } from "./index.js";
+import { App } from "./app.js";
 
 const seed = readSeed(process.argv.slice(2));
-const state = createRun(sampleContent, seed);
-const observation = observeRun(sampleContent, state);
 
-console.log(renderObservation(observation));
+render(<App seed={seed} />);
 
 function readSeed(args: string[]): number {
   const seedFlagIndex = args.indexOf("--seed");
