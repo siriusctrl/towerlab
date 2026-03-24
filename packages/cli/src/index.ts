@@ -17,8 +17,8 @@ import {
 import { runBatchWithPolicy } from "./eval.js";
 import {
   DEFAULT_LOCALE,
+  formatNodeLabel,
   localizeErrorMessage,
-  localizeNodeKind,
   localizeObservation,
   localizePhaseLabel,
   readLocale,
@@ -550,7 +550,7 @@ function renderObservation(observation: Observation, locale: Locale): string {
     `${text(locale, "seed")}: ${observation.seed}`,
     `${text(locale, "phase")}: ${localizePhaseLabel(observation.phase, locale)}`,
     `${text(locale, "hp")}: ${observation.hp}/${observation.maxHp}  ${text(locale, "gold")}: ${observation.gold}  ${text(locale, "floor")}: ${observation.floor}`,
-    `${text(locale, "node")}: ${observation.currentNode.id} (${localizeNodeKind(observation.currentNode.kind, locale)})`,
+    `${text(locale, "node")}: ${formatNodeLabel(observation.currentNode, locale)}`,
     `${text(locale, "relics")}: ${observation.relics.map((relic) => relic.name).join(", ") || text(locale, "none")}`,
     "",
     `${text(locale, "map")}:`,
@@ -575,7 +575,7 @@ function renderObservation(observation: Observation, locale: Locale): string {
     lines.push(`${text(locale, "paths")}`);
 
     for (const [index, node] of observation.nextNodes.entries()) {
-      lines.push(`${index + 1}. ${node.id} (${localizeNodeKind(node.kind, locale)})`);
+      lines.push(`${index + 1}. ${formatNodeLabel(node, locale)}`);
     }
   } else if (observation.phase === "rest") {
     lines.push(`${text(locale, "rest")}:`);

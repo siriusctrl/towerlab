@@ -1,6 +1,6 @@
 import type { MapNode, Observation } from "@towerlab/core";
 
-import { formatText, localizeNodeKind, type Locale } from "./i18n.js";
+import { formatNodeLabel, formatText, type Locale } from "./i18n.js";
 
 export const RECENT_LOG_LIMIT = 4;
 
@@ -40,7 +40,7 @@ export function createMapListEntries(map: MapNode[], observation: Observation): 
 }
 
 export function formatMapLine(entry: MapListEntry, locale: Locale): string {
-  const cells = entry.cells.map((cell) => `${cell.marker} ${cell.node.id} (${localizeNodeKind(cell.node.kind, locale)})`).join("   ");
+  const cells = entry.cells.map((cell) => `${cell.marker} ${formatNodeLabel(cell.node, locale)}`).join("   ");
   return `${entry.depth + 1}. ${cells}`;
 }
 

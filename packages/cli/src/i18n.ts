@@ -45,6 +45,25 @@ const enemyNames: Dictionary = {
   "Watch Core": "监视核心",
 };
 
+const nodeNames = {
+  en: {
+    gate: "Gate",
+    hall: "Hall",
+    forge: "Forge",
+    restCamp: "Camp",
+    market: "Market",
+    summit: "Summit",
+  },
+  zh: {
+    gate: "城门",
+    hall: "大厅",
+    forge: "熔炉",
+    restCamp: "营地",
+    market: "集市",
+    summit: "顶峰",
+  },
+} as const satisfies Record<Locale, Dictionary>;
+
 const intentDescriptions: Dictionary = {
   "Jab for 5": "刺击 5 点",
   "Brace for 6 block": "准备获得 6 点格挡",
@@ -349,6 +368,18 @@ export function localizeNodeKind(kind: string, locale: Locale): string {
   return kind;
 }
 
+export function localizeNodeName(nodeId: string, locale: Locale): string {
+  const names = nodeNames[locale] as Dictionary;
+  return names[nodeId] ?? nodeId;
+}
+
+export function formatNodeLabel(
+  node: { id: string; kind: string },
+  locale: Locale,
+): string {
+  return `${localizeNodeName(node.id, locale)} (${localizeNodeKind(node.kind, locale)})`;
+}
+
 export function localizePhaseLabel(phase: Observation["phase"], locale: Locale): string {
   if (phase === "combat") {
     return text(locale, "combat");
@@ -388,7 +419,7 @@ export function localizeErrorMessage(message: string, locale: Locale): string {
     [/^reward index (\d+) is not available$/, (index) => `奖励索引 ${index} 不可用`],
     [/^shop card index (\d+) is not available$/, (index) => `商店卡牌索引 ${index} 不可用`],
     [/^deck index (\d+) is not available$/, (index) => `牌库索引 ${index} 不可用`],
-    [/^node (.+) is not reachable from (.+)$/, (nodeId, fromNode) => `节点 ${nodeId} 无法从 ${fromNode} 到达`],
+    [/^node (.+) is not reachable from (.+)$/, (nodeId, fromNode) => `节点 ${localizeNodeName(nodeId, locale)} 无法从 ${localizeNodeName(fromNode, locale)} 到达`],
     [/^Need (\d+) gold to buy (.+)$/, (gold, cardName) => `需要 ${gold} 金币才能购买${localizeCardName(cardName, locale)}`],
     [/^Need (\d+) gold to remove (.+)$/, (gold, cardName) => `需要 ${gold} 金币才能移除${localizeCardName(cardName, locale)}`],
     [/^(.+) costs (\d+) energy$/, (cardName, cost) => `${localizeCardName(cardName, locale)} 需要 ${cost} 点能量`],
@@ -550,8 +581,8 @@ function localizeLogEntry(entry: string, locale: Locale): string {
   }
 
   const patterns: Array<[RegExp, (...groups: string[]) => string]> = [
-    [/^Entered (.+) \((battle|elite|rest|shop|boss)\)\.$/, (nodeId, kind) => `进入 ${nodeId}（${localizeNodeKind(kind, locale)}）。`],
-    [/^Moved to (.+) \((battle|elite|rest|shop|boss)\)\.$/, (nodeId, kind) => `前往 ${nodeId}（${localizeNodeKind(kind, locale)}）。`],
+    [/^Entered (.+) \((battle|elite|rest|shop|boss)\)\.$/, (nodeId, kind) => `进入 ${localizeNodeName(nodeId, locale)}（${localizeNodeKind(kind, locale)}）。`],
+    [/^Moved to (.+) \((battle|elite|rest|shop|boss)\)\.$/, (nodeId, kind) => `前往 ${localizeNodeName(nodeId, locale)}（${localizeNodeKind(kind, locale)}）。`],
     [/^(.+) appears\. Intent: (.+)\.$/, (enemyName, intent) => `${localizeEnemyName(enemyName, locale)}出现。意图：${localizeIntentDescription(intent, locale)}。`],
     [/^Played (.+): (.+)\.$/, (cardName, details) => `打出${localizeCardName(cardName, locale)}：${details.split(", ").map((fragment) => localizeFragment(fragment, locale)).join("，")}。`],
     [/^Played (.+)\.$/, (cardName) => `打出${localizeCardName(cardName, locale)}。`],

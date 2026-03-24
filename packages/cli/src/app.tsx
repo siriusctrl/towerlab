@@ -5,9 +5,9 @@ import { useState } from "react";
 
 import {
   DEFAULT_LOCALE,
+  formatNodeLabel,
   formatText,
   localizeErrorMessage,
-  localizeNodeKind,
   localizeObservation,
   localizePhaseLabel,
   text,
@@ -128,7 +128,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
         </Text>
         <Text>
           {text(locale, "seed")} {view.seed} | {text(locale, "floor")} {view.floor} | {text(locale, "node")}{" "}
-          {view.currentNode.id} ({localizeNodeKind(view.currentNode.kind, locale)})
+          {formatNodeLabel(view.currentNode, locale)}
         </Text>
         <Text>
           {text(locale, "hp")} {view.hp}/{view.maxHp} | {text(locale, "gold")} {view.gold}
@@ -207,7 +207,7 @@ function PhaseView({ observation, locale }: { observation: Observation; locale: 
         <Text>{text(locale, "chooseNextNode")}</Text>
         {observation.nextNodes.map((node, index) => (
           <Text key={node.id}>
-            {index + 1}. {node.id} ({localizeNodeKind(node.kind, locale)})
+            {index + 1}. {formatNodeLabel(node, locale)}
           </Text>
         ))}
       </>
@@ -227,7 +227,7 @@ function PhaseView({ observation, locale }: { observation: Observation; locale: 
           </Text>
         ))}
         <Text dimColor>
-          {text(locale, "next")}: {observation.nextNodes.map((node) => `${node.id} (${localizeNodeKind(node.kind, locale)})`).join(", ")}
+          {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
         </Text>
       </>
     );
@@ -277,7 +277,7 @@ function PhaseView({ observation, locale }: { observation: Observation; locale: 
           {leaveIndex}. {text(locale, "leaveShop")}
         </Text>
         <Text dimColor>
-          {text(locale, "next")}: {observation.nextNodes.map((node) => `${node.id} (${localizeNodeKind(node.kind, locale)})`).join(", ")}
+          {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
         </Text>
       </>
     );

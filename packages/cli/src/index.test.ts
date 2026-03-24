@@ -29,6 +29,8 @@ describe("headless CLI", () => {
     const snapshot = renderSnapshot(7, "zh");
     expect(snapshot).toContain("种子: 7");
     expect(snapshot).toContain("阶段: 战斗");
+    expect(snapshot).toContain("节点: 城门 (战斗)");
+    expect(snapshot).toContain("- 进入 城门（战斗）。");
     expect(snapshot).toContain("最近事件:");
   });
 
@@ -37,10 +39,10 @@ describe("headless CLI", () => {
     const lines = snapshot.split("\n");
 
     expect(snapshot).toContain("地图:");
-    expect(lines).toContain("1. ▶ gate (战斗)");
-    expect(lines).toContain("2. → forge (精英)   → hall (战斗)");
-    expect(lines).toContain("3. · restCamp (营火)   · market (商店)");
-    expect(lines).toContain("4. · summit (首领)");
+    expect(lines).toContain("1. ▶ 城门 (战斗)");
+    expect(lines).toContain("2. → 熔炉 (精英)   → 大厅 (战斗)");
+    expect(lines).toContain("3. · 营地 (营火)   · 集市 (商店)");
+    expect(lines).toContain("4. · 顶峰 (首领)");
   });
 
   test("step applies a single action after replaying prior actions", () => {

@@ -33,8 +33,8 @@ describe("cli view helpers", () => {
 
     const lines = createMapListEntries(sampleContent.map, observation).map((entry) => formatMapLine(entry, "en"));
 
-    expect(lines).toContain("1. ▶ gate (battle)");
-    expect(lines).toContain("2. → forge (elite)   → hall (battle)");
+    expect(lines).toContain("1. ▶ Gate (battle)");
+    expect(lines).toContain("2. → Forge (elite)   → Hall (battle)");
   });
 
   test("map view numbers selectable nodes during map phase", () => {
@@ -53,7 +53,7 @@ describe("cli view helpers", () => {
 
     const lines = createMapListEntries(sampleContent.map, observation).map((entry) => formatMapLine(entry, "en"));
 
-    expect(lines).toContain("2. [1] forge (elite)   [2] hall (battle)");
+    expect(lines).toContain("2. [1] Forge (elite)   [2] Hall (battle)");
   });
 
   test("recent log view truncates older entries and reports hidden count", () => {
