@@ -14,6 +14,17 @@ import {
 } from "@towerlab/core";
 
 import { runBatchWithPolicy } from "./eval.js";
+import {
+  DEFAULT_LOCALE,
+  localizeErrorMessage,
+  localizeNodeKind,
+  localizeObservation,
+  localizePhaseLabel,
+  readLocale,
+  SUPPORTED_LOCALES,
+  text,
+  type Locale,
+} from "./i18n.js";
 import { BASELINE_POLICY_NAMES, getBaselinePolicy, type BaselinePolicyName } from "./policies.js";
 
 export { App, type AppProps } from "./app.js";
@@ -26,6 +37,7 @@ type HeadlessParseResult = {
   batchSeeds: number[];
   command: HeadlessMode;
   help: boolean;
+  locale: Locale;
   policyName?: BaselinePolicyName;
   pretty: boolean;
   seed: number;
@@ -40,6 +52,7 @@ type HeadlessTraceStep = {
 type HeadlessSnapshot = {
   seed: number;
   actions: RunAction[];
+  locale: Locale;
   state: RunState;
   observation: Observation;
   legalActions: RunAction[];
@@ -66,6 +79,7 @@ type HeadlessReplayResponse = HeadlessSnapshot & {
 
 type HeadlessBatchResponse = ReturnType<typeof runBatchWithPolicy> & {
   command: "batch";
+  locale: Locale;
 };
 
 type HeadlessResponse =
@@ -77,7 +91,11 @@ type HeadlessResponse =
 
 const DEFAULT_SEED = 7;
 
-export function readSeed(args: string[]): number {
+export function readSeed(args: string[], locale: Locale = DEFAULT_LOCALE): number {
+  return readSeedWithLocale(args, locale);
+}
+
+function readSeedWithLocale(args: string[], locale: Locale): number {
   const seedFlagIndex = args.indexOf("--seed");
 
   if (seedFlagIndex === -1) {
@@ -88,7 +106,7 @@ export function readSeed(args: string[]): number {
   const seed = Number(rawSeed);
 
   if (!Number.isInteger(seed)) {
-    throw new Error("--seed must be an integer");
+    throw new Error(localizeErrorMessage("--seed must be an integer", locale));
   }
 
   return seed;
@@ -99,30 +117,44 @@ export function isHeadlessMode(args: string[]): boolean {
 }
 
 export function runHeadless(args: string[]): string {
-  const parsed = parseHeadlessArgs(args);
+  const locale = readLocale(args);
+  let parsed: HeadlessParseResult;
 
-  if (parsed.help) {
-    return encodeJson({ command: "help", usage: getHeadlessUsage() }, parsed.pretty);
+  try {
+    parsed = parseHeadlessArgs(args, locale);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(localizeErrorMessage(message, locale));
   }
 
-  const response = createHeadlessResponse(parsed);
-  return encodeJson(response, parsed.pretty);
+  if (parsed.help) {
+    return encodeJson({ command: "help", locale, usage: getHeadlessUsage(locale) }, parsed.pretty);
+  }
+
+  try {
+    const response = createHeadlessResponse(parsed);
+    return encodeJson(response, parsed.pretty);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(localizeErrorMessage(message, parsed.locale));
+  }
 }
 
 function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
   if (parsed.command === "batch") {
     if (!parsed.policyName) {
-      throw new Error("batch mode requires --policy");
+      throw new Error(localizeErrorMessage("batch mode requires --policy", parsed.locale));
     }
 
     if (parsed.batchSeeds.length === 0) {
-      throw new Error("batch mode requires --seeds or --seed-start with --count");
+      throw new Error(localizeErrorMessage("batch mode requires --seeds or --seed-start with --count", parsed.locale));
     }
 
     const policy = getBaselinePolicy(parsed.policyName);
 
     return {
       command: "batch",
+      locale: parsed.locale,
       ...runBatchWithPolicy({
         policy: ({ content, state }) => policy.chooseAction(state, content),
         policyName: parsed.policyName,
@@ -136,7 +168,8 @@ function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
 
     return {
       command: "create",
-      ...createSnapshot(parsed.seed, [], state),
+      ...createSnapshot(parsed.seed, [], state, parsed.locale),
+      locale: parsed.locale,
     };
   }
 
@@ -145,13 +178,14 @@ function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
 
     return {
       command: "observe",
-      ...createSnapshot(parsed.seed, parsed.actions, state),
+      ...createSnapshot(parsed.seed, parsed.actions, state, parsed.locale),
+      locale: parsed.locale,
     };
   }
 
   if (parsed.command === "step") {
     if (!parsed.action) {
-      throw new Error("step mode requires --action");
+      throw new Error(localizeErrorMessage("step mode requires --action", parsed.locale));
     }
 
     const previousState = replayRun(sampleContent, parsed.seed, parsed.actions);
@@ -162,7 +196,8 @@ function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
       command: "step",
       action: parsed.action,
       previousActions: parsed.actions,
-      ...createSnapshot(parsed.seed, allActions, nextState),
+      ...createSnapshot(parsed.seed, allActions, nextState, parsed.locale),
+      locale: parsed.locale,
     };
   }
 
@@ -170,34 +205,37 @@ function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
   const trace = traceRun(sampleContent, parsed.seed, parsed.actions).steps.map((entry, index) => ({
     step: index,
     action: entry.action,
-    observation: entry.observation,
+    observation: localizeObservation(entry.observation, parsed.locale),
   }));
 
   return {
     command: "replay",
     trace,
-    ...createSnapshot(parsed.seed, parsed.actions, state),
+    ...createSnapshot(parsed.seed, parsed.actions, state, parsed.locale),
+    locale: parsed.locale,
   };
 }
 
-function createSnapshot(seed: number, actions: RunAction[], state: RunState): HeadlessSnapshot {
+function createSnapshot(seed: number, actions: RunAction[], state: RunState, locale: Locale = DEFAULT_LOCALE): HeadlessSnapshot {
   return {
     seed,
     actions,
+    locale,
     state,
-    observation: observeRun(sampleContent, state),
+    observation: localizeObservation(observeRun(sampleContent, state), locale),
     legalActions: legalActions(sampleContent, state),
   };
 }
 
-function parseHeadlessArgs(args: string[]): HeadlessParseResult {
+function parseHeadlessArgs(args: string[], locale: Locale): HeadlessParseResult {
   const parsed: HeadlessParseResult = {
     actions: [],
     batchSeeds: [],
     command: "create",
     help: false,
+    locale,
     pretty: false,
-    seed: readSeed(args),
+    seed: readSeedWithLocale(args, locale),
   };
   let seedStart: number | undefined;
   let count: number | undefined;
@@ -210,27 +248,32 @@ function parseHeadlessArgs(args: string[]): HeadlessParseResult {
       continue;
     }
 
+    if (arg === "--lang" || arg === "--locale") {
+      index += 1;
+      continue;
+    }
+
     if (arg === "--help") {
       parsed.help = true;
       continue;
     }
 
     if (arg === "--seed") {
-      parsed.seed = requireNextNumberArg(args, index, "--seed");
+      parsed.seed = requireNextNumberArg(args, index, "--seed", locale);
       index += 1;
       continue;
     }
 
     if (arg === "--seed-start") {
       usedBatchSeedFlags = true;
-      seedStart = requireNextNumberArg(args, index, "--seed-start");
+      seedStart = requireNextNumberArg(args, index, "--seed-start", locale);
       index += 1;
       continue;
     }
 
     if (arg === "--count") {
       usedBatchSeedFlags = true;
-      count = requireNextNumberArg(args, index, "--count");
+      count = requireNextNumberArg(args, index, "--count", locale);
       index += 1;
       continue;
     }
@@ -245,7 +288,7 @@ function parseHeadlessArgs(args: string[]): HeadlessParseResult {
       const policyName = requireNextArg(args, index, "--policy");
 
       if (!isBaselinePolicyName(policyName)) {
-        throw new Error(`--policy must be one of ${BASELINE_POLICY_NAMES.join(", ")}`);
+        throw new Error(localizeErrorMessage(`--policy must be one of ${BASELINE_POLICY_NAMES.join(", ")}`, locale));
       }
 
       parsed.policyName = policyName;
@@ -255,7 +298,7 @@ function parseHeadlessArgs(args: string[]): HeadlessParseResult {
 
     if (arg === "--seeds") {
       usedBatchSeedFlags = true;
-      parsed.batchSeeds = parseSeeds(requireNextArg(args, index, "--seeds"));
+      parsed.batchSeeds = parseSeeds(requireNextArg(args, index, "--seeds"), locale);
       index += 1;
       continue;
     }
@@ -293,34 +336,34 @@ function parseHeadlessArgs(args: string[]): HeadlessParseResult {
 
   if (seedStart !== undefined || count !== undefined) {
     if (seedStart === undefined || count === undefined) {
-      throw new Error("--seed-start and --count must be provided together");
+      throw new Error(localizeErrorMessage("--seed-start and --count must be provided together", locale));
     }
 
     if (count <= 0) {
-      throw new Error("--count must be a positive integer");
+      throw new Error(localizeErrorMessage("--count must be a positive integer", locale));
     }
 
     parsed.batchSeeds = Array.from({ length: count }, (_, offset) => seedStart + offset);
   }
 
   if (parsed.command === "create" && (parsed.actions.length > 0 || parsed.action)) {
-    throw new Error("create mode does not accept actions");
+    throw new Error(localizeErrorMessage("create mode does not accept actions", locale));
   }
 
   if (parsed.command === "batch" && (parsed.actions.length > 0 || parsed.action)) {
-    throw new Error("batch mode does not accept actions");
+    throw new Error(localizeErrorMessage("batch mode does not accept actions", locale));
   }
 
   if (parsed.command !== "batch" && (parsed.policyName || parsed.batchSeeds.length > 0 || usedBatchSeedFlags)) {
-    throw new Error("--policy, --seeds, --seed-start, and --count are only valid in batch mode");
+    throw new Error(localizeErrorMessage("--policy, --seeds, --seed-start, and --count are only valid in batch mode", locale));
   }
 
   if ((parsed.command === "observe" || parsed.command === "replay") && parsed.action) {
-    throw new Error(`${parsed.command} mode does not accept --action`);
+    throw new Error(localizeErrorMessage(`${parsed.command} mode does not accept --action`, locale));
   }
 
   if (parsed.command === "step" && !parsed.action) {
-    throw new Error("step mode requires --action");
+    throw new Error(localizeErrorMessage("step mode requires --action", locale));
   }
 
   return parsed;
@@ -428,12 +471,12 @@ function requireNextArg(args: string[], index: number, flag: string): string {
   return value;
 }
 
-function requireNextNumberArg(args: string[], index: number, flag: string): number {
+function requireNextNumberArg(args: string[], index: number, flag: string, locale: Locale): number {
   const raw = requireNextArg(args, index, flag);
   const parsed = Number(raw);
 
   if (!Number.isInteger(parsed)) {
-    throw new Error(`${flag} must be an integer`);
+    throw new Error(localizeErrorMessage(`${flag} must be an integer`, locale));
   }
 
   return parsed;
@@ -447,18 +490,18 @@ function isBaselinePolicyName(value: string): value is BaselinePolicyName {
   return BASELINE_POLICY_NAMES.includes(value as BaselinePolicyName);
 }
 
-function parseSeeds(raw: string): number[] {
+function parseSeeds(raw: string, locale: Locale): number[] {
   const seeds = raw
     .split(",")
     .map((part) => Number(part.trim()))
     .filter((value) => Number.isInteger(value));
 
   if (seeds.length === 0) {
-    throw new Error("--seeds must contain at least one integer");
+    throw new Error(localizeErrorMessage("--seeds must contain at least one integer", locale));
   }
 
   if (seeds.length !== raw.split(",").filter((part) => part.trim().length > 0).length) {
-    throw new Error("--seeds must be a comma-separated list of integers");
+    throw new Error(localizeErrorMessage("--seeds must be a comma-separated list of integers", locale));
   }
 
   return seeds;
@@ -472,94 +515,96 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function getHeadlessUsage(): { commands: string[]; examples: string[] } {
+function getHeadlessUsage(locale: Locale): { commands: string[]; examples: string[]; localeOptions: Locale[] } {
   return {
     commands: ["batch", "create", "observe", "step", "replay"],
     examples: [
       "towerlab --json batch --policy random --seeds 7,8,9",
       "towerlab --json create --seed 7",
+      `towerlab --json create --seed 7 --lang ${locale}`,
       "towerlab --json observe --seed 7 --actions '[{\"type\":\"endTurn\"}]'",
       "towerlab --json step --seed 7 --actions '[{\"type\":\"endTurn\"}]' --action '{\"type\":\"playCard\",\"handIndex\":0}'",
       "towerlab --json replay --seed 7 --actions-file actions.json",
     ],
+    localeOptions: [...SUPPORTED_LOCALES],
   };
 }
 
-export function renderSnapshot(seed: number): string {
+export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE): string {
   const state = createRun(sampleContent, seed);
-  const observation = observeRun(sampleContent, state);
+  const observation = localizeObservation(observeRun(sampleContent, state), locale);
 
-  return renderObservation(observation);
+  return renderObservation(observation, locale);
 }
 
-function renderObservation(observation: Observation): string {
+function renderObservation(observation: Observation, locale: Locale): string {
   const lines = [
-    "TowerLab",
-    `Seed: ${observation.seed}`,
-    `Phase: ${observation.phase}`,
-    `HP: ${observation.hp}/${observation.maxHp}  Gold: ${observation.gold}  Floor: ${observation.floor}`,
-    `Node: ${observation.currentNode.id} (${observation.currentNode.kind})`,
-    `Relics: ${observation.relics.map((relic) => relic.name).join(", ") || "None"}`,
+    text(locale, "snapshotTitle"),
+    `${text(locale, "seed")}: ${observation.seed}`,
+    `${text(locale, "phase")}: ${localizePhaseLabel(observation.phase, locale)}`,
+    `${text(locale, "hp")}: ${observation.hp}/${observation.maxHp}  ${text(locale, "gold")}: ${observation.gold}  ${text(locale, "floor")}: ${observation.floor}`,
+    `${text(locale, "node")}: ${observation.currentNode.id} (${localizeNodeKind(observation.currentNode.kind, locale)})`,
+    `${text(locale, "relics")}: ${observation.relics.map((relic) => relic.name).join(", ") || text(locale, "none")}`,
     "",
   ];
 
   if (observation.phase === "combat") {
     lines.push(
-      `Enemy: ${observation.enemy.name} HP ${observation.enemy.hp}/${observation.enemy.maxHp} Block ${observation.enemy.block}`,
-      `Intent: ${observation.enemy.intent.description}`,
-      `You: Energy ${observation.energy}  Block ${observation.block}  Draw ${observation.drawPileCount}  Discard ${observation.discardPileCount}`,
+      `${text(locale, "enemy")}: ${observation.enemy.name} ${text(locale, "hp")} ${observation.enemy.hp}/${observation.enemy.maxHp} ${text(locale, "block")} ${observation.enemy.block}`,
+      `${text(locale, "intent")}: ${observation.enemy.intent.description}`,
+      `${text(locale, "energy")} ${observation.energy}  ${text(locale, "block")} ${observation.block}  ${text(locale, "draw")} ${observation.drawPileCount}  ${text(locale, "discard")} ${observation.discardPileCount}`,
       "",
-      "Hand:",
+      `${text(locale, "hand")}:`,
     );
 
     for (const [index, card] of observation.hand.entries()) {
       lines.push(`${index + 1}. ${card.name} [${card.cost}] ${card.description}`);
     }
   } else if (observation.phase === "map") {
-    lines.push("Paths:");
+    lines.push(text(locale, "paths"));
 
     for (const [index, node] of observation.nextNodes.entries()) {
-      lines.push(`${index + 1}. ${node.id} (${node.kind})`);
+      lines.push(`${index + 1}. ${node.id} (${localizeNodeKind(node.kind, locale)})`);
     }
   } else if (observation.phase === "rest") {
-    lines.push("Rest:");
+    lines.push(`${text(locale, "rest")}:`);
 
     for (const [index, option] of observation.restOptions.entries()) {
       lines.push(`${index + 1}. ${option.label} - ${option.description}`);
     }
   } else if (observation.phase === "reward") {
-    lines.push("Reward:");
+    lines.push(`${text(locale, "reward")}:`);
 
     for (const [index, card] of observation.cardChoices.entries()) {
       lines.push(`${index + 1}. ${card.name} [${card.cost}] ${card.description}`);
     }
 
-    lines.push("s. Skip");
+    lines.push(`s. ${text(locale, "skipReward")}`);
   } else if (observation.phase === "shop") {
-    lines.push("Shop:");
+    lines.push(`${text(locale, "shop")}:`);
 
     for (const [index, card] of observation.forSale.entries()) {
-      lines.push(`${index + 1}. Buy ${card.name} [${card.cost}]`);
+      lines.push(`${index + 1}. ${text(locale, "buy")} ${card.name} [${card.cost}]`);
     }
 
     lines.push("");
-    lines.push("Deck removal:");
-    lines.push(`Cost: ${observation.removeDeckCardCost} gold each.`);
+    lines.push(text(locale, "deckRemoval"));
+    lines.push(`${text(locale, "cost")}: ${observation.removeDeckCardCost} ${text(locale, "removeCost")}.`);
 
     for (const entry of observation.removableDeckCards) {
-      lines.push(`${entry.deckIndex + 1}. Remove ${entry.card.name} (${observation.removeDeckCardCost} gold)`);
+      lines.push(`${entry.deckIndex + 1}. ${text(locale, "remove")} ${entry.card.name} (${observation.removeDeckCardCost} ${text(locale, "gold").toLowerCase()})`);
     }
 
     if (observation.removableDeckCards.length === 0) {
-      lines.push("No removable cards are available.");
+      lines.push(text(locale, "noRemovableCards"));
     }
 
-    lines.push(`${observation.forSale.length + observation.removableDeckCards.length + 1}. Leave shop`);
+    lines.push(`${observation.forSale.length + observation.removableDeckCards.length + 1}. ${text(locale, "leaveShop")}`);
   } else {
-    lines.push(`Outcome: ${observation.phase === "victory" ? "Victory" : "Defeat"}`);
+    lines.push(`${text(locale, "outcome")}: ${localizePhaseLabel(observation.phase, locale)}`);
   }
 
-  lines.push("", "Log:");
+  lines.push("", `${text(locale, "log")}:`);
 
   for (const entry of observation.log) {
     lines.push(`- ${entry}`);

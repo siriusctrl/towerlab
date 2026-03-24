@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { runHeadless } from "./index.js";
+import { renderSnapshot, runHeadless } from "./index.js";
 
 describe("headless CLI", () => {
   test("create returns deterministic initial state and legal actions", () => {
@@ -11,6 +11,19 @@ describe("headless CLI", () => {
     expect(output.state.seed).toBe(9);
     expect(output.state.phase).toBe("combat");
     expect(Array.isArray(output.legalActions)).toBe(true);
+  });
+
+  test("create supports chinese localization", () => {
+    const output = JSON.parse(runHeadless(["--json", "create", "--seed", "7", "--lang", "zh"]));
+
+    expect(output.locale).toBe("zh");
+    expect(output.observation.hand[0].name).toBe("打击");
+    expect(output.observation.log[0]).toContain("进入");
+
+    const snapshot = renderSnapshot(7, "zh");
+    expect(snapshot).toContain("种子: 7");
+    expect(snapshot).toContain("阶段: 战斗");
+    expect(snapshot).toContain("日志:");
   });
 
   test("step applies a single action after replaying prior actions", () => {
@@ -125,6 +138,20 @@ describe("headless CLI", () => {
     expect(() => runHeadless(["--json", "batch", "--policy", "random"])).toThrow(
       "batch mode requires --seeds or --seed-start with --count",
     );
+  });
+
+  test("unsupported locale is rejected", () => {
+    expect(() => runHeadless(["--json", "create", "--lang", "jp"])).toThrow("--lang must be one of en, zh");
+  });
+
+  test("headless parse errors are localized in chinese mode", () => {
+    expect(() => runHeadless(["--json", "observe", "--lang", "zh", "--actions", "{not-json}"])).toThrow(
+      "动作列表 JSON 非法：{not-json}",
+    );
+    expect(() => runHeadless(["--json", "step", "--lang", "zh", "--action", "not-json"])).toThrow(
+      "动作 JSON 非法：not-json",
+    );
+    expect(() => runHeadless(["--json", "create", "--lang", "zh", "bogus"])).toThrow("未知的位置参数：bogus");
   });
 
   test("illegal step and replay actions surface the core errors", () => {

@@ -56,7 +56,9 @@ corepack pnpm install
 corepack pnpm typecheck
 corepack pnpm test
 corepack pnpm cli -- --seed 7
+corepack pnpm cli -- --seed 7 --lang zh
 corepack pnpm cli -- --json create --seed 7
+corepack pnpm cli -- --json create --seed 7 --lang zh
 ```
 
 `pnpm cli` launches the playable MVP slice. In a real terminal it starts the Ink UI; without a TTY it prints a deterministic opening snapshot instead. Controls are shown in the terminal:
@@ -66,6 +68,8 @@ corepack pnpm cli -- --json create --seed 7
 - shop: number keys buy or remove a card, or leave
 - `q` quits
 - `r` restarts after win/loss
+
+CLI language can be selected with `--lang en` or `--lang zh` for both the interactive TTY UI and the snapshot/headless flows.
 
 The same entrypoint also exposes the headless harness surface. The current target shape is:
 - `towerlab --json create --seed 7`
