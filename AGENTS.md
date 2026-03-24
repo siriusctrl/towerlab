@@ -34,7 +34,8 @@ Start here, then follow the relevant docs:
 - `README.md` — project overview and local development.
 - `docs/architecture.md` — current package boundaries and design rules.
 - `docs/golden-principles.md` — durable invariants for the codebase.
-- `docs/plans/mvp.md` — current execution plan for the first playable version.
+- `docs/plans/INDEX.md` — milestone index and planning source of truth.
+- `docs/plans/*.md` — one plan doc per milestone or major execution stage.
 - `packages/core` — pure game state and deterministic rules.
 - `packages/content` — cards, map, and starter data.
 - `packages/cli` — terminal rendering and local entrypoint.
@@ -48,6 +49,8 @@ Start here, then follow the relevant docs:
 - Validate external input at boundaries.
 - Prefer plain objects and functions over inheritance.
 - Update docs when the architecture or development contract changes.
+- Treat `docs/plans/INDEX.md` as the roadmap source of truth.
+- When milestone scope or status changes, update the relevant plan doc and the index in the same change.
 
 ## Collaboration Preferences
 

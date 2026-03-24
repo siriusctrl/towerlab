@@ -36,8 +36,14 @@ packages/
 docs/
   architecture.md
   golden-principles.md
-  plans/mvp.md
+  plans/INDEX.md
+  plans/*.md
 ```
+
+## Milestone planning
+
+Milestones are tracked in `docs/plans/INDEX.md` and expanded in one doc per milestone.
+This is the stable roadmap source of truth for both humans and agents.
 
 ## Development
 
