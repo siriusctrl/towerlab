@@ -245,7 +245,7 @@ function getMapNodeLabel(node: MapNode, locale: Locale): string {
   }
 
   const localized = localizeNodeName(node.id, locale);
-  return localized.length > 6 ? localized.slice(0, 6) : localized;
+  return truncateDisplayWidth(localized, 6);
 }
 
 function createCell(text: string, status: MapCellStatus): MapTreeCell {
@@ -253,14 +253,75 @@ function createCell(text: string, status: MapCellStatus): MapTreeCell {
 }
 
 function centerText(value: string, width: number): string {
-  if (value.length >= width) {
-    return value.slice(0, width);
+  const fitted = truncateDisplayWidth(value, width);
+  const fittedWidth = getDisplayWidth(fitted);
+
+  if (fittedWidth >= width) {
+    return fitted;
   }
 
-  const totalPadding = width - value.length;
+  const totalPadding = width - fittedWidth;
   const leftPadding = Math.floor(totalPadding / 2);
   const rightPadding = totalPadding - leftPadding;
-  return `${" ".repeat(leftPadding)}${value}${" ".repeat(rightPadding)}`;
+  return `${" ".repeat(leftPadding)}${fitted}${" ".repeat(rightPadding)}`;
+}
+
+function truncateDisplayWidth(value: string, width: number): string {
+  let result = "";
+  let currentWidth = 0;
+
+  for (const char of value) {
+    const charWidth = getCharacterWidth(char);
+
+    if (currentWidth + charWidth > width) {
+      break;
+    }
+
+    result += char;
+    currentWidth += charWidth;
+  }
+
+  return result;
+}
+
+function getDisplayWidth(value: string): number {
+  let width = 0;
+
+  for (const char of value) {
+    width += getCharacterWidth(char);
+  }
+
+  return width;
+}
+
+function getCharacterWidth(char: string): number {
+  const codePoint = char.codePointAt(0);
+
+  if (codePoint === undefined) {
+    return 0;
+  }
+
+  if (
+    codePoint >= 0x1100 && (
+      codePoint <= 0x115f ||
+      codePoint === 0x2329 ||
+      codePoint === 0x232a ||
+      (codePoint >= 0x2e80 && codePoint <= 0xa4cf && codePoint !== 0x303f) ||
+      (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
+      (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+      (codePoint >= 0xfe10 && codePoint <= 0xfe19) ||
+      (codePoint >= 0xfe30 && codePoint <= 0xfe6f) ||
+      (codePoint >= 0xff00 && codePoint <= 0xff60) ||
+      (codePoint >= 0xffe0 && codePoint <= 0xffe6) ||
+      (codePoint >= 0x1f300 && codePoint <= 0x1f64f) ||
+      (codePoint >= 0x1f900 && codePoint <= 0x1f9ff) ||
+      (codePoint >= 0x20000 && codePoint <= 0x3fffd)
+    )
+  ) {
+    return 2;
+  }
+
+  return 1;
 }
 
 function getSlotCount(maxNodes: number): number {
