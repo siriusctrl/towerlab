@@ -1,11 +1,11 @@
 import type { MapNode, Observation } from "@towerlab/core";
 
-import { formatText, localizeNodeKind, type Locale } from "./i18n.js";
+import { formatText, localizeNodeKind, localizeNodeName, type Locale } from "./i18n.js";
 
 export const RECENT_LOG_LIMIT = 4;
 
 const MAP_SLOT_SPACING = 4;
-const MAP_CELL_WIDTH = 3;
+const MAP_CELL_WIDTH = 8;
 
 export type MapCellStatus = "closed" | "connector" | "current" | "empty" | "future" | "next" | "past";
 
@@ -28,13 +28,13 @@ type MapNodeView = {
   nextOrder?: number;
 };
 
-export function createMapTreeRows(map: MapNode[], observation: Observation, visitedNodeIds: string[] = []): MapTreeRow[] {
+export function createMapTreeRows(map: MapNode[], observation: Observation, locale: Locale, visitedNodeIds: string[] = []): MapTreeRow[] {
   const layerViews = buildLayerViews(map, observation, visitedNodeIds);
   const rows: MapTreeRow[] = [];
 
   for (let layerIndex = 0; layerIndex < layerViews.length; layerIndex += 1) {
     const layer = layerViews[layerIndex];
-    rows.push(createNodeRow(layer));
+    rows.push(createNodeRow(layer, locale));
 
     const nextLayer = layerViews[layerIndex + 1];
     if (nextLayer) {
@@ -133,12 +133,12 @@ function buildLayerViews(map: MapNode[], observation: Observation, visitedNodeId
   });
 }
 
-function createNodeRow(layer: MapNodeView[]): MapTreeRow {
+function createNodeRow(layer: MapNodeView[], locale: Locale): MapTreeRow {
   const maxPosition = layer.reduce((value, node) => Math.max(value, node.position), 0);
   const cells = Array.from({ length: maxPosition + 1 }, () => createCell(" ".repeat(MAP_CELL_WIDTH), "empty"));
 
   for (const node of layer) {
-    cells[node.position] = createCell(centerText(getNodeToken(node), MAP_CELL_WIDTH), node.status);
+    cells[node.position] = createCell(centerText(getNodeToken(node, locale), MAP_CELL_WIDTH), node.status);
   }
 
   return cells;
@@ -204,14 +204,15 @@ function mergeConnector(cells: MapTreeRow, position: number, char: string): void
   cells[position] = createCell(centerText(mergedChar, MAP_CELL_WIDTH), "connector");
 }
 
-function getNodeToken(node: MapNodeView): string {
+function getNodeToken(node: MapNodeView, locale: Locale): string {
   const icon = getNodeIcon(node.node.kind);
+  const label = getMapNodeLabel(node.node, locale);
 
   if (node.status === "next" && typeof node.nextOrder === "number") {
-    return `${Math.min(node.nextOrder + 1, 9)}${icon}`;
+    return `${Math.min(node.nextOrder + 1, 9)}${icon}${label}`;
   }
 
-  return icon;
+  return `${icon}${label}`;
 }
 
 function getNodeIcon(kind: MapNode["kind"]): string {
@@ -236,6 +237,15 @@ function getNodeIcon(kind: MapNode["kind"]): string {
   }
 
   return "★";
+}
+
+function getMapNodeLabel(node: MapNode, locale: Locale): string {
+  if (node.kind === "start") {
+    return locale === "zh" ? "起点" : "Start";
+  }
+
+  const localized = localizeNodeName(node.id, locale);
+  return localized.length > 6 ? localized.slice(0, 6) : localized;
 }
 
 function createCell(text: string, status: MapCellStatus): MapTreeCell {

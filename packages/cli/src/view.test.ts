@@ -19,7 +19,7 @@ describe("cli view helpers", () => {
       nextNodes: [sampleContent.map[1], sampleContent.map[2]],
     };
 
-    const tree = formatMapLines(createMapTreeRows(sampleContent.map, observation, deriveVisitedNodeIds(sampleContent.map, []))).join("\n");
+    const tree = formatMapLines(createMapTreeRows(sampleContent.map, observation, "en", deriveVisitedNodeIds(sampleContent.map, []))).join("\n");
 
     expect(tree).toContain("◎");
     expect(tree).toContain("1●");
@@ -59,6 +59,7 @@ describe("cli view helpers", () => {
       createMapTreeRows(
         sampleContent.map,
         observation,
+        "en",
         deriveVisitedNodeIds(sampleContent.map, [{ type: "choosePath", nodeId: "gate" }]),
       ),
     ).join("\n");

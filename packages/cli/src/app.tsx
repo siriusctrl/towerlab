@@ -8,7 +8,6 @@ import {
   formatNodeLabel,
   formatText,
   localizeErrorMessage,
-  localizeNodeKind,
   localizeObservation,
   localizePhaseLabel,
   text,
@@ -192,10 +191,12 @@ function useTerminalDimensions(stdout: NodeJS.WriteStream): { columns: number; r
 }
 
 function PhaseView({ observation, actions, locale }: { observation: Observation; actions: RunAction[]; locale: Locale }) {
+  const showMap = observation.phase === "map";
+
   return (
     <>
-      <MapTreeView observation={observation} actions={actions} locale={locale} />
-      <Box marginTop={1} flexDirection="column" overflow="hidden">
+      {showMap ? <MapTreeView observation={observation} actions={actions} locale={locale} /> : null}
+      <Box marginTop={showMap ? 1 : 0} flexDirection="column" overflow="hidden">
         <PhaseBody observation={observation} locale={locale} />
       </Box>
     </>
@@ -204,7 +205,7 @@ function PhaseView({ observation, actions, locale }: { observation: Observation;
 
 function MapTreeView({ observation, actions, locale }: { observation: Observation; actions: RunAction[]; locale: Locale }) {
   const visitedNodeIds = deriveVisitedNodeIds(sampleContent.map, actions);
-  const mapRows = createMapTreeRows(sampleContent.map, observation, visitedNodeIds);
+  const mapRows = createMapTreeRows(sampleContent.map, observation, locale, visitedNodeIds);
 
   return (
     <>

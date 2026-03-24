@@ -543,7 +543,7 @@ export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE): s
 }
 
 function renderObservation(observation: Observation, locale: Locale, visitedNodeIds: string[] = []): string {
-  const mapSection = formatMapLines(createMapTreeRows(sampleContent.map, observation, visitedNodeIds));
+  const mapSection = formatMapLines(createMapTreeRows(sampleContent.map, observation, locale, visitedNodeIds));
   const recentLog = getRecentLogView(observation.log);
   const mapLegendLines = getMapLegendLines(locale);
 
