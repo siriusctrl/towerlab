@@ -203,9 +203,10 @@ export const sampleContent: RunContent = {
     "heavyBlow",
   ],
   map: [
-    { id: "gate", kind: "battle", encounterId: "sentry", nextIds: ["forge", "hall"] },
-    { id: "hall", kind: "battle", encounterId: "sentry", nextIds: ["restCamp", "market"] },
-    { id: "forge", kind: "elite", encounterId: "forgeKeeper", relicReward: "combatFocus", nextIds: ["market"] },
+    { id: "crossroads", kind: "start", nextIds: ["gate", "forge"] },
+    { id: "gate", kind: "battle", encounterId: "sentry", nextIds: ["restCamp", "market"] },
+    { id: "forge", kind: "elite", encounterId: "forgeKeeper", relicReward: "combatFocus", nextIds: ["hall", "market"] },
+    { id: "hall", kind: "battle", encounterId: "sentry", nextIds: ["summit"] },
     { id: "restCamp", kind: "rest", nextIds: ["summit"] },
     { id: "market", kind: "shop", nextIds: ["summit"] },
     { id: "summit", kind: "boss", encounterId: "watchCore", relicReward: "reinforcedFrame", nextIds: [] },

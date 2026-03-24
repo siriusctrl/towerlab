@@ -9,7 +9,7 @@ describe("headless CLI", () => {
     expect(output.command).toBe("create");
     expect(output.seed).toBe(9);
     expect(output.state.seed).toBe(9);
-    expect(output.state.phase).toBe("combat");
+    expect(output.state.phase).toBe("map");
     expect(Array.isArray(output.legalActions)).toBe(true);
   });
 
@@ -19,18 +19,19 @@ describe("headless CLI", () => {
     expect(output.locale).toBe("zh");
     expect(output.map).toEqual(
       expect.arrayContaining([
+        expect.objectContaining({ id: "crossroads" }),
         expect.objectContaining({ id: "gate" }),
         expect.objectContaining({ id: "summit" }),
       ]),
     );
-    expect(output.observation.hand[0].name).toBe("打击");
-    expect(output.observation.log[0]).toContain("进入");
+    expect(output.observation.nextNodes[0].id).toBe("gate");
+    expect(output.observation.log[0]).toContain("入口");
 
     const snapshot = renderSnapshot(7, "zh");
     expect(snapshot).toContain("种子: 7");
-    expect(snapshot).toContain("阶段: 战斗");
-    expect(snapshot).toContain("节点: 城门 (战斗)");
-    expect(snapshot).toContain("- 进入 城门（战斗）。");
+    expect(snapshot).toContain("阶段: 地图");
+    expect(snapshot).toContain("节点: 岔路口 (起点)");
+    expect(snapshot).toContain("- 来到入口。请选择第一条路径。");
     expect(snapshot).toContain("最近事件:");
   });
 
@@ -39,17 +40,20 @@ describe("headless CLI", () => {
     const lines = snapshot.split("\n");
 
     expect(snapshot).toContain("地图:");
-    expect(lines).toContain("1. ▶ 战 城门");
-    expect(lines).toContain("2. → 精 熔炉");
-    expect(lines).toContain("   → 战 大厅");
-    expect(lines).toContain("3. · 营 营地");
-    expect(lines).toContain("   · 商 集市");
-    expect(lines).toContain("4. · 首 顶峰");
+    expect(snapshot).toContain("◎");
+    expect(snapshot).toContain("1●");
+    expect(snapshot).toContain("2◆");
+    expect(snapshot).toContain("⌂");
+    expect(snapshot).toContain("$");
+    expect(snapshot).toContain("★");
+    expect(lines).toContain("路径：");
+    expect(lines).toContain("1. 城门 (战斗)");
+    expect(lines).toContain("2. 熔炉 (精英)");
   });
 
   test("step applies a single action after replaying prior actions", () => {
     const observe = JSON.parse(
-      runHeadless(["--json", "observe", "--seed", "9", "--actions", JSON.stringify([{ type: "endTurn" }])]),
+      runHeadless(["--json", "observe", "--seed", "9", "--actions", JSON.stringify([{ type: "choosePath", nodeId: "gate" }])]),
     );
     const output = JSON.parse(
       runHeadless([
@@ -58,25 +62,25 @@ describe("headless CLI", () => {
         "--seed",
         "9",
         "--actions",
-        JSON.stringify([{ type: "endTurn" }]),
+        JSON.stringify([{ type: "choosePath", nodeId: "gate" }]),
         "--action",
-        JSON.stringify({ type: "playCard", handIndex: 0 }),
+        JSON.stringify({ type: "endTurn" }),
       ]),
     );
 
     expect(output.command).toBe("step");
     expect(output.seed).toBe(9);
-    expect(output.previousActions).toEqual([{ type: "endTurn" }]);
-    expect(output.action.type).toBe("playCard");
-    expect(output.actions).toEqual([{ type: "endTurn" }, { type: "playCard", handIndex: 0 }]);
+    expect(output.previousActions).toEqual([{ type: "choosePath", nodeId: "gate" }]);
+    expect(output.action.type).toBe("endTurn");
+    expect(output.actions).toEqual([{ type: "choosePath", nodeId: "gate" }, { type: "endTurn" }]);
     expect(output.state.phase).toBe("combat");
     expect(output.observation).not.toEqual(observe.observation);
   });
 
   test("observe and replay produce consistent end state and trace", () => {
     const actions = [
+      { type: "choosePath", nodeId: "gate" },
       { type: "endTurn" },
-      { type: "playCard", handIndex: 0 },
     ];
     const observe = JSON.parse(
       runHeadless(["--json", "observe", "--seed", "9", "--actions", JSON.stringify(actions)]),
@@ -183,9 +187,9 @@ describe("headless CLI", () => {
         "--seed",
         "9",
         "--action",
-        JSON.stringify({ type: "playCard", handIndex: 99 }),
+        JSON.stringify({ type: "choosePath", nodeId: "bogus" }),
       ]),
-    ).toThrow("hand index 99 is not available");
+    ).toThrow("node bogus is not reachable from crossroads");
 
     expect(() =>
       runHeadless([
@@ -194,8 +198,8 @@ describe("headless CLI", () => {
         "--seed",
         "9",
         "--actions",
-        JSON.stringify([{ type: "choosePath", nodeId: "market" }]),
+        JSON.stringify([{ type: "playCard", handIndex: 0 }]),
       ]),
-    ).toThrow("path choices are only available on the map");
+    ).toThrow("cards can only be played during combat");
   });
 });

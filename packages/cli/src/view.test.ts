@@ -2,13 +2,13 @@ import { sampleContent } from "@towerlab/content";
 import type { Observation } from "@towerlab/core";
 import { describe, expect, test } from "vitest";
 
-import { deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getRecentLogView, createMapListEntries } from "./view.js";
+import { createMapTreeRows, deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getRecentLogView } from "./view.js";
 
 describe("cli view helpers", () => {
-  test("map view marks current node and reachable next nodes outside map phase", () => {
+  test("map view shows a branching start node with numbered opening choices", () => {
     const observation: Observation = {
       seed: 7,
-      phase: "combat",
+      phase: "map",
       hp: 80,
       maxHp: 80,
       gold: 0,
@@ -16,56 +16,27 @@ describe("cli view helpers", () => {
       currentNode: sampleContent.map[0],
       relics: [],
       log: [],
-      energy: 3,
-      block: 0,
-      hand: [],
-      drawPileCount: 0,
-      discardPileCount: 0,
-      enemy: {
-        id: "sentry",
-        name: "Sentry",
-        hp: 24,
-        maxHp: 24,
-        block: 0,
-        intent: { kind: "attack", description: "Jab for 5", damage: 5 },
-      },
+      nextNodes: [sampleContent.map[1], sampleContent.map[2]],
     };
 
-    const lines = formatMapLines(createMapListEntries(sampleContent.map, observation, deriveVisitedNodeIds(sampleContent.map, [])), "en");
+    const tree = formatMapLines(createMapTreeRows(sampleContent.map, observation, deriveVisitedNodeIds(sampleContent.map, []))).join("\n");
 
-    expect(lines).toContain("1. ▶ F Gate");
-    expect(lines).toContain("2. → E Forge");
-    expect(lines).toContain("   → F Hall");
+    expect(tree).toContain("◎");
+    expect(tree).toContain("1●");
+    expect(tree).toContain("2◆");
+    expect(tree).toContain("⌂");
+    expect(tree).toContain("$");
+    expect(tree).toContain("★");
   });
 
-  test("map view numbers selectable nodes during map phase", () => {
+  test("map view marks current, future, and closed branches after choosing a path", () => {
     const observation: Observation = {
       seed: 7,
-      phase: "map",
+      phase: "combat",
       hp: 80,
       maxHp: 80,
       gold: 18,
       floor: 1,
-      currentNode: sampleContent.map[0],
-      relics: [],
-      log: [],
-      nextNodes: [sampleContent.map[2], sampleContent.map[1]],
-    };
-
-    const lines = formatMapLines(createMapListEntries(sampleContent.map, observation, deriveVisitedNodeIds(sampleContent.map, [])), "en");
-
-    expect(lines).toContain("2. [1] E Forge");
-    expect(lines).toContain("   [2] F Hall");
-  });
-
-  test("map view marks passed and closed branches once a path is chosen", () => {
-    const observation: Observation = {
-      seed: 7,
-      phase: "combat",
-      hp: 70,
-      maxHp: 80,
-      gold: 18,
-      floor: 2,
       currentNode: sampleContent.map[1],
       relics: [],
       log: [],
@@ -84,21 +55,19 @@ describe("cli view helpers", () => {
       },
     };
 
-    const lines = formatMapLines(
-      createMapListEntries(
+    const tree = formatMapLines(
+      createMapTreeRows(
         sampleContent.map,
         observation,
-        deriveVisitedNodeIds(sampleContent.map, [{ type: "choosePath", nodeId: "hall" }]),
+        deriveVisitedNodeIds(sampleContent.map, [{ type: "choosePath", nodeId: "gate" }]),
       ),
-      "en",
-    );
+    ).join("\n");
 
-    expect(lines).toContain("1. ✓ F Gate");
-    expect(lines).toContain("2. ▶ F Hall");
-    expect(lines).toContain("   × E Forge");
-    expect(lines).toContain("3. → R Camp");
-    expect(lines).toContain("   → S Market");
-    expect(lines).toContain("4. · B Summit");
+    expect(tree).toContain("◎");
+    expect(tree).toContain("●");
+    expect(tree).toContain("⌂");
+    expect(tree).toContain("$");
+    expect(tree).toContain("★");
   });
 
   test("recent log view truncates older entries and reports hidden count", () => {

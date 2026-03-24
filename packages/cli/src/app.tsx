@@ -8,12 +8,13 @@ import {
   formatNodeLabel,
   formatText,
   localizeErrorMessage,
+  localizeNodeKind,
   localizeObservation,
   localizePhaseLabel,
   text,
   type Locale,
 } from "./i18n.js";
-import { createMapListEntries, deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getMapLegendLines, getRecentLogView } from "./view.js";
+import { createMapTreeRows, deriveVisitedNodeIds, getEarlierEventsLine, getRecentLogView, type MapTreeCell } from "./view.js";
 
 export interface AppProps {
   seed: number;
@@ -29,9 +30,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const [error, setError] = useState<string | null>(null);
   const view = localizeObservation(observeRun(sampleContent, state), locale);
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
-  const isSideBySideLayout = columns >= 76;
-  const sidebarWidth = isSideBySideLayout ? Math.min(34, Math.max(26, Math.floor(columns * 0.35))) : undefined;
-  const showRecentLog = isSideBySideLayout || rows >= 28;
+  const showRecentLog = rows >= 28;
   const recentLogLimit = rows >= 30 ? 5 : rows >= 24 ? 4 : 3;
 
   const runAction = (action: RunAction) => {
@@ -145,41 +144,15 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
         </Text>
       </Box>
 
-      <Box marginTop={1} flexDirection={isSideBySideLayout ? "row" : "column"} flexGrow={1} alignItems="stretch" overflow="hidden">
-        <Box
-          flexGrow={1}
-          flexBasis={0}
-          marginRight={isSideBySideLayout ? 1 : 0}
-          marginBottom={isSideBySideLayout ? 0 : 1}
-          borderStyle="round"
-          borderColor="yellow"
-          paddingX={1}
-          flexDirection="column"
-          overflow="hidden"
-        >
-          <PhaseView observation={view} locale={locale} />
-        </Box>
-
-        <Box width={sidebarWidth} flexGrow={0} flexShrink={0} flexDirection="column" overflow="hidden">
-          <Box borderStyle="round" borderColor="magenta" paddingX={1} flexDirection="column" flexShrink={0} overflow="hidden">
-            <MapPanel observation={view} actions={actions} locale={locale} />
-          </Box>
-
-          {showRecentLog ? (
-            <Box
-              marginTop={1}
-              borderStyle="round"
-              borderColor="green"
-              paddingX={1}
-              flexDirection="column"
-              flexGrow={1}
-              overflow="hidden"
-            >
-              <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
-            </Box>
-          ) : null}
-        </Box>
+      <Box marginTop={1} borderStyle="round" borderColor="yellow" paddingX={1} flexDirection="column" flexGrow={1} overflow="hidden">
+        <PhaseView observation={view} actions={actions} locale={locale} />
       </Box>
+
+      {showRecentLog ? (
+        <Box marginTop={1} borderStyle="round" borderColor="green" paddingX={1} flexDirection="column" flexShrink={0} overflow="hidden">
+          <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
+        </Box>
+      ) : null}
 
       <Box marginTop={1} flexDirection="column" flexShrink={0} overflow="hidden">
         <Controls observation={view} locale={locale} />
@@ -218,28 +191,69 @@ function useTerminalDimensions(stdout: NodeJS.WriteStream): { columns: number; r
   return dimensions;
 }
 
-function PhaseView({ observation, locale }: { observation: Observation; locale: Locale }) {
+function PhaseView({ observation, actions, locale }: { observation: Observation; actions: RunAction[]; locale: Locale }) {
+  return (
+    <>
+      <MapTreeView observation={observation} actions={actions} locale={locale} />
+      <Box marginTop={1} flexDirection="column" overflow="hidden">
+        <PhaseBody observation={observation} locale={locale} />
+      </Box>
+    </>
+  );
+}
+
+function MapTreeView({ observation, actions, locale }: { observation: Observation; actions: RunAction[]; locale: Locale }) {
+  const visitedNodeIds = deriveVisitedNodeIds(sampleContent.map, actions);
+  const mapRows = createMapTreeRows(sampleContent.map, observation, visitedNodeIds);
+
+  return (
+    <>
+      <Text bold color="magenta">
+        {text(locale, "map")}
+      </Text>
+      {mapRows.map((row, rowIndex) => (
+        <Text key={rowIndex} wrap="truncate-end">
+          {row.map((cell, cellIndex) => (
+            <Text
+              key={`${rowIndex}-${cellIndex}`}
+              color={getMapCellColor(cell)}
+              dimColor={cell.status === "closed" || cell.status === "past" || cell.status === "connector"}
+              bold={cell.status === "current" || cell.status === "next"}
+            >
+              {cell.text}
+            </Text>
+          ))}
+        </Text>
+      ))}
+    </>
+  );
+}
+
+function PhaseBody({ observation, locale }: { observation: Observation; locale: Locale }) {
   if (observation.phase === "combat") {
     return (
       <>
         <Text bold color="yellow">
           {text(locale, "combat")}
         </Text>
-        <Text>
+        <Text wrap="truncate-end">
           {text(locale, "enemy")} {observation.enemy.name}: {observation.enemy.hp}/{observation.enemy.maxHp} {text(locale, "hp")}
           {observation.enemy.block > 0 ? `${locale === "zh" ? `，${observation.enemy.block} 点${text(locale, "block")}` : `, ${observation.enemy.block} ${text(locale, "block").toLowerCase()}`}` : ""}
         </Text>
-        <Text>
+        <Text wrap="truncate-end">
           {text(locale, "intent")}: {observation.enemy.intent.description}
         </Text>
-        <Text>
+        <Text wrap="truncate-end">
           {text(locale, "energy")} {observation.energy} | {text(locale, "block")} {observation.block} | {text(locale, "draw")}{" "}
           {observation.drawPileCount} | {text(locale, "discard")} {observation.discardPileCount}
+        </Text>
+        <Text dimColor wrap="truncate-end">
+          {text(locale, "node")}: {formatNodeLabel(observation.currentNode, locale)}
         </Text>
         <Text bold>{text(locale, "hand")}</Text>
         {observation.hand.length > 0 ? (
           observation.hand.map((card, index) => (
-            <Text key={`${index}-${card.id}`} color={card.cost > observation.energy ? "gray" : undefined}>
+            <Text key={`${index}-${card.id}`} color={card.cost > observation.energy ? "gray" : undefined} wrap="truncate-end">
               {index + 1}. {card.name} [{card.cost}] {card.description}
             </Text>
           ))
@@ -253,12 +267,9 @@ function PhaseView({ observation, locale }: { observation: Observation; locale: 
   if (observation.phase === "map") {
     return (
       <>
-        <Text bold color="yellow">
-          {text(locale, "map")}
-        </Text>
-        <Text>{text(locale, "chooseNextNode")}</Text>
+        <Text wrap="truncate-end">{text(locale, "chooseNextNode")}</Text>
         {observation.nextNodes.map((node, index) => (
-          <Text key={node.id}>
+          <Text key={node.id} wrap="truncate-end">
             {index + 1}. {formatNodeLabel(node, locale)}
           </Text>
         ))}
@@ -272,13 +283,13 @@ function PhaseView({ observation, locale }: { observation: Observation; locale: 
         <Text bold color="yellow">
           {text(locale, "rest")}
         </Text>
-        <Text>{text(locale, "chooseCampfire")}</Text>
+        <Text wrap="truncate-end">{text(locale, "chooseCampfire")}</Text>
         {observation.restOptions.map((option, index) => (
-          <Text key={option.id}>
+          <Text key={option.id} wrap="truncate-end">
             {index + 1}. {option.label} - {option.description}
           </Text>
         ))}
-        <Text dimColor>
+        <Text dimColor wrap="truncate-end">
           {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
         </Text>
       </>
@@ -291,9 +302,9 @@ function PhaseView({ observation, locale }: { observation: Observation; locale: 
         <Text bold color="yellow">
           {text(locale, "reward")}
         </Text>
-        <Text>{text(locale, "chooseReward")}</Text>
+        <Text wrap="truncate-end">{text(locale, "chooseReward")}</Text>
         {observation.cardChoices.map((card, index) => (
-          <Text key={card.id}>
+          <Text key={card.id} wrap="truncate-end">
             {index + 1}. {card.name} [{card.cost}] {card.description}
           </Text>
         ))}
@@ -311,14 +322,14 @@ function PhaseView({ observation, locale }: { observation: Observation; locale: 
         <Text bold color="yellow">
           {text(locale, "shop")}
         </Text>
-        <Text>{formatText(locale, "shopPrompt", { cost: observation.removeDeckCardCost })}</Text>
+        <Text wrap="truncate-end">{formatText(locale, "shopPrompt", { cost: observation.removeDeckCardCost })}</Text>
         {observation.forSale.map((card, index) => (
-          <Text key={card.id}>
+          <Text key={card.id} wrap="truncate-end">
             {index + 1}. {text(locale, "buy")} {card.name}
           </Text>
         ))}
         {observation.removableDeckCards.map((entry, index) => (
-          <Text key={`${entry.deckIndex}-${entry.card.id}`} color={canAffordRemove ? undefined : "gray"}>
+          <Text key={`${entry.deckIndex}-${entry.card.id}`} color={canAffordRemove ? undefined : "gray"} wrap="truncate-end">
             {observation.forSale.length + index + 1}. {text(locale, "remove")} {entry.card.name}{" "}
             {locale === "zh"
               ? `（牌组 #${entry.deckIndex + 1}，${observation.removeDeckCardCost} ${text(locale, "gold")}）`
@@ -328,7 +339,7 @@ function PhaseView({ observation, locale }: { observation: Observation; locale: 
         <Text color="yellow">
           {leaveIndex}. {text(locale, "leaveShop")}
         </Text>
-        <Text dimColor>
+        <Text dimColor wrap="truncate-end">
           {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
         </Text>
       </>
@@ -369,31 +380,6 @@ function Controls({ observation, locale }: { observation: Observation; locale: L
   }
 
   return <Text dimColor wrap="truncate-end">{text(locale, "controlsEnd")}</Text>;
-}
-
-function MapPanel({ observation, actions, locale }: { observation: Observation; actions: RunAction[]; locale: Locale }) {
-  const visitedNodeIds = deriveVisitedNodeIds(sampleContent.map, actions);
-  const mapEntries = createMapListEntries(sampleContent.map, observation, visitedNodeIds);
-  const mapLines = formatMapLines(mapEntries, locale);
-  const legendLines = getMapLegendLines(locale);
-
-  return (
-    <>
-      <Text bold color="magenta">
-        {text(locale, "map")}
-      </Text>
-      {legendLines.map((line) => (
-        <Text key={line} dimColor wrap="truncate-end">
-          {line}
-        </Text>
-      ))}
-      {mapLines.map((line) => (
-        <Text key={line} wrap="truncate-end">
-          {line}
-        </Text>
-      ))}
-    </>
-  );
 }
 
 function RecentLogPanel({ observation, locale, limit }: { observation: Observation; locale: Locale; limit: number }) {
@@ -439,4 +425,24 @@ function getErrorMessage(error: unknown, locale: Locale): string {
   }
 
   return localizeErrorMessage("unknown error", locale);
+}
+
+function getMapCellColor(cell: MapTreeCell): string | undefined {
+  if (cell.status === "current") {
+    return "green";
+  }
+
+  if (cell.status === "next") {
+    return "yellow";
+  }
+
+  if (cell.status === "future") {
+    return "white";
+  }
+
+  if (cell.status === "past" || cell.status === "closed" || cell.status === "connector") {
+    return "gray";
+  }
+
+  return undefined;
 }

@@ -47,6 +47,7 @@ const enemyNames: Dictionary = {
 
 const nodeNames = {
   en: {
+    crossroads: "Crossroads",
     gate: "Gate",
     hall: "Hall",
     forge: "Forge",
@@ -55,6 +56,7 @@ const nodeNames = {
     summit: "Summit",
   },
   zh: {
+    crossroads: "岔路口",
     gate: "城门",
     hall: "大厅",
     forge: "熔炉",
@@ -140,6 +142,7 @@ const localeText = {
     leaveShop: "Leave shop",
     log: "Log",
     map: "Map",
+    mapIconLegend: "{start} start  {battle} fight  {elite} elite  {rest} rest  {shop} shop  {boss} boss",
     mapLegendClosedLine: "{marker} closed",
     mapLegendCurrentLine: "{marker} current",
     mapLegendFutureLine: "{marker} future",
@@ -165,6 +168,7 @@ const localeText = {
     shopPrompt: "Buy, remove ({cost} gold each), or leave.",
     skipReward: "Skip reward",
     snapshotTitle: "TowerLab",
+    start: "start",
     theClimbComplete: "The climb is complete.",
     towerWon: "The tower won this run.",
     turnEnd: "end turn",
@@ -204,6 +208,7 @@ const localeText = {
     leaveShop: "离开商店",
     log: "日志",
     map: "地图",
+    mapIconLegend: "{start} 起点  {battle} 战斗  {elite} 精英  {rest} 营地  {shop} 商店  {boss} 首领",
     mapLegendClosedLine: "{marker} 已错过",
     mapLegendCurrentLine: "{marker} 当前",
     mapLegendFutureLine: "{marker} 未来",
@@ -229,6 +234,7 @@ const localeText = {
     shopPrompt: "可购买、移除（每次 {cost} 金币），或离开。",
     skipReward: "跳过奖励",
     snapshotTitle: "TowerLab",
+    start: "起点",
     theClimbComplete: "这次攀登已经完成。",
     towerWon: "这次攀登被高塔终结了。",
     turnEnd: "结束回合",
@@ -371,6 +377,10 @@ export function localizeNodeKind(kind: string, locale: Locale): string {
     return text(locale, "boss");
   }
 
+  if (kind === "start") {
+    return text(locale, "start");
+  }
+
   return kind;
 }
 
@@ -407,6 +417,10 @@ export function localizeNodeKindBadge(kind: string, locale: Locale): string {
     if (kind === "boss") {
       return "首";
     }
+
+    if (kind === "start") {
+      return "始";
+    }
   }
 
   if (kind === "battle") {
@@ -427,6 +441,10 @@ export function localizeNodeKindBadge(kind: string, locale: Locale): string {
 
   if (kind === "boss") {
     return "B";
+  }
+
+  if (kind === "start") {
+    return "S";
   }
 
   return kind.slice(0, 1).toUpperCase();
@@ -633,8 +651,9 @@ function localizeLogEntry(entry: string, locale: Locale): string {
   }
 
   const patterns: Array<[RegExp, (...groups: string[]) => string]> = [
-    [/^Entered (.+) \((battle|elite|rest|shop|boss)\)\.$/, (nodeId, kind) => `进入 ${localizeNodeName(nodeId, locale)}（${localizeNodeKind(kind, locale)}）。`],
-    [/^Moved to (.+) \((battle|elite|rest|shop|boss)\)\.$/, (nodeId, kind) => `前往 ${localizeNodeName(nodeId, locale)}（${localizeNodeKind(kind, locale)}）。`],
+    [/^Entered (.+) \((battle|elite|rest|shop|boss|start)\)\.$/, (nodeId, kind) => `进入 ${localizeNodeName(nodeId, locale)}（${localizeNodeKind(kind, locale)}）。`],
+    [/^Moved to (.+) \((battle|elite|rest|shop|boss|start)\)\.$/, (nodeId, kind) => `前往 ${localizeNodeName(nodeId, locale)}（${localizeNodeKind(kind, locale)}）。`],
+    [/^At the entrance\. Choose the first path\.$/, () => "来到入口。请选择第一条路径。"],
     [/^(.+) appears\. Intent: (.+)\.$/, (enemyName, intent) => `${localizeEnemyName(enemyName, locale)}出现。意图：${localizeIntentDescription(intent, locale)}。`],
     [/^Played (.+): (.+)\.$/, (cardName, details) => `打出${localizeCardName(cardName, locale)}：${details.split(", ").map((fragment) => localizeFragment(fragment, locale)).join("，")}。`],
     [/^Played (.+)\.$/, (cardName) => `打出${localizeCardName(cardName, locale)}。`],

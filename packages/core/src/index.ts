@@ -1,4 +1,4 @@
-export type NodeKind = "battle" | "elite" | "rest" | "shop" | "boss";
+export type NodeKind = "battle" | "elite" | "rest" | "shop" | "boss" | "start";
 export type RunPhase = "combat" | "map" | "rest" | "reward" | "shop" | "victory" | "defeat";
 export type RestOptionId = "recover" | "fortify";
 
@@ -252,6 +252,10 @@ export function createRun(content: RunContent, seed: number): RunState {
     log: [],
   };
 
+  if (firstNode.kind === "start") {
+    return appendLog(baseState, "At the entrance. Choose the first path.");
+  }
+
   return enterNode(content, appendLog(baseState, `Entered ${describeNode(firstNode)}.`), firstNode);
 }
 
@@ -468,7 +472,7 @@ function choosePath(content: RunContent, state: RunState, nodeId: string): RunSt
   const nextState = appendLog(
     {
       ...state,
-      floor: state.floor + 1,
+      floor: currentNode.kind === "start" ? state.floor : state.floor + 1,
       currentNodeId: nextNode.id,
       reward: undefined,
       shop: undefined,
@@ -714,6 +718,19 @@ function leaveShop(content: RunContent, state: RunState): RunState {
 }
 
 function enterNode(content: RunContent, state: RunState, node: MapNode): RunState {
+  if (node.kind === "start") {
+    return appendLog(
+      {
+        ...state,
+        phase: "map",
+        combat: undefined,
+        reward: undefined,
+        shop: undefined,
+      },
+      "Choose the next path.",
+    );
+  }
+
   if (node.kind === "rest") {
     return appendLog(
       {
@@ -1130,7 +1147,7 @@ function validateMap(content: RunContent): void {
 
     seenNodeIds.add(node.id);
 
-    if (node.kind === "rest" || node.kind === "shop") {
+    if (node.kind === "rest" || node.kind === "shop" || node.kind === "start") {
       if (node.encounterId) {
         throw new Error(`${node.kind} node ${node.id} must not define an encounterId`);
       }

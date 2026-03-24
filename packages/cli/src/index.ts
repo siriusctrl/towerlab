@@ -27,7 +27,7 @@ import {
   type Locale,
 } from "./i18n.js";
 import { BASELINE_POLICY_NAMES, getBaselinePolicy, type BaselinePolicyName } from "./policies.js";
-import { createMapListEntries, deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getMapLegendLines, getRecentLogView } from "./view.js";
+import { createMapTreeRows, deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getMapLegendLines, getRecentLogView } from "./view.js";
 
 export { App, type AppProps } from "./app.js";
 
@@ -543,7 +543,7 @@ export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE): s
 }
 
 function renderObservation(observation: Observation, locale: Locale, visitedNodeIds: string[] = []): string {
-  const mapSection = formatMapLines(createMapListEntries(sampleContent.map, observation, visitedNodeIds), locale);
+  const mapSection = formatMapLines(createMapTreeRows(sampleContent.map, observation, visitedNodeIds));
   const recentLog = getRecentLogView(observation.log);
   const mapLegendLines = getMapLegendLines(locale);
 

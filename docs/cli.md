@@ -23,7 +23,8 @@ Language can be selected with `--lang en|zh`.
 
 When stdout and stdin are attached to a TTY, `pnpm cli` starts the Ink interface.
 The TUI enters the terminal alternate screen, redraws on terminal resize, and restores the previous screen on exit.
-The layout also adapts between stacked and side-by-side panels based on terminal width.
+The opening state starts at a branching map crossroads instead of dropping straight into combat.
+The route tree is rendered inside the main play panel so combat, shop, and route context stay in one place.
 
 Controls:
 - combat: `1-9` play the indexed card, `e` ends the turn
@@ -34,19 +35,22 @@ Controls:
 - `q` quits
 - `r` restarts after victory or defeat
 
-## Map Panel
+## Route Tree
 
-The TUI and non-TTY snapshot both show the full tower map.
+The TUI and non-TTY snapshot both show the full tower as a compact branching tree.
 
 Markers:
-- `✓` nodes already taken on the current route
-- `▶` current node
-- `→` immediate next node when a path is not currently selectable
-- `[1]`, `[2]`, ... immediate map choices during map phase
-- `·` future nodes still reachable from the current route
-- `×` nodes that belong to branches the current run can no longer reach
+- `◎` start / crossroads
+- `●` normal fight
+- `◆` elite
+- `⌂` rest
+- `$` shop
+- `★` boss
+- gray nodes are already spent or no longer reachable
+- green is the current node
+- yellow numbered nodes are the current map choices
 
-The map is rendered from content data, not from renderer-local state.
+The tree is rendered from content data, not from renderer-local state.
 
 ## Recent Activity
 

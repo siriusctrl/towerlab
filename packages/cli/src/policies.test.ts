@@ -18,7 +18,7 @@ describe("baseline policies", () => {
   });
 
   it("greedy prefers the highest-damage playable combat card", () => {
-    const state = createRun(sampleContent, 7);
+    const state = applyAction(sampleContent, createRun(sampleContent, 7), { type: "choosePath", nodeId: "gate" });
     const action = choosePolicyAction("greedy", state);
     const view = observeCombat(state);
 
@@ -30,19 +30,19 @@ describe("baseline policies", () => {
   });
 
   it("greedy prefers the elite route from the opening map choice", () => {
-    const state = firstMapState(7);
+    const state = createRun(sampleContent, 7);
 
     expect(choosePolicyAction("greedy", state)).toEqual({ type: "choosePath", nodeId: "forge" });
   });
 
   it("heuristic prefers the shop route when gold is available", () => {
-    const state = hallMapState(7);
+    const state = gateMapState(7);
 
     expect(choosePolicyAction("heuristic", state)).toEqual({ type: "choosePath", nodeId: "market" });
   });
 
   it("heuristic removes a starter strike in shop before buying", () => {
-    const state = hallShopState(7);
+    const state = gateShopState(7);
     const action = choosePolicyAction("heuristic", state);
 
     if (action.type !== "removeDeckCard") {
@@ -54,12 +54,7 @@ describe("baseline policies", () => {
 });
 
 function firstMapState(seed: number): RunState {
-  let state = createRun(sampleContent, seed);
-  state = finishCombat(state);
-
-  if (state.phase === "reward") {
-    state = applyAction(sampleContent, state, { type: "skipReward" });
-  }
+  const state = createRun(sampleContent, seed);
 
   if (state.phase !== "map") {
     throw new Error(`expected map phase, received ${state.phase}`);
@@ -68,9 +63,9 @@ function firstMapState(seed: number): RunState {
   return state;
 }
 
-function hallMapState(seed: number): RunState {
+function gateMapState(seed: number): RunState {
   let state = firstMapState(seed);
-  state = applyAction(sampleContent, state, { type: "choosePath", nodeId: "hall" });
+  state = applyAction(sampleContent, state, { type: "choosePath", nodeId: "gate" });
   state = finishCombat(state);
 
   if (state.phase === "reward") {
@@ -84,8 +79,8 @@ function hallMapState(seed: number): RunState {
   return state;
 }
 
-function hallShopState(seed: number): RunState {
-  const state = applyAction(sampleContent, hallMapState(seed), { type: "choosePath", nodeId: "market" });
+function gateShopState(seed: number): RunState {
+  const state = applyAction(sampleContent, gateMapState(seed), { type: "choosePath", nodeId: "market" });
 
   if (state.phase !== "shop") {
     throw new Error(`expected shop phase, received ${state.phase}`);

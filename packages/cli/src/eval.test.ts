@@ -102,14 +102,14 @@ describe("eval helper", () => {
   test("runSeedWithPolicy reports max-step exhaustion as an error", () => {
     const result = runSeedWithPolicy({
       policyName: "stall-policy",
-      policy: () => ({ type: "endTurn" }),
+      policy: deterministicPolicy,
       seed: 7,
       maxSteps: 1,
     });
 
     expect(result.outcome).toBe("error");
     expect(result.error).toBe("max steps reached (1)");
-    expect(result.actions).toEqual([{ type: "endTurn" }]);
+    expect(result.actions).toEqual([{ type: "choosePath", nodeId: "gate" }]);
     expect(result.steps).toBe(1);
   });
 });

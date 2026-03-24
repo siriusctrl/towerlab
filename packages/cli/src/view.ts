@@ -1,77 +1,71 @@
 import type { MapNode, Observation } from "@towerlab/core";
 
-import { localizeNodeKindBadge, localizeNodeName, formatText, type Locale } from "./i18n.js";
+import { formatText, localizeNodeKind, type Locale } from "./i18n.js";
 
 export const RECENT_LOG_LIMIT = 4;
 
-export type MapCellStatus = "closed" | "current" | "future" | "next" | "past";
+const MAP_SLOT_SPACING = 4;
+const MAP_CELL_WIDTH = 3;
 
-export type MapListEntry = {
-  depth: number;
-  cells: Array<{
-    marker: string;
-    node: MapNode;
-    order: number;
-    status: MapCellStatus;
-  }>;
+export type MapCellStatus = "closed" | "connector" | "current" | "empty" | "future" | "next" | "past";
+
+export type MapTreeCell = {
+  status: MapCellStatus;
+  text: string;
 };
+
+export type MapTreeRow = MapTreeCell[];
 
 export type RecentLogView = {
   entries: string[];
   hiddenCount: number;
 };
 
-export function createMapListEntries(map: MapNode[], observation: Observation, visitedNodeIds: string[] = []): MapListEntry[] {
-  const layers = buildMapLayers(map);
-  const nextNodes = getNextNodes(map, observation);
-  const nextNodeOrder = new Map(nextNodes.map((node, index) => [node.id, index]));
-  const visitedSet = new Set(visitedNodeIds);
-  const futureNodeIds = collectDescendantNodeIds(map, observation.currentNode.id);
+type MapNodeView = {
+  node: MapNode;
+  position: number;
+  status: Extract<MapCellStatus, "closed" | "current" | "future" | "next" | "past">;
+  nextOrder?: number;
+};
 
-  return layers.map((nodes, depth) => ({
-    depth,
-    cells: nodes
-      .map((node, index) => {
-        const nextOrder = nextNodeOrder.get(node.id);
-        const status = getNodeStatus(node.id, observation.currentNode.id, nextOrder, observation.phase, visitedSet, futureNodeIds);
+export function createMapTreeRows(map: MapNode[], observation: Observation, visitedNodeIds: string[] = []): MapTreeRow[] {
+  const layerViews = buildLayerViews(map, observation, visitedNodeIds);
+  const rows: MapTreeRow[] = [];
 
-        return {
-          marker: getNodeMarker(status, nextOrder, observation.phase),
-          node,
-          order: nextOrder ?? nextNodes.length + index,
-          status,
-        };
-      })
-      .sort((left, right) => left.order - right.order),
-  }));
-}
+  for (let layerIndex = 0; layerIndex < layerViews.length; layerIndex += 1) {
+    const layer = layerViews[layerIndex];
+    rows.push(createNodeRow(layer));
 
-export function formatMapLines(entries: MapListEntry[], locale: Locale): string[] {
-  const lines: string[] = [];
-
-  for (const entry of entries) {
-    const prefix = `${entry.depth + 1}. `;
-    const indent = " ".repeat(prefix.length);
-
-    entry.cells.forEach((cell, index) => {
-      const linePrefix = index === 0 ? prefix : indent;
-      lines.push(`${linePrefix}${formatMapCell(cell, locale)}`);
-    });
+    const nextLayer = layerViews[layerIndex + 1];
+    if (nextLayer) {
+      rows.push(createConnectorRow(layer, nextLayer));
+    }
   }
 
-  return lines;
+  return rows;
+}
+
+export function formatMapLines(rows: MapTreeRow[]): string[] {
+  return rows.map((row) => row.map((cell) => cell.text).join("").replace(/\s+$/u, ""));
 }
 
 export function getMapLegendLines(locale: Locale): string[] {
-  const parts = [
-    formatText(locale, "mapLegendPastLine", { marker: "✓" }),
-    formatText(locale, "mapLegendCurrentLine", { marker: "▶" }),
-    formatText(locale, "mapLegendNextLine", { marker: "[n] / →" }),
-    formatText(locale, "mapLegendFutureLine", { marker: "·" }),
-    formatText(locale, "mapLegendClosedLine", { marker: "×" }),
+  return [
+    formatText(locale, "mapIconLegend", {
+      start: "◎",
+      battle: "●",
+      elite: "◆",
+      rest: "⌂",
+      shop: "$",
+      boss: "★",
+    }),
+    [
+      formatText(locale, "mapLegendPastLine", { marker: "灰" }),
+      formatText(locale, "mapLegendCurrentLine", { marker: "绿" }),
+      formatText(locale, "mapLegendNextLine", { marker: "黄" }),
+      formatText(locale, "mapLegendFutureLine", { marker: "亮" }),
+    ].join("  "),
   ];
-
-  return [parts.slice(0, 3).join("  "), parts.slice(3).join("  ")];
 }
 
 export function getRecentLogView(log: string[], limit = RECENT_LOG_LIMIT): RecentLogView {
@@ -109,6 +103,166 @@ export function deriveVisitedNodeIds(map: MapNode[], actions: Array<{ type: stri
   }
 
   return visitedNodeIds;
+}
+
+function buildLayerViews(map: MapNode[], observation: Observation, visitedNodeIds: string[]): MapNodeView[][] {
+  const layers = buildMapLayers(map);
+  const nextNodes = getNextNodes(map, observation);
+  const nextNodeOrder = new Map(nextNodes.map((node, index) => [node.id, index]));
+  const visitedSet = new Set(visitedNodeIds);
+  const futureNodeIds = collectDescendantNodeIds(map, observation.currentNode.id);
+  const maxNodes = Math.max(...layers.map((layer) => layer.length), 1);
+  const slotCount = getSlotCount(maxNodes);
+
+  return layers.map((nodes) => {
+    const positionedNodes = nodes
+      .map((node, index) => {
+        const nextOrder = nextNodeOrder.get(node.id);
+        const status = getNodeStatus(node.id, observation.currentNode.id, nextOrder, observation.phase, visitedSet, futureNodeIds);
+
+        return {
+          node,
+          position: getLayerPosition(index, nodes.length, slotCount),
+          status,
+          nextOrder,
+        };
+      })
+      .sort((left, right) => left.position - right.position);
+
+    return positionedNodes;
+  });
+}
+
+function createNodeRow(layer: MapNodeView[]): MapTreeRow {
+  const maxPosition = layer.reduce((value, node) => Math.max(value, node.position), 0);
+  const cells = Array.from({ length: maxPosition + 1 }, () => createCell(" ".repeat(MAP_CELL_WIDTH), "empty"));
+
+  for (const node of layer) {
+    cells[node.position] = createCell(centerText(getNodeToken(node), MAP_CELL_WIDTH), node.status);
+  }
+
+  return cells;
+}
+
+function createConnectorRow(layer: MapNodeView[], nextLayer: MapNodeView[]): MapTreeRow {
+  const maxPosition = Math.max(
+    layer.reduce((value, node) => Math.max(value, node.position), 0),
+    nextLayer.reduce((value, node) => Math.max(value, node.position), 0),
+  );
+  const cells = Array.from({ length: maxPosition + 1 }, () => createCell(" ".repeat(MAP_CELL_WIDTH), "empty"));
+  const nextById = new Map(nextLayer.map((node) => [node.node.id, node]));
+
+  for (const node of layer) {
+    for (const nextId of node.node.nextIds) {
+      const target = nextById.get(nextId);
+
+      if (!target) {
+        continue;
+      }
+
+      drawConnector(cells, node.position, target.position);
+    }
+  }
+
+  return cells;
+}
+
+function drawConnector(cells: MapTreeRow, from: number, to: number): void {
+  if (from === to) {
+    mergeConnector(cells, from, "│");
+    return;
+  }
+
+  const start = Math.min(from, to);
+  const end = Math.max(from, to);
+  const leftChar = from < to ? "╲" : "╱";
+  const rightChar = from < to ? "╱" : "╲";
+
+  if (end - start === 1) {
+    mergeConnector(cells, from < to ? end : start, leftChar);
+    return;
+  }
+
+  mergeConnector(cells, start + 1, leftChar);
+
+  for (let position = start + 2; position < end - 1; position += 1) {
+    mergeConnector(cells, position, "─");
+  }
+
+  mergeConnector(cells, end - 1, rightChar);
+}
+
+function mergeConnector(cells: MapTreeRow, position: number, char: string): void {
+  const cell = cells[position];
+
+  if (!cell) {
+    return;
+  }
+
+  const existing = cell.text.trim();
+  const mergedChar = existing.length > 0 && existing !== char ? "┼" : char;
+  cells[position] = createCell(centerText(mergedChar, MAP_CELL_WIDTH), "connector");
+}
+
+function getNodeToken(node: MapNodeView): string {
+  const icon = getNodeIcon(node.node.kind);
+
+  if (node.status === "next" && typeof node.nextOrder === "number") {
+    return `${Math.min(node.nextOrder + 1, 9)}${icon}`;
+  }
+
+  return icon;
+}
+
+function getNodeIcon(kind: MapNode["kind"]): string {
+  if (kind === "start") {
+    return "◎";
+  }
+
+  if (kind === "battle") {
+    return "●";
+  }
+
+  if (kind === "elite") {
+    return "◆";
+  }
+
+  if (kind === "rest") {
+    return "⌂";
+  }
+
+  if (kind === "shop") {
+    return "$";
+  }
+
+  return "★";
+}
+
+function createCell(text: string, status: MapCellStatus): MapTreeCell {
+  return { text, status };
+}
+
+function centerText(value: string, width: number): string {
+  if (value.length >= width) {
+    return value.slice(0, width);
+  }
+
+  const totalPadding = width - value.length;
+  const leftPadding = Math.floor(totalPadding / 2);
+  const rightPadding = totalPadding - leftPadding;
+  return `${" ".repeat(leftPadding)}${value}${" ".repeat(rightPadding)}`;
+}
+
+function getSlotCount(maxNodes: number): number {
+  return maxNodes <= 1 ? 1 : (maxNodes - 1) * MAP_SLOT_SPACING + 1;
+}
+
+function getLayerPosition(index: number, nodeCount: number, slotCount: number): number {
+  if (nodeCount <= 1) {
+    return Math.floor(slotCount / 2);
+  }
+
+  return Math.round((index * (slotCount - 1)) / (nodeCount - 1));
 }
 
 function buildMapLayers(map: MapNode[]): MapNode[][] {
@@ -182,10 +336,6 @@ function getNextNodes(map: MapNode[], observation: Observation): MapNode[] {
   return observation.currentNode.nextIds.map((nodeId) => nodeById.get(nodeId)).filter((node): node is MapNode => node !== undefined);
 }
 
-function formatMapCell(cell: MapListEntry["cells"][number], locale: Locale): string {
-  return `${cell.marker} ${localizeNodeKindBadge(cell.node.kind, locale)} ${localizeNodeName(cell.node.id, locale)}`;
-}
-
 function collectDescendantNodeIds(map: MapNode[], currentNodeId: string): Set<string> {
   const nodeById = new Map(map.map((node) => [node.id, node]));
   const descendants = new Set<string>();
@@ -215,7 +365,7 @@ function getNodeStatus(
   phase: Observation["phase"],
   visitedSet: Set<string>,
   futureNodeIds: Set<string>,
-): MapCellStatus {
+): Extract<MapCellStatus, "closed" | "current" | "future" | "next" | "past"> {
   if (nodeId === currentNodeId) {
     return "current";
   }
@@ -235,22 +385,15 @@ function getNodeStatus(
   return visitedSet.size > 0 || phase !== "combat" ? "closed" : "future";
 }
 
-function getNodeMarker(status: MapCellStatus, nextOrder: number | undefined, phase: Observation["phase"]): string {
-  if (status === "current") {
-    return "▶";
-  }
+export function getMapStatusSummary(locale: Locale): string {
+  return [
+    formatText(locale, "mapLegendPastLine", { marker: "gray" }),
+    formatText(locale, "mapLegendCurrentLine", { marker: "green" }),
+    formatText(locale, "mapLegendNextLine", { marker: "yellow" }),
+    formatText(locale, "mapLegendFutureLine", { marker: "bright" }),
+  ].join("  ");
+}
 
-  if (status === "next") {
-    return phase === "map" && nextOrder !== undefined ? `[${nextOrder + 1}]` : "→";
-  }
-
-  if (status === "past") {
-    return "✓";
-  }
-
-  if (status === "closed") {
-    return "×";
-  }
-
-  return "·";
+export function getNodeSummary(node: MapNode, locale: Locale): string {
+  return `${getNodeIcon(node.kind)} ${localizeNodeKind(node.kind, locale)}`;
 }
