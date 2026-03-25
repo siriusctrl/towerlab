@@ -1,6 +1,6 @@
 import type { MapNode, Observation } from "@towerlab/core";
 
-import { formatNodeLabel, formatText, localizeNodeKind, type Locale } from "./i18n.js";
+import { formatNodeLabel, formatText, localizeNodeKindBadge, type Locale } from "./i18n.js";
 
 export const RECENT_LOG_LIMIT = 4;
 
@@ -176,7 +176,7 @@ function appendTreeRows(
 ): void {
   const prefix = treeNode.path.length === 1 ? "" : createTreePrefix(ancestorHasMoreSiblings, hasMoreSiblings);
   const status = getNodeStatus(treeNode.path, activePath, nextNodeOrder);
-  const nodeLabel = `${getNodeStatusPrefix(status, nextNodeOrder.get(treeNode.node.id))}${getNodeIcon(treeNode.node.kind)} ${formatNodeLabel(treeNode.node, locale)}`;
+  const nodeLabel = `${getNodeStatusPrefix(status, nextNodeOrder.get(treeNode.node.id))}${localizeNodeKindBadge(treeNode.node.kind, "en")} ${formatNodeLabel(treeNode.node, locale)}`;
   const row: MapTreeRow = [];
 
   if (prefix.length > 0) {
@@ -203,30 +203,6 @@ function createTreePrefix(ancestorHasMoreSiblings: boolean[], hasMoreSiblings: b
   return ancestorHasMoreSiblings
     .map((value) => (value ? "│   " : "    "))
     .join("") + (hasMoreSiblings ? "├── " : "└── ");
-}
-
-function getNodeIcon(kind: MapNode["kind"]): string {
-  if (kind === "start") {
-    return "S";
-  }
-
-  if (kind === "battle") {
-    return "F";
-  }
-
-  if (kind === "elite") {
-    return "E";
-  }
-
-  if (kind === "rest") {
-    return "R";
-  }
-
-  if (kind === "shop") {
-    return "$";
-  }
-
-  return "B";
 }
 
 function createCell(text: string, status: MapCellStatus): MapTreeCell {
@@ -317,36 +293,19 @@ function arePathsEqual(left: string[], right: string[]): boolean {
   return isPathPrefix(left, right);
 }
 
-export function getMapStatusSummary(locale: Locale): string {
-  return [
-    formatText(locale, "mapLegendCurrentLine", { marker: "@" }),
-    formatText(locale, "mapLegendNextLine", { marker: "1" }),
-    formatText(locale, "mapLegendPastLine", { marker: "+" }),
-    formatText(locale, "mapLegendFutureLine", { marker: "." }),
-    formatText(locale, "mapLegendClosedLine", { marker: "x" }),
-  ].join("  ");
-}
 
-export function getNodeSummary(node: MapNode, locale: Locale): string {
-  return `${getNodeIcon(node.kind)} ${localizeNodeKind(node.kind, locale)}`;
-}
+const STATUS_PREFIXES: Record<MapNodeStatus, string> = {
+  current: "@",
+  next: "",
+  past: "+",
+  future: ".",
+  closed: "x",
+};
 
 function getNodeStatusPrefix(status: MapNodeStatus, nextOrder?: number): string {
-  if (status === "current") {
-    return "@";
-  }
-
   if (status === "next") {
     return String(Math.min((nextOrder ?? 0) + 1, 9));
   }
 
-  if (status === "past") {
-    return "+";
-  }
-
-  if (status === "future") {
-    return ".";
-  }
-
-  return "x";
+  return STATUS_PREFIXES[status];
 }

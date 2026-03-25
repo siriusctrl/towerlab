@@ -158,7 +158,6 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
 
   return (
     <Box flexDirection="column" width={columns} height={rows} overflow="hidden">
-      {/* Status Header */}
       <Box flexDirection="column" flexShrink={0} paddingX={1} overflow="hidden">
         <StatusBar observation={view} locale={locale} relicNames={relicNames} hpBarWidth={hpBarWidth} />
       </Box>
@@ -166,9 +165,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
         {"\u2500".repeat(ruleWidth)}
       </Text>
 
-      {/* Main Content + Sidebar */}
       <Box flexDirection="row" flexGrow={1} overflow="hidden">
-        {/* Left: Phase Content */}
         <Box flexDirection="column" flexGrow={1} paddingLeft={1} overflow="hidden">
           {!showSidebar && view.phase === "map" ? (
             <MapTreeView observation={view} actions={actions} locale={locale} />
@@ -181,7 +178,6 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
           ) : null}
         </Box>
 
-        {/* Right: Sidebar with Map + Log */}
         {showSidebar ? (
           <Box
             flexDirection="column"
@@ -204,7 +200,6 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
         ) : null}
       </Box>
 
-      {/* Bottom: Separator + Controls */}
       <Text dimColor wrap="truncate-end">
         {"\u2500".repeat(ruleWidth)}
       </Text>
@@ -633,22 +628,15 @@ function getErrorMessage(error: unknown, locale: Locale): string {
   return localizeErrorMessage("unknown error", locale);
 }
 
+const MAP_CELL_COLORS: Record<string, string | undefined> = {
+  current: "green",
+  next: "yellow",
+  future: "white",
+  past: "gray",
+  closed: "gray",
+  connector: "gray",
+};
+
 function getMapCellColor(cell: MapTreeCell): string | undefined {
-  if (cell.status === "current") {
-    return "green";
-  }
-
-  if (cell.status === "next") {
-    return "yellow";
-  }
-
-  if (cell.status === "future") {
-    return "white";
-  }
-
-  if (cell.status === "past" || cell.status === "closed" || cell.status === "connector") {
-    return "gray";
-  }
-
-  return undefined;
+  return MAP_CELL_COLORS[cell.status];
 }

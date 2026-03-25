@@ -10,253 +10,26 @@ import type {
   ShopObservation,
 } from "@towerlab/core";
 
+import {
+  cardDescriptions,
+  cardNames,
+  enemyNames,
+  intentDescriptions,
+  localeText,
+  nodeNames,
+  relicDescriptions,
+  relicNames,
+  restOptionDescriptions,
+  restOptionLabels,
+  type Dictionary,
+  type Locale,
+} from "./dictionaries.js";
+
+export type { Locale } from "./dictionaries.js";
+
 export const SUPPORTED_LOCALES = ["en", "zh"] as const;
 
-export type Locale = (typeof SUPPORTED_LOCALES)[number];
-
 export const DEFAULT_LOCALE: Locale = "en";
-
-type Dictionary = Record<string, string>;
-
-const cardNames: Dictionary = {
-  Strike: "打击",
-  Defend: "防御",
-  Surge: "突进",
-  "Quick Guard": "快速格挡",
-  "Punishing Hit": "惩戒一击",
-  "Heavy Blow": "重击",
-  Precision: "精准打击",
-};
-
-const cardDescriptions: Dictionary = {
-  "Deal 6 damage.": "造成 6 点伤害。",
-  "Gain 5 block.": "获得 5 点格挡。",
-  "Deal 4 damage. Gain 4 block.": "造成 4 点伤害。获得 4 点格挡。",
-  "Gain 7 block.": "获得 7 点格挡。",
-  "Deal 9 damage.": "造成 9 点伤害。",
-  "Deal 11 damage.": "造成 11 点伤害。",
-  "Deal 6 damage. Gain 2 block.": "造成 6 点伤害。获得 2 点格挡。",
-};
-
-const enemyNames: Dictionary = {
-  Sentry: "哨卫",
-  Crusher: "粉碎者",
-  "Forge Keeper": "熔炉守卫",
-  "Watch Core": "监视核心",
-};
-
-const nodeNames = {
-  en: {
-    crossroads: "Crossroads",
-    gate: "Gate",
-    hall: "Hall",
-    forge: "Forge",
-    restCamp: "Rest Camp",
-    market: "Market",
-    summit: "Summit",
-  },
-  zh: {
-    crossroads: "岔路口",
-    gate: "城门",
-    hall: "大厅",
-    forge: "熔炉",
-    restCamp: "营地",
-    market: "集市",
-    summit: "顶峰",
-  },
-} as const satisfies Record<Locale, Dictionary>;
-
-const intentDescriptions: Dictionary = {
-  "Jab for 5": "刺击 5 点",
-  "Brace for 6 block": "准备获得 6 点格挡",
-  "Lunge for 7": "猛冲造成 7 点",
-  "Crush for 8 and gain 4 block": "粉碎造成 8 点并获得 4 点格挡",
-  "Patch 6 HP": "恢复 6 点生命",
-  "Hammer for 12": "重锤造成 12 点",
-  "Smash for 10 and gain 4 block": "猛砸造成 10 点并获得 4 点格挡",
-  "Stabilize 8 HP": "稳定恢复 8 点生命",
-  "Crush for 14": "重击造成 14 点",
-  "Charge 8 block": "充能获得 8 点格挡",
-  "Pulse for 11": "脉冲造成 11 点",
-  "Overload for 14 and gain 5 block": "过载造成 14 点并获得 5 点格挡",
-};
-
-const relicNames: Dictionary = {
-  "Combat Focus": "战斗专注",
-  "Buckler Frame": "盾框",
-  "Reinforced Frame": "强化框架",
-  "Medicine Pack": "医疗包",
-  "Merchant Tag": "商人徽记",
-};
-
-const relicDescriptions: Dictionary = {
-  "Gain 1 extra energy at the start of each combat.": "每场战斗开始时额外获得 1 点能量。",
-  "Start each combat with +2 block.": "每场战斗开始时获得 2 点格挡。",
-  "Gain 12 max HP.": "获得 12 点最大生命。",
-  "Recover +3 HP from campfire recovery.": "在营火恢复时额外回复 3 点生命。",
-  "Shop cards cost 1 less.": "商店中的卡牌价格降低 1。",
-};
-
-const restOptionLabels: Dictionary = {
-  Recover: "恢复",
-  Fortify: "巩固",
-};
-
-const restOptionDescriptions: Dictionary = {
-  "Heal 18 HP.": "回复 18 点生命。",
-  "Gain 5 max HP and heal 5 HP.": "获得 5 点最大生命并回复 5 点生命。",
-};
-
-const localeText = {
-  en: {
-    battle: "battle",
-    block: "Block",
-    boss: "boss",
-    buy: "Buy",
-    chooseCampfire: "Choose a campfire action.",
-    chooseNextNode: "Choose the next node.",
-    chooseReward: "Choose one card reward, or skip.",
-    combat: "Combat",
-    cost: "Cost",
-    controlsCombat: "Controls: 1-9 play card, e end turn, q quit",
-    controlsEnd: "Controls: r restart, q quit",
-    controlsMap: "Controls: 1-9 choose path, q quit",
-    controlsRest: "Controls: 1-9 choose rest action, q quit",
-    controlsReward: "Controls: 1-9 choose reward, s skip, q quit",
-    controlsShop: "Controls: 1 buy, 2 remove, 0 leave, q quit",
-    controlsShopBuy: "Controls: 1-9 choose card to buy, b back, q quit",
-    controlsShopRemove: "Controls: a-z choose card to remove, b back, q quit",
-    shopBack: "Back",
-    deckRemoval: "Deck removal:",
-    defeat: "Defeat",
-    discard: "Discard",
-    draw: "Draw",
-    elite: "elite",
-    emptyHand: "Hand is empty.",
-    earlierEvents: "... {count} earlier events",
-    enemy: "Enemy",
-    energy: "Energy",
-    floor: "Floor",
-    gold: "Gold",
-    hand: "Hand",
-    hp: "HP",
-    inputError: "Input error",
-    intent: "Intent",
-    leaveShop: "Leave shop",
-    log: "Log",
-    map: "Map",
-    mapIconLegend: "{start} start  {battle} fight  {elite} elite  {rest} rest  {shop} shop  {boss} boss",
-    mapLegendClosedLine: "{marker} closed",
-    mapLegendCurrentLine: "{marker} current",
-    mapLegendFutureLine: "{marker} future",
-    mapLegendNextLine: "{marker} next",
-    mapLegendPastLine: "{marker} passed",
-    recentLog: "Recent Activity",
-    next: "Next",
-    node: "Node",
-    none: "None",
-    noRemovableCards: "No removable cards are available.",
-    outcome: "Outcome",
-    paths: "Paths:",
-    phase: "Phase",
-    pressRestart: "Press r to restart with the same seed or q to quit.",
-    quit: "quit",
-    relics: "Relics",
-    remove: "Remove",
-    removeCost: "gold each",
-    rest: "Rest",
-    reward: "Reward",
-    seed: "Seed",
-    shop: "Shop",
-    shopBuySection: "Buy",
-    shopDeckSlot: "(deck #{index})",
-    shopNoAffordableBuys: "You cannot afford any cards right now.",
-    shopNoAffordableRemovals: "You cannot afford deck removal right now.",
-    shopPrompt: "Buy, remove ({cost} gold each), or leave.",
-    shopRemoveSection: "Remove ({cost} gold)",
-    skipReward: "Skip reward",
-    snapshotTitle: "TowerLab",
-    start: "start",
-    theClimbComplete: "The climb is complete.",
-    towerWon: "The tower won this run.",
-    turnEnd: "end turn",
-    victory: "Victory",
-  },
-  zh: {
-    battle: "战斗",
-    block: "格挡",
-    boss: "首领",
-    buy: "购买",
-    chooseCampfire: "选择一项营火行动。",
-    chooseNextNode: "选择下一个节点。",
-    chooseReward: "选择一张奖励卡，或跳过。",
-    combat: "战斗",
-    cost: "费用",
-    controlsCombat: "操作：1-9 打出卡牌，e 结束回合，q 退出",
-    controlsEnd: "操作：r 以相同种子重新开始，q 退出",
-    controlsMap: "操作：1-9 选择路径，q 退出",
-    controlsRest: "操作：1-9 选择营火行动，q 退出",
-    controlsReward: "操作：1-9 选择奖励，s 跳过，q 退出",
-    controlsShop: "操作：1 购买，2 移除，0 离开商店，q 退出",
-    controlsShopBuy: "操作：1-9 选择待购买卡牌，b 返回，q 退出",
-    controlsShopRemove: "操作：a-z 选择移除卡牌，b 返回，q 退出",
-    shopBack: "返回",
-    deckRemoval: "移除卡牌：",
-    defeat: "失败",
-    discard: "弃牌堆",
-    draw: "抽牌堆",
-    elite: "精英",
-    emptyHand: "手牌为空。",
-    earlierEvents: "... 还有 {count} 条更早事件",
-    enemy: "敌人",
-    energy: "能量",
-    floor: "层数",
-    gold: "金币",
-    hand: "手牌",
-    hp: "生命",
-    inputError: "输入错误",
-    intent: "意图",
-    leaveShop: "离开商店",
-    log: "日志",
-    map: "地图",
-    mapIconLegend: "{start} 起点  {battle} 战斗  {elite} 精英  {rest} 营地  {shop} 商店  {boss} 首领",
-    mapLegendClosedLine: "{marker} 已错过",
-    mapLegendCurrentLine: "{marker} 当前",
-    mapLegendFutureLine: "{marker} 未来",
-    mapLegendNextLine: "{marker} 下一步",
-    mapLegendPastLine: "{marker} 已走过",
-    recentLog: "最近事件",
-    next: "后续节点",
-    node: "节点",
-    none: "无",
-    noRemovableCards: "当前没有可移除的卡牌。",
-    outcome: "结果",
-    paths: "路径：",
-    phase: "阶段",
-    pressRestart: "按 r 使用相同种子重新开始，或按 q 退出。",
-    quit: "退出",
-    relics: "遗物",
-    remove: "移除",
-    removeCost: "金币/次",
-    rest: "营火",
-    reward: "奖励",
-    seed: "种子",
-    shop: "商店",
-    shopBuySection: "购买",
-    shopDeckSlot: "（牌组 #{index}）",
-    shopNoAffordableBuys: "当前买不起任何卡牌。",
-    shopNoAffordableRemovals: "当前金币不足，无法移除卡牌。",
-    shopPrompt: "可购买、移除（每次 {cost} 金币），或离开。",
-    shopRemoveSection: "移除（{cost} 金币）",
-    skipReward: "跳过奖励",
-    snapshotTitle: "TowerLab",
-    start: "起点",
-    theClimbComplete: "这次攀登已经完成。",
-    towerWon: "这次攀登被高塔终结了。",
-    turnEnd: "结束回合",
-    victory: "胜利",
-  },
-} as const satisfies Record<Locale, Dictionary>;
 
 export function readLocale(args: string[]): Locale {
   for (let index = 0; index < args.length; index++) {
@@ -368,36 +141,22 @@ export function formatText(
   return value;
 }
 
+const nodeKindKeys: Record<string, keyof typeof localeText.en> = {
+  battle: "battle",
+  elite: "elite",
+  rest: "rest",
+  shop: "shop",
+  boss: "boss",
+  start: "start",
+};
+
 export function localizeNodeKind(kind: string, locale: Locale): string {
   if (locale === "en") {
     return kind;
   }
 
-  if (kind === "battle") {
-    return text(locale, "battle");
-  }
-
-  if (kind === "elite") {
-    return text(locale, "elite");
-  }
-
-  if (kind === "rest") {
-    return text(locale, "rest");
-  }
-
-  if (kind === "shop") {
-    return text(locale, "shop");
-  }
-
-  if (kind === "boss") {
-    return text(locale, "boss");
-  }
-
-  if (kind === "start") {
-    return text(locale, "start");
-  }
-
-  return kind;
+  const key = nodeKindKeys[kind];
+  return key ? text(locale, key) : kind;
 }
 
 export function localizeNodeName(nodeId: string, locale: Locale): string {
@@ -412,86 +171,28 @@ export function formatNodeLabel(
   return `${localizeNodeName(node.id, locale)} (${localizeNodeKind(node.kind, locale)})`;
 }
 
+const nodeKindBadges: Record<Locale, Record<string, string>> = {
+  en: { battle: "F", elite: "E", rest: "R", shop: "$", boss: "B", start: "S" },
+  zh: { battle: "战", elite: "精", rest: "营", shop: "商", boss: "首", start: "始" },
+};
+
 export function localizeNodeKindBadge(kind: string, locale: Locale): string {
-  if (locale === "zh") {
-    if (kind === "battle") {
-      return "战";
-    }
-
-    if (kind === "elite") {
-      return "精";
-    }
-
-    if (kind === "rest") {
-      return "营";
-    }
-
-    if (kind === "shop") {
-      return "商";
-    }
-
-    if (kind === "boss") {
-      return "首";
-    }
-
-    if (kind === "start") {
-      return "始";
-    }
-  }
-
-  if (kind === "battle") {
-    return "F";
-  }
-
-  if (kind === "elite") {
-    return "E";
-  }
-
-  if (kind === "rest") {
-    return "R";
-  }
-
-  if (kind === "shop") {
-    return "S";
-  }
-
-  if (kind === "boss") {
-    return "B";
-  }
-
-  if (kind === "start") {
-    return "S";
-  }
-
-  return kind.slice(0, 1).toUpperCase();
+  return nodeKindBadges[locale][kind] ?? kind.slice(0, 1).toUpperCase();
 }
 
+const phaseLabelKeys: Record<string, keyof typeof localeText.en> = {
+  combat: "combat",
+  map: "map",
+  rest: "rest",
+  reward: "reward",
+  shop: "shop",
+  victory: "victory",
+  defeat: "defeat",
+};
+
 export function localizePhaseLabel(phase: Observation["phase"], locale: Locale): string {
-  if (phase === "combat") {
-    return text(locale, "combat");
-  }
-
-  if (phase === "map") {
-    return text(locale, "map");
-  }
-
-  if (phase === "rest") {
-    return text(locale, "rest");
-  }
-
-  if (phase === "reward") {
-    return text(locale, "reward");
-  }
-
-  if (phase === "shop") {
-    return text(locale, "shop");
-  }
-
-  if (phase === "victory") {
-    return text(locale, "victory");
-  }
-
-  return text(locale, "defeat");
+  const key = phaseLabelKeys[phase];
+  return key ? text(locale, key) : text(locale, "defeat");
 }
 
 export function localizeErrorMessage(message: string, locale: Locale): string {

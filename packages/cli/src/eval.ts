@@ -69,72 +69,16 @@ export interface BatchSummary {
   metrics: BatchAggregateMetrics;
 }
 
-function isChoosePathAction(action: RunAction, legal: RunAction[]): action is { type: "choosePath"; nodeId: string } {
-  return action.type === "choosePath" && legal.some((candidate) => candidate.type === "choosePath" && candidate.nodeId === action.nodeId);
-}
-
-function isPlayCardAction(action: RunAction, legal: RunAction[]): action is { type: "playCard"; handIndex: number } {
-  return action.type === "playCard" && legal.some((candidate) => candidate.type === "playCard" && candidate.handIndex === action.handIndex);
-}
-
-function isChooseRestAction(action: RunAction, legal: RunAction[]): action is { type: "chooseRest"; optionId: "recover" | "fortify" } {
-  return (
-    action.type === "chooseRest" &&
-    legal.some((candidate) => candidate.type === "chooseRest" && candidate.optionId === action.optionId)
-  );
-}
-
-function isTakeRewardAction(action: RunAction, legal: RunAction[]): action is { type: "takeReward"; rewardIndex: number } {
-  return (
-    action.type === "takeReward" &&
-    legal.some((candidate) => candidate.type === "takeReward" && candidate.rewardIndex === action.rewardIndex)
-  );
-}
-
-function isBuyShopAction(action: RunAction, legal: RunAction[]): action is { type: "buyShop"; saleIndex: number } {
-  return action.type === "buyShop" && legal.some((candidate) => candidate.type === "buyShop" && candidate.saleIndex === action.saleIndex);
-}
-
-function isRemoveDeckCardAction(
-  action: RunAction,
-  legal: RunAction[],
-): action is { type: "removeDeckCard"; deckIndex: number } {
-  return (
-    action.type === "removeDeckCard" &&
-    legal.some((candidate) => candidate.type === "removeDeckCard" && candidate.deckIndex === action.deckIndex)
-  );
+function actionsMatch(a: RunAction, b: RunAction): boolean {
+  if (a.type !== b.type) return false;
+  const aKeys = Object.keys(a);
+  const bKeys = Object.keys(b);
+  if (aKeys.length !== bKeys.length) return false;
+  return aKeys.every((key) => (a as Record<string, unknown>)[key] === (b as Record<string, unknown>)[key]);
 }
 
 function isLegalAction(action: RunAction, legal: RunAction[]): boolean {
-  if (action.type === "endTurn" || action.type === "skipReward" || action.type === "leaveShop") {
-    return legal.some((candidate) => candidate.type === action.type);
-  }
-
-  if (action.type === "choosePath") {
-    return isChoosePathAction(action, legal);
-  }
-
-  if (action.type === "playCard") {
-    return isPlayCardAction(action, legal);
-  }
-
-  if (action.type === "chooseRest") {
-    return isChooseRestAction(action, legal);
-  }
-
-  if (action.type === "takeReward") {
-    return isTakeRewardAction(action, legal);
-  }
-
-  if (action.type === "buyShop") {
-    return isBuyShopAction(action, legal);
-  }
-
-  if (action.type === "removeDeckCard") {
-    return isRemoveDeckCardAction(action, legal);
-  }
-
-  return false;
+  return legal.some((candidate) => actionsMatch(action, candidate));
 }
 
 function mergePathChoices(a: Record<string, number>, b: Record<string, number>): Record<string, number> {

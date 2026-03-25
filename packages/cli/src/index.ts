@@ -97,10 +97,6 @@ type HeadlessResponse =
 const DEFAULT_SEED = 7;
 
 export function readSeed(args: string[], locale: Locale = DEFAULT_LOCALE): number {
-  return readSeedWithLocale(args, locale);
-}
-
-function readSeedWithLocale(args: string[], locale: Locale): number {
   const seedFlagIndex = args.indexOf("--seed");
 
   if (seedFlagIndex === -1) {
@@ -241,7 +237,7 @@ function parseHeadlessArgs(args: string[], locale: Locale): HeadlessParseResult 
     help: false,
     locale,
     pretty: false,
-    seed: readSeedWithLocale(args, locale),
+    seed: readSeed(args, locale),
   };
   let seedStart: number | undefined;
   let count: number | undefined;

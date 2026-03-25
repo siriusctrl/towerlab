@@ -1,208 +1,51 @@
-export type NodeKind = "battle" | "elite" | "rest" | "shop" | "boss" | "start";
-export type RunPhase = "combat" | "map" | "rest" | "reward" | "shop" | "victory" | "defeat";
-export type RestOptionId = "recover" | "fortify";
+export type {
+  CardDefinition,
+  CombatObservation,
+  CombatState,
+  EndObservation,
+  EnemyDefinition,
+  EnemyIntent,
+  EnemyState,
+  MapNode,
+  MapObservation,
+  NodeKind,
+  Observation,
+  ObservedEnemy,
+  RestObservation,
+  RestOption,
+  RestOptionId,
+  RelicDefinition,
+  RelicKind,
+  RewardObservation,
+  RewardState,
+  RunAction,
+  RunContent,
+  RunPhase,
+  RunState,
+  RunTrace,
+  ShopObservation,
+  ShopState,
+  TraceStep,
+} from "./types.js";
 
-export interface MapNode {
-  id: string;
-  kind: NodeKind;
-  nextIds: string[];
-  encounterId?: string;
-  relicReward?: string;
-}
+import type {
+  EnemyIntent,
+  EnemyState,
+  MapNode,
+  Observation,
+  RelicKind,
+  RestOption,
+  RestOptionId,
+  RunAction,
+  RunContent,
+  RunState,
+  RunTrace,
+  ShopState,
+  TraceStep,
+} from "./types.js";
 
-export interface CardDefinition {
-  id: string;
-  name: string;
-  cost: number;
-  description: string;
-  damage?: number;
-  block?: number;
-}
-
-export interface EnemyIntent {
-  kind: "attack" | "attackBlock" | "block" | "heal";
-  description: string;
-  damage?: number;
-  block?: number;
-  heal?: number;
-}
-
-export interface EnemyDefinition {
-  id: string;
-  name: string;
-  maxHp: number;
-  goldReward: number;
-  intents: EnemyIntent[];
-}
-
-export type RelicKind =
-  | "combatEnergy"
-  | "combatStartBlock"
-  | "maxHp"
-  | "restHealBonus"
-  | "shopDiscount";
-
-export interface RelicDefinition {
-  id: string;
-  name: string;
-  description: string;
-  kind: RelicKind;
-  value: number;
-}
-
-export interface RunContent {
-  cards: Record<string, CardDefinition>;
-  enemies: Record<string, EnemyDefinition>;
-  relics: Record<string, RelicDefinition>;
-  rewardCardPool: string[];
-  shopCardPool: string[];
-  starterDeck: string[];
-  map: MapNode[];
-}
-
-export interface EnemyState {
-  id: string;
-  name: string;
-  hp: number;
-  maxHp: number;
-  block: number;
-  goldReward: number;
-  intents: EnemyIntent[];
-  intentIndex: number;
-}
-
-export interface CombatState {
-  enemy: EnemyState;
-  drawPile: string[];
-  hand: string[];
-  discardPile: string[];
-  energy: number;
-  block: number;
-  turn: number;
-}
-
-export interface RewardState {
-  cardChoices: string[];
-}
-
-export interface ShopState {
-  forSale: string[];
-  removableDeckIndices: number[];
-}
-
-export interface RunState {
-  seed: number;
-  rng: number;
-  phase: RunPhase;
-  hp: number;
-  maxHp: number;
-  gold: number;
-  floor: number;
-  currentNodeId: string;
-  deck: string[];
-  relics: string[];
-  combat?: CombatState;
-  reward?: RewardState;
-  shop?: ShopState;
-  log: string[];
-}
-
-export interface RestOption {
-  id: RestOptionId;
-  label: string;
-  description: string;
-}
-
-export interface ObservedEnemy {
-  id: string;
-  name: string;
-  hp: number;
-  maxHp: number;
-  block: number;
-  intent: EnemyIntent;
-}
-
-interface ObservationBase {
-  seed: number;
-  phase: RunPhase;
-  hp: number;
-  maxHp: number;
-  gold: number;
-  floor: number;
-  currentNode: MapNode;
-  relics: RelicDefinition[];
-  log: string[];
-}
-
-export interface CombatObservation extends ObservationBase {
-  phase: "combat";
-  energy: number;
-  block: number;
-  hand: CardDefinition[];
-  drawPileCount: number;
-  discardPileCount: number;
-  enemy: ObservedEnemy;
-}
-
-export interface MapObservation extends ObservationBase {
-  phase: "map";
-  nextNodes: MapNode[];
-}
-
-export interface RestObservation extends ObservationBase {
-  phase: "rest";
-  restOptions: RestOption[];
-  nextNodes: MapNode[];
-}
-
-export interface RewardObservation extends ObservationBase {
-  phase: "reward";
-  cardChoices: CardDefinition[];
-  nextNodes: MapNode[];
-}
-
-export interface ShopObservation extends ObservationBase {
-  phase: "shop";
-  forSale: CardDefinition[];
-  removableDeckCards: { deckIndex: number; card: CardDefinition }[];
-  removeDeckCardCost: number;
-  nextNodes: MapNode[];
-}
-
-export interface EndObservation extends ObservationBase {
-  phase: "victory" | "defeat";
-  nextNodes: MapNode[];
-}
-
-export type Observation =
-  | CombatObservation
-  | MapObservation
-  | RestObservation
-  | RewardObservation
-  | ShopObservation
-  | EndObservation;
-
-export type RunAction =
-  | { type: "choosePath"; nodeId: string }
-  | { type: "playCard"; handIndex: number }
-  | { type: "endTurn" }
-  | { type: "chooseRest"; optionId: RestOptionId }
-  | { type: "skipReward" }
-  | { type: "takeReward"; rewardIndex: number }
-  | { type: "buyShop"; saleIndex: number }
-  | { type: "removeDeckCard"; deckIndex: number }
-  | { type: "leaveShop" };
-
-export interface TraceStep {
-  action: RunAction | null;
-  observation: Observation;
-}
-
-export interface RunTrace {
-  seed: number;
-  actions: RunAction[];
-  steps: TraceStep[];
-}
+import { drawCards, normalizeSeed, shuffle } from "./rng.js";
+import { getCard, getEnemyDefinition, getRelic, validateContent } from "./validate.js";
 
 const DEFAULT_MAX_HP = 80;
 const STARTING_GOLD = 0;
@@ -921,16 +764,6 @@ function getRewardChoices(content: RunContent, state: RunState): { cards: string
   };
 }
 
-function getRelic(content: RunContent, relicId: string): RelicDefinition {
-  const relic = content.relics[relicId];
-
-  if (!relic) {
-    throw new Error(`unknown relic: ${relicId}`);
-  }
-
-  return relic;
-}
-
 function getRelicValue(content: RunContent, state: RunState, kind: RelicKind): number {
   return state.relics.reduce((total, relicId) => {
     const relic = getRelic(content, relicId);
@@ -1022,41 +855,6 @@ function startPlayerTurn(content: RunContent, state: RunState): RunState {
   );
 }
 
-function drawCards(drawPile: string[], discardPile: string[], count: number, rng: number): DrawResult {
-  let nextDrawPile = [...drawPile];
-  let nextDiscardPile = [...discardPile];
-  const drawn: string[] = [];
-  let nextRng = rng;
-
-  while (drawn.length < count) {
-    if (nextDrawPile.length === 0) {
-      if (nextDiscardPile.length === 0) {
-        break;
-      }
-
-      const shuffled = shuffle(nextDiscardPile, nextRng);
-      nextDrawPile = shuffled.items;
-      nextDiscardPile = [];
-      nextRng = shuffled.rng;
-    }
-
-    const nextCard = nextDrawPile.shift();
-
-    if (!nextCard) {
-      break;
-    }
-
-    drawn.push(nextCard);
-  }
-
-  return {
-    drawPile: nextDrawPile,
-    discardPile: nextDiscardPile,
-    drawn,
-    rng: nextRng,
-  };
-}
-
 function applyDamageToEnemy(enemy: EnemyState, damage: number): EnemyState {
   const absorbed = Math.min(enemy.block, damage);
   const nextHp = enemy.hp - (damage - absorbed);
@@ -1078,7 +876,7 @@ function getCurrentIntent(enemy: EnemyState): EnemyIntent {
   return intent;
 }
 
-function getCombat(state: RunState): CombatState {
+function getCombat(state: RunState): RunState["combat"] & {} {
   if (!state.combat) {
     throw new Error("combat state is not available");
   }
@@ -1094,111 +892,6 @@ function getNode(content: RunContent, nodeId: string): MapNode {
   }
 
   return node;
-}
-
-function getCard(content: RunContent, cardId: string): CardDefinition {
-  const card = content.cards[cardId];
-
-  if (!card) {
-    throw new Error(`unknown card: ${cardId}`);
-  }
-
-  return card;
-}
-
-function getEnemyDefinition(content: RunContent, enemyId: string): EnemyDefinition {
-  const enemy = content.enemies[enemyId];
-
-  if (!enemy) {
-    throw new Error(`unknown enemy: ${enemyId}`);
-  }
-
-  if (enemy.intents.length === 0) {
-    throw new Error(`enemy ${enemyId} must define at least one intent`);
-  }
-
-  return enemy;
-}
-
-function validateContent(content: RunContent): void {
-  validateDeck(content);
-  validateMap(content);
-  validatePools(content);
-  validateRelics(content);
-}
-
-function validateDeck(content: RunContent): void {
-  if (content.starterDeck.length === 0) {
-    throw new Error("starterDeck must contain at least one card");
-  }
-
-  for (const cardId of content.starterDeck) {
-    getCard(content, cardId);
-  }
-}
-
-function validateMap(content: RunContent): void {
-  const seenNodeIds = new Set<string>();
-
-  for (const node of content.map) {
-    if (seenNodeIds.has(node.id)) {
-      throw new Error(`duplicate node id: ${node.id}`);
-    }
-
-    seenNodeIds.add(node.id);
-
-    if (node.kind === "rest" || node.kind === "shop" || node.kind === "start") {
-      if (node.encounterId) {
-        throw new Error(`${node.kind} node ${node.id} must not define an encounterId`);
-      }
-    } else {
-      if (!node.encounterId) {
-        throw new Error(`${node.kind} node ${node.id} must define an encounterId`);
-      }
-
-      getEnemyDefinition(content, node.encounterId);
-    }
-
-    if (node.relicReward) {
-      getRelic(content, node.relicReward);
-    }
-  }
-
-  for (const node of content.map) {
-    for (const nextId of node.nextIds) {
-      if (!seenNodeIds.has(nextId)) {
-        throw new Error(`node ${node.id} references unknown next node ${nextId}`);
-      }
-    }
-  }
-}
-
-function validatePools(content: RunContent): void {
-  for (const cardId of content.rewardCardPool) {
-    getCard(content, cardId);
-  }
-
-  for (const cardId of content.shopCardPool) {
-    getCard(content, cardId);
-  }
-}
-
-function validateRelics(content: RunContent): void {
-  for (const relic of Object.values(content.relics)) {
-    if (relic.value <= 0) {
-      throw new Error(`relic ${relic.id} must have a positive value`);
-    }
-
-    if (
-      relic.kind !== "combatEnergy" &&
-      relic.kind !== "combatStartBlock" &&
-      relic.kind !== "maxHp" &&
-      relic.kind !== "restHealBonus" &&
-      relic.kind !== "shopDiscount"
-    ) {
-      throw new Error(`relic ${relic.id} has unsupported kind: ${String(relic.kind)}`);
-    }
-  }
 }
 
 function selectCardsFromPool(cardPool: string[], count: number, rng: number): { cards: string[]; rng: number } {
@@ -1232,49 +925,6 @@ function describeNode(node: MapNode): string {
   return `${node.id} (${node.kind})`;
 }
 
-function normalizeSeed(seed: number): number {
-  const normalized = seed >>> 0;
-  return normalized === 0 ? 1 : normalized;
-}
-
-function shuffle<T>(items: T[], seed: number): ShuffleResult<T> {
-  const nextItems = [...items];
-  let nextSeed = seed;
-
-  for (let index = nextItems.length - 1; index > 0; index -= 1) {
-    const value = nextRandom(nextSeed);
-    nextSeed = value.seed;
-    const swapIndex = Math.floor(value.value * (index + 1));
-    [nextItems[index], nextItems[swapIndex]] = [nextItems[swapIndex], nextItems[index]];
-  }
-
-  return {
-    items: nextItems,
-    rng: nextSeed,
-  };
-}
-
-function nextRandom(seed: number): { value: number; seed: number } {
-  const nextSeed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-
-  return {
-    seed: nextSeed === 0 ? 1 : nextSeed,
-    value: nextSeed / 4294967296,
-  };
-}
-
 function assertNever(value: never): never {
   throw new Error(`unexpected value: ${String(value)}`);
-}
-
-interface ShuffleResult<T> {
-  items: T[];
-  rng: number;
-}
-
-interface DrawResult {
-  drawPile: string[];
-  discardPile: string[];
-  drawn: string[];
-  rng: number;
 }
