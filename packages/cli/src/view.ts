@@ -40,12 +40,12 @@ export function formatMapLines(rows: MapTreeRow[]): string[] {
 export function getMapLegendLines(locale: Locale): string[] {
   return [
     formatText(locale, "mapIconLegend", {
-      start: "◎",
-      battle: "●",
-      elite: "◆",
-      rest: "⌂",
+      start: "S",
+      battle: "F",
+      elite: "E",
+      rest: "R",
       shop: "$",
-      boss: "★",
+      boss: "B",
     }),
     [
       formatText(locale, "mapLegendCurrentLine", { marker: "@" }),
@@ -139,26 +139,26 @@ function getNodeToken(node: MapNodeView): string {
 
 function getNodeIcon(kind: MapNode["kind"]): string {
   if (kind === "start") {
-    return "◎";
+    return "S";
   }
 
   if (kind === "battle") {
-    return "●";
+    return "F";
   }
 
   if (kind === "elite") {
-    return "◆";
+    return "E";
   }
 
   if (kind === "rest") {
-    return "⌂";
+    return "R";
   }
 
   if (kind === "shop") {
     return "$";
   }
 
-  return "★";
+  return "B";
 }
 
 function createCell(text: string, status: MapCellStatus): MapTreeCell {
@@ -251,6 +251,8 @@ function getLayerPosition(index: number, nodeCount: number, slotCount: number): 
 
 function buildMapLayers(map: MapNode[]): MapNode[][] {
   const nodeById = new Map(map.map((node) => [node.id, node]));
+  const originalOrderById = new Map(map.map((node, index) => [node.id, index]));
+  const parentsById = buildParentsById(map);
   const depthById = new Map<string, number>();
   const queue = [...findRootNodeIds(map)];
 
@@ -295,7 +297,64 @@ function buildMapLayers(map: MapNode[]): MapNode[][] {
     layers[depth].push(node);
   }
 
+  const orderById = new Map<string, number>();
+
+  for (const [layerIndex, layer] of layers.entries()) {
+    if (layerIndex === 0) {
+      layer.forEach((node, index) => {
+        orderById.set(node.id, index);
+      });
+      continue;
+    }
+
+    layer.sort((left, right) => {
+      const leftScore = getParentOrderScore(left.id, parentsById, orderById, originalOrderById);
+      const rightScore = getParentOrderScore(right.id, parentsById, orderById, originalOrderById);
+
+      if (leftScore !== rightScore) {
+        return leftScore - rightScore;
+      }
+
+      return (originalOrderById.get(left.id) ?? 0) - (originalOrderById.get(right.id) ?? 0);
+    });
+
+    layer.forEach((node, index) => {
+      orderById.set(node.id, index);
+    });
+  }
+
   return layers;
+}
+
+function buildParentsById(map: MapNode[]): Map<string, string[]> {
+  const parentsById = new Map<string, string[]>();
+
+  for (const node of map) {
+    for (const nextId of node.nextIds) {
+      const parents = parentsById.get(nextId) ?? [];
+      parents.push(node.id);
+      parentsById.set(nextId, parents);
+    }
+  }
+
+  return parentsById;
+}
+
+function getParentOrderScore(
+  nodeId: string,
+  parentsById: Map<string, string[]>,
+  orderById: Map<string, number>,
+  originalOrderById: Map<string, number>,
+): number {
+  const parentOrders = (parentsById.get(nodeId) ?? [])
+    .map((parentId) => orderById.get(parentId))
+    .filter((order): order is number => order !== undefined);
+
+  if (parentOrders.length === 0) {
+    return originalOrderById.get(nodeId) ?? 0;
+  }
+
+  return parentOrders.reduce((sum, order) => sum + order, 0) / parentOrders.length;
 }
 
 function findRootNodeIds(map: MapNode[]): string[] {

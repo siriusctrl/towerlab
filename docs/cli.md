@@ -42,12 +42,12 @@ Controls:
 The TUI and non-TTY snapshot both show the full tower as a compact branching tree.
 
 Markers:
-- `◎` start / crossroads
-- `●` normal fight
-- `◆` elite
-- `⌂` rest
+- `S` start / crossroads
+- `F` normal fight
+- `E` elite
+- `R` rest
 - `$` shop
-- `★` boss
+- `B` boss
 - `@` current node
 - `1-9` current map choices
 - `+` passed nodes
@@ -55,7 +55,7 @@ Markers:
 - `x` closed nodes that are no longer reachable
 
 The tree is rendered from content data, not from renderer-local state.
-The terminal view uses self-describing node tokens instead of connector art so the route stays readable in monochrome terminals as well.
+The terminal view uses self-describing ASCII node tokens instead of connector art so the route stays readable in monochrome terminals and does not depend on ambiguous-width glyph rendering.
 
 ## Recent Activity
 

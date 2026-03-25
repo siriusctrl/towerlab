@@ -21,7 +21,7 @@ describe("cli view helpers", () => {
 
     const tree = formatMapLines(createMapTreeRows(sampleContent.map, observation, "en", deriveVisitedNodeIds(sampleContent.map, [])));
 
-    expect(tree).toEqual(["             @◎", " 1●                      2◆", " .●          .⌂          .$", "             .★"]);
+    expect(tree).toEqual(["             @S", " 1F                      2E", " .R          .$          .F", "             .B"]);
   });
 
   test("map view marks current, future, and closed branches after choosing a path", () => {
@@ -59,7 +59,7 @@ describe("cli view helpers", () => {
       ),
     );
 
-    expect(tree).toEqual(["             +◎", " @●                      x◆", " x●          1⌂          2$", "             .★"]);
+    expect(tree).toEqual(["             +S", " @F                      xE", " 1R          2$          xF", "             .B"]);
   });
 
   test("recent log view truncates older entries and reports hidden count", () => {
