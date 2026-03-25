@@ -25,8 +25,11 @@ import {
   createMapTreeRows,
   deriveVisitedNodeIds,
   getEarlierEventsLine,
+  getHpColor,
+  getMapCompactLegendLine,
   getMapLegendLines,
   getRecentLogView,
+  renderHpBar,
   type MapTreeCell,
 } from "./view.js";
 
@@ -47,10 +50,12 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const [shopMenu, setShopMenu] = useState<ShopMenuMode>("top");
   const view = localizeObservation(observeRun(sampleContent, state), locale);
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
-  const showSidebarLog = rows >= 24 && columns >= 110;
-  const showInlineLog = !showSidebarLog && rows >= 28;
-  const recentLogLimit = showSidebarLog ? (rows >= 30 ? 6 : 5) : rows >= 30 ? 5 : 4;
-  const logPanelWidth = Math.max(28, Math.min(36, Math.floor(columns * 0.3)));
+  const compactLegendLine = getMapCompactLegendLine(locale);
+  const sidebarWidth = Math.max(32, Math.min(52, Math.max(compactLegendLine.length + 4, Math.floor(columns * 0.35))));
+  const showSidebar = rows >= 24 && columns - sidebarWidth >= 48;
+  const showInlineLog = !showSidebar && rows >= 28;
+  const recentLogLimit = rows >= 30 ? 6 : rows >= 26 ? 5 : 4;
+  const hpBarWidth = Math.min(20, Math.max(10, Math.floor(columns * 0.15)));
 
   const runAction = (action: RunAction) => {
     try {
@@ -149,28 +154,61 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
     }
   });
 
-  return (
-    <Box flexDirection="column" width={columns} height={rows} paddingX={1} overflow="hidden">
-      <StatusBar observation={view} locale={locale} relicNames={relicNames} />
+  const ruleWidth = Math.max(0, columns - 2);
 
-      <Box marginTop={1} flexDirection={showSidebarLog ? "row" : "column"} flexGrow={1} overflow="hidden">
-        <Box flexDirection="column" flexGrow={1} overflow="hidden">
-          <PhaseView observation={view} actions={actions} locale={locale} shopMenu={shopMenu} />
+  return (
+    <Box flexDirection="column" width={columns} height={rows} overflow="hidden">
+      {/* Status Header */}
+      <Box flexDirection="column" flexShrink={0} paddingX={1} overflow="hidden">
+        <StatusBar observation={view} locale={locale} relicNames={relicNames} hpBarWidth={hpBarWidth} />
+      </Box>
+      <Text dimColor wrap="truncate-end">
+        {"\u2500".repeat(ruleWidth)}
+      </Text>
+
+      {/* Main Content + Sidebar */}
+      <Box flexDirection="row" flexGrow={1} overflow="hidden">
+        {/* Left: Phase Content */}
+        <Box flexDirection="column" flexGrow={1} paddingLeft={1} overflow="hidden">
+          {!showSidebar && view.phase === "map" ? (
+            <MapTreeView observation={view} actions={actions} locale={locale} />
+          ) : null}
+          <PhaseBody observation={view} locale={locale} shopMenu={shopMenu} hpBarWidth={hpBarWidth} />
+          {showInlineLog ? (
+            <Box marginTop={1} flexDirection="column" overflow="hidden">
+              <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
+            </Box>
+          ) : null}
         </Box>
-        {showSidebarLog ? (
-          <Box marginLeft={2} width={logPanelWidth} flexDirection="column" flexShrink={0} overflow="hidden">
-            <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
+
+        {/* Right: Sidebar with Map + Log */}
+        {showSidebar ? (
+          <Box
+            flexDirection="column"
+            width={sidebarWidth}
+            flexShrink={0}
+            borderStyle="single"
+            borderLeft
+            borderTop={false}
+            borderBottom={false}
+            borderRight={false}
+            borderColor="gray"
+            paddingLeft={1}
+            overflow="hidden"
+          >
+            <MapTreeView observation={view} actions={actions} locale={locale} compact compactLegendLine={compactLegendLine} />
+            <Box marginTop={1} flexDirection="column" overflow="hidden">
+              <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
+            </Box>
           </Box>
         ) : null}
       </Box>
 
-      {showInlineLog ? (
-        <Box marginTop={1} flexDirection="column" flexShrink={0} overflow="hidden">
-          <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
-        </Box>
-      ) : null}
-
-      <Box marginTop={1} flexDirection="column" flexShrink={0} overflow="hidden">
+      {/* Bottom: Separator + Controls */}
+      <Text dimColor wrap="truncate-end">
+        {"\u2500".repeat(ruleWidth)}
+      </Text>
+      <Box flexDirection="column" flexShrink={0} paddingX={1} overflow="hidden">
         <Controls observation={view} locale={locale} shopMenu={shopMenu} />
         {error ? (
           <Text color="red" wrap="truncate-end">
@@ -186,22 +224,43 @@ function StatusBar({
   observation,
   locale,
   relicNames,
+  hpBarWidth,
 }: {
   observation: Observation;
   locale: Locale;
   relicNames: string;
+  hpBarWidth: number;
 }) {
+  const hpBar = renderHpBar(observation.hp, observation.maxHp, hpBarWidth);
+  const hpColor = getHpColor(observation.hp, observation.maxHp);
+  const showRelics = relicNames !== text(locale, "none");
+
   return (
     <Box flexDirection="column" flexShrink={0} overflow="hidden">
-      <Text bold color="cyan" wrap="truncate-end">
-        {text(locale, "snapshotTitle")} | {text(locale, "seed")} {observation.seed} | {text(locale, "floor")} {observation.floor} |{" "}
-        {text(locale, "phase")} {localizePhaseLabel(observation.phase, locale)} | {text(locale, "node")}{" "}
-        {formatNodeLabel(observation.currentNode, locale)} | {text(locale, "hp")} {observation.hp}/{observation.maxHp} | {text(locale, "gold")}{" "}
-        {observation.gold}
+      <Text wrap="truncate-end">
+        <Text bold color="cyan">{text(locale, "snapshotTitle")}</Text>
+        <Text dimColor>
+          {"  "}{text(locale, "seed")} {observation.seed} {"\u00b7"} {text(locale, "floor")} {observation.floor} {"\u00b7"}{" "}
+          {localizePhaseLabel(observation.phase, locale)} {"\u00b7"} {formatNodeLabel(observation.currentNode, locale)}
+        </Text>
       </Text>
-      <Text dimColor wrap="truncate-end">
-        {text(locale, "relics")}: {relicNames}
+      <Text wrap="truncate-end">
+        <Text>{text(locale, "hp")} </Text>
+        <Text color={hpColor}>{hpBar}</Text>
+        <Text> {observation.hp}/{observation.maxHp}</Text>
+        <Text>{"  "}{text(locale, "gold")} {observation.gold}</Text>
+        {observation.phase === "combat" ? (
+          <>
+            <Text>{"  "}{text(locale, "energy")} {observation.energy}</Text>
+            <Text>{"  "}{text(locale, "block")} {observation.block}</Text>
+          </>
+        ) : null}
       </Text>
+      {showRelics ? (
+        <Text dimColor wrap="truncate-end">
+          {text(locale, "relics")}: {relicNames}
+        </Text>
+      ) : null}
     </Box>
   );
 }
@@ -231,44 +290,45 @@ function useTerminalDimensions(stdout: NodeJS.WriteStream): { columns: number; r
   return dimensions;
 }
 
-function PhaseView({
+function MapTreeView({
   observation,
   actions,
   locale,
-  shopMenu,
+  compact = false,
+  compactLegendLine,
 }: {
   observation: Observation;
   actions: RunAction[];
   locale: Locale;
-  shopMenu: ShopMenuMode;
+  compact?: boolean;
+  compactLegendLine?: string;
 }) {
-  const showMap = observation.phase === "map";
-
-  return (
-    <>
-      {showMap ? <MapTreeView observation={observation} actions={actions} locale={locale} /> : null}
-      <Box flexDirection="column" overflow="hidden">
-        <PhaseBody observation={observation} locale={locale} shopMenu={shopMenu} />
-      </Box>
-    </>
-  );
-}
-
-function MapTreeView({ observation, actions, locale }: { observation: Observation; actions: RunAction[]; locale: Locale }) {
   const visitedNodeIds = deriveVisitedNodeIds(sampleContent.map, actions);
   const mapRows = createMapTreeRows(sampleContent.map, observation, locale, visitedNodeIds);
-  const legendLines = getMapLegendLines(locale);
 
   return (
     <>
-      <Text bold color="magenta">
-        {text(locale, "map")}
-      </Text>
-      {legendLines.map((line, index) => (
-        <Text key={`legend-${index}`} dimColor wrap="truncate-end">
-          {line}
-        </Text>
-      ))}
+      {compact ? (
+        <>
+          <Text bold color="magenta" wrap="truncate-end">
+            {text(locale, "map")}
+          </Text>
+          <Text dimColor wrap="truncate-end">
+            {compactLegendLine ?? getMapCompactLegendLine(locale)}
+          </Text>
+        </>
+      ) : (
+        <>
+          <Text bold color="magenta">
+            {text(locale, "map")}
+          </Text>
+          {getMapLegendLines(locale).map((line, index) => (
+            <Text key={`legend-${index}`} dimColor wrap="truncate-end">
+              {line}
+            </Text>
+          ))}
+        </>
+      )}
       {mapRows.map((row, rowIndex) => (
         <Text key={rowIndex} wrap="truncate-end">
           {row.map((cell, cellIndex) => (
@@ -287,32 +347,45 @@ function MapTreeView({ observation, actions, locale }: { observation: Observatio
   );
 }
 
-function PhaseBody({ observation, locale, shopMenu }: { observation: Observation; locale: Locale; shopMenu: ShopMenuMode }) {
+function PhaseBody({
+  observation,
+  locale,
+  shopMenu,
+  hpBarWidth,
+}: {
+  observation: Observation;
+  locale: Locale;
+  shopMenu: ShopMenuMode;
+  hpBarWidth: number;
+}) {
   if (observation.phase === "combat") {
+    const enemyHpBar = renderHpBar(observation.enemy.hp, observation.enemy.maxHp, Math.min(15, hpBarWidth));
+    const enemyHpColor = getHpColor(observation.enemy.hp, observation.enemy.maxHp);
+
     return (
       <>
-        <Text bold color="yellow">
+        <Text bold color="red">
           {text(locale, "combat")}
         </Text>
         <Text wrap="truncate-end">
-          {text(locale, "enemy")} {observation.enemy.name}: {observation.enemy.hp}/{observation.enemy.maxHp} {text(locale, "hp")}
-          {observation.enemy.block > 0 ? `${locale === "zh" ? `，${observation.enemy.block} 点${text(locale, "block")}` : `, ${observation.enemy.block} ${text(locale, "block").toLowerCase()}`}` : ""}
+          <Text>{text(locale, "enemy")} {observation.enemy.name} </Text>
+          <Text color={enemyHpColor}>{enemyHpBar}</Text>
+          <Text> {observation.enemy.hp}/{observation.enemy.maxHp}</Text>
+          {observation.enemy.block > 0 ? (
+            <Text dimColor> {text(locale, "block")} {observation.enemy.block}</Text>
+          ) : null}
         </Text>
         <Text wrap="truncate-end">
           {text(locale, "intent")}: {observation.enemy.intent.description}
         </Text>
-        <Text wrap="truncate-end">
-          {text(locale, "energy")} {observation.energy} | {text(locale, "block")} {observation.block} | {text(locale, "draw")}{" "}
-          {observation.drawPileCount} | {text(locale, "discard")} {observation.discardPileCount}
-        </Text>
         <Text dimColor wrap="truncate-end">
-          {text(locale, "node")}: {formatNodeLabel(observation.currentNode, locale)}
+          {text(locale, "draw")} {observation.drawPileCount} {"\u00b7"} {text(locale, "discard")} {observation.discardPileCount}
         </Text>
         <Text bold>{text(locale, "hand")}</Text>
         {observation.hand.length > 0 ? (
           observation.hand.map((card, index) => (
             <Text key={`${index}-${card.id}`} color={card.cost > observation.energy ? "gray" : undefined} wrap="truncate-end">
-              {index + 1}. {card.name} [{card.cost}] {card.description}
+              {index + 1}. {card.name} <Text dimColor>[{card.cost}]</Text> {card.description}
             </Text>
           ))
         ) : (
@@ -389,7 +462,7 @@ function PhaseBody({ observation, locale, shopMenu }: { observation: Observation
           <Text bold>{text(locale, "shopBuySection")}</Text>
           {submenuBindings.buyOptions.map((option) => (
             <Text key={option.card.id} color={option.key ? undefined : "gray"} wrap="truncate-end">
-              {option.key ? `${option.key}. ` : "· "}
+              {option.key ? `${option.key}. ` : "\u00b7 "}
               {option.card.name} [{option.card.cost}]
             </Text>
           ))}
@@ -421,7 +494,7 @@ function PhaseBody({ observation, locale, shopMenu }: { observation: Observation
               color={option.key ? undefined : "gray"}
               wrap="truncate-end"
             >
-              {option.key ? `${option.key}. ` : "· "}
+              {option.key ? `${option.key}. ` : "\u00b7 "}
               {text(locale, "remove")} {option.card.name} {formatText(locale, "shopDeckSlot", { index: option.deckIndex + 1 })}
             </Text>
           ))}

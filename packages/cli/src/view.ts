@@ -4,6 +4,20 @@ import { formatNodeLabel, formatText, localizeNodeKind, type Locale } from "./i1
 
 export const RECENT_LOG_LIMIT = 4;
 
+export function renderHpBar(current: number, max: number, width: number): string {
+  const ratio = max > 0 ? Math.max(0, Math.min(1, current / max)) : 0;
+  const filled = Math.round(ratio * width);
+  const empty = width - filled;
+  return "\u2588".repeat(filled) + "\u2591".repeat(empty);
+}
+
+export function getHpColor(current: number, max: number): string {
+  const ratio = max > 0 ? current / max : 0;
+  if (ratio > 0.5) return "green";
+  if (ratio > 0.25) return "yellow";
+  return "red";
+}
+
 export type MapCellStatus = "closed" | "connector" | "current" | "future" | "next" | "past";
 
 export type MapTreeCell = {
@@ -61,6 +75,16 @@ export function getMapLegendLines(locale: Locale): string[] {
       formatText(locale, "mapLegendClosedLine", { marker: "x" }),
     ].join("  "),
   ];
+}
+
+export function getMapCompactLegendLine(locale: Locale): string {
+  return [
+    formatText(locale, "mapLegendCurrentLine", { marker: "@" }),
+    formatText(locale, "mapLegendNextLine", { marker: "1" }),
+    formatText(locale, "mapLegendPastLine", { marker: "+" }),
+    formatText(locale, "mapLegendFutureLine", { marker: "." }),
+    formatText(locale, "mapLegendClosedLine", { marker: "x" }),
+  ].join("  ");
 }
 
 export function getRecentLogView(log: string[], limit = RECENT_LOG_LIMIT): RecentLogView {
