@@ -39,6 +39,7 @@ Start here, then follow the relevant docs:
 - `packages/core` — pure game state and deterministic rules.
 - `packages/content` — cards, map, and starter data.
 - `packages/cli` — terminal rendering and local entrypoint.
+- `docs/tui-debugging.md` — how to inspect and verify TUI output without a terminal (read this before touching rendering code).
 
 ## Engineering Rules
 
