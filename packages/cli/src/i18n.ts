@@ -51,7 +51,7 @@ const nodeNames = {
     gate: "Gate",
     hall: "Hall",
     forge: "Forge",
-    restCamp: "Camp",
+    restCamp: "Rest Camp",
     market: "Market",
     summit: "Summit",
   },

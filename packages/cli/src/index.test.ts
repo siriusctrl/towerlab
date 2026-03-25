@@ -42,10 +42,12 @@ describe("headless CLI", () => {
     expect(snapshot).toContain("地图:");
     expect(lines).toContain("S 起点  F 战斗  E 精英  R 营地  $ 商店  B 首领");
     expect(lines).toContain("@ 当前  1 下一步  + 已走过  . 未来  x 已错过");
-    expect(lines).toContain("             @S");
-    expect(lines).toContain(" 1F                      2E");
-    expect(lines).toContain(" .R          .$          .F");
-    expect(lines).toContain("             .B");
+    expect(lines).toContain("@S 岔路口 (起点)");
+    expect(lines).toContain("├── 1F 城门 (战斗)");
+    expect(lines).toContain("│   ├── .R 营地 (营火)");
+    expect(lines).toContain("│   │   └── .B 顶峰 (首领)");
+    expect(lines).toContain("└── 2E 熔炉 (精英)");
+    expect(lines).toContain("    ├── .F 大厅 (战斗)");
     expect(lines).toContain("路径：");
     expect(lines).toContain("1. 城门 (战斗)");
     expect(lines).toContain("2. 熔炉 (精英)");

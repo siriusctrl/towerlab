@@ -39,7 +39,7 @@ Controls:
 
 ## Route Tree
 
-The TUI and non-TTY snapshot both show the full tower as a compact branching tree.
+The TUI and non-TTY snapshot both show the full tower as a top-down branching tree with explicit connector lines.
 
 Markers:
 - `S` start / crossroads
@@ -54,8 +54,9 @@ Markers:
 - `.` future nodes on the current route
 - `x` closed nodes that are no longer reachable
 
+Each rendered node keeps the status token and kind marker, for example `@S Crossroads (start)` or `1F Gate (battle)`.
 The tree is rendered from content data, not from renderer-local state.
-The terminal view uses self-describing ASCII node tokens instead of connector art so the route stays readable in monochrome terminals and does not depend on ambiguous-width glyph rendering.
+Shared DAG nodes may appear more than once so each branch remains readable in the tree view.
 
 ## Recent Activity
 
@@ -63,6 +64,7 @@ The CLI keeps a compact recent-activity panel instead of rendering the full log 
 
 - only the most recent entries are shown
 - if older entries exist, the UI shows how many earlier events were collapsed
+- on wide terminals, the panel can move to a right-hand column to preserve vertical room
 - on tighter terminals, the panel may be hidden so combat and map information stay readable
 - core replay state still preserves the log behavior defined by `packages/core`
 

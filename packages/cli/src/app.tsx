@@ -47,8 +47,10 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const [shopMenu, setShopMenu] = useState<ShopMenuMode>("top");
   const view = localizeObservation(observeRun(sampleContent, state), locale);
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
-  const showRecentLog = rows >= 28;
-  const recentLogLimit = rows >= 30 ? 5 : rows >= 24 ? 4 : 3;
+  const showSidebarLog = rows >= 24 && columns >= 110;
+  const showInlineLog = !showSidebarLog && rows >= 28;
+  const recentLogLimit = showSidebarLog ? (rows >= 30 ? 6 : 5) : rows >= 30 ? 5 : 4;
+  const logPanelWidth = Math.max(28, Math.min(36, Math.floor(columns * 0.3)));
 
   const runAction = (action: RunAction) => {
     try {
@@ -148,29 +150,22 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   });
 
   return (
-    <Box flexDirection="column" width={columns} height={rows} overflow="hidden">
-      <Box borderStyle="round" borderColor="cyan" paddingX={1} flexDirection="column" flexShrink={0} overflow="hidden">
-        <Text bold color="cyan">
-          {text(locale, "snapshotTitle")}
-        </Text>
-        <Text wrap="truncate-end">
-          {text(locale, "seed")} {view.seed} | {text(locale, "floor")} {view.floor} | {text(locale, "node")}{" "}
-          {formatNodeLabel(view.currentNode, locale)}
-        </Text>
-        <Text wrap="truncate-end">
-          {text(locale, "hp")} {view.hp}/{view.maxHp} | {text(locale, "gold")} {view.gold}
-        </Text>
-        <Text dimColor wrap="truncate-end">
-          {text(locale, "relics")}: {relicNames}
-        </Text>
+    <Box flexDirection="column" width={columns} height={rows} paddingX={1} overflow="hidden">
+      <StatusBar observation={view} locale={locale} relicNames={relicNames} />
+
+      <Box marginTop={1} flexDirection={showSidebarLog ? "row" : "column"} flexGrow={1} overflow="hidden">
+        <Box flexDirection="column" flexGrow={1} overflow="hidden">
+          <PhaseView observation={view} actions={actions} locale={locale} shopMenu={shopMenu} />
+        </Box>
+        {showSidebarLog ? (
+          <Box marginLeft={2} width={logPanelWidth} flexDirection="column" flexShrink={0} overflow="hidden">
+            <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
+          </Box>
+        ) : null}
       </Box>
 
-      <Box marginTop={1} borderStyle="round" borderColor="yellow" paddingX={1} flexDirection="column" flexGrow={1} overflow="hidden">
-        <PhaseView observation={view} actions={actions} locale={locale} shopMenu={shopMenu} />
-      </Box>
-
-      {showRecentLog ? (
-        <Box marginTop={1} borderStyle="round" borderColor="green" paddingX={1} flexDirection="column" flexShrink={0} overflow="hidden">
+      {showInlineLog ? (
+        <Box marginTop={1} flexDirection="column" flexShrink={0} overflow="hidden">
           <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
         </Box>
       ) : null}
@@ -183,6 +178,30 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
           </Text>
         ) : null}
       </Box>
+    </Box>
+  );
+}
+
+function StatusBar({
+  observation,
+  locale,
+  relicNames,
+}: {
+  observation: Observation;
+  locale: Locale;
+  relicNames: string;
+}) {
+  return (
+    <Box flexDirection="column" flexShrink={0} overflow="hidden">
+      <Text bold color="cyan" wrap="truncate-end">
+        {text(locale, "snapshotTitle")} | {text(locale, "seed")} {observation.seed} | {text(locale, "floor")} {observation.floor} |{" "}
+        {text(locale, "phase")} {localizePhaseLabel(observation.phase, locale)} | {text(locale, "node")}{" "}
+        {formatNodeLabel(observation.currentNode, locale)} | {text(locale, "hp")} {observation.hp}/{observation.maxHp} | {text(locale, "gold")}{" "}
+        {observation.gold}
+      </Text>
+      <Text dimColor wrap="truncate-end">
+        {text(locale, "relics")}: {relicNames}
+      </Text>
     </Box>
   );
 }
@@ -228,7 +247,7 @@ function PhaseView({
   return (
     <>
       {showMap ? <MapTreeView observation={observation} actions={actions} locale={locale} /> : null}
-      <Box marginTop={showMap ? 1 : 0} flexDirection="column" overflow="hidden">
+      <Box flexDirection="column" overflow="hidden">
         <PhaseBody observation={observation} locale={locale} shopMenu={shopMenu} />
       </Box>
     </>
@@ -306,7 +325,7 @@ function PhaseBody({ observation, locale, shopMenu }: { observation: Observation
   if (observation.phase === "map") {
     return (
       <>
-        <Text wrap="truncate-end">{text(locale, "chooseNextNode")}</Text>
+        <Text bold>{text(locale, "paths")}</Text>
         {observation.nextNodes.map((node, index) => (
           <Text key={node.id} wrap="truncate-end">
             {index + 1}. {formatNodeLabel(node, locale)}

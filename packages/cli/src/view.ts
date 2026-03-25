@@ -1,13 +1,10 @@
 import type { MapNode, Observation } from "@towerlab/core";
 
-import { formatText, localizeNodeKind, type Locale } from "./i18n.js";
+import { formatNodeLabel, formatText, localizeNodeKind, type Locale } from "./i18n.js";
 
 export const RECENT_LOG_LIMIT = 4;
 
-const MAP_SLOT_SPACING = 3;
-const MAP_CELL_WIDTH = 4;
-
-export type MapCellStatus = "closed" | "connector" | "current" | "empty" | "future" | "next" | "past";
+export type MapCellStatus = "closed" | "connector" | "current" | "future" | "next" | "past";
 
 export type MapTreeCell = {
   status: MapCellStatus;
@@ -21,16 +18,25 @@ export type RecentLogView = {
   hiddenCount: number;
 };
 
-type MapNodeView = {
+type MapNodeStatus = Extract<MapCellStatus, "closed" | "current" | "future" | "next" | "past">;
+
+type MapTreeNode = {
   node: MapNode;
-  position: number;
-  status: Extract<MapCellStatus, "closed" | "current" | "future" | "next" | "past">;
-  nextOrder?: number;
+  path: string[];
+  children: MapTreeNode[];
 };
 
 export function createMapTreeRows(map: MapNode[], observation: Observation, locale: Locale, visitedNodeIds: string[] = []): MapTreeRow[] {
-  const layerViews = buildLayerViews(map, observation, visitedNodeIds);
-  return layerViews.map((layer) => createNodeRow(layer));
+  const roots = buildMapTree(map);
+  const activePath = buildActivePath(map, observation.currentNode.id, visitedNodeIds);
+  const nextNodeOrder = new Map(getNextNodes(map, observation).map((node, index) => [node.id, index]));
+  const rows: MapTreeRow[] = [];
+
+  roots.forEach((root, index) => {
+    appendTreeRows(rows, root, locale, activePath, nextNodeOrder, [], index < roots.length - 1);
+  });
+
+  return rows;
 }
 
 export function formatMapLines(rows: MapTreeRow[]): string[] {
@@ -94,47 +100,85 @@ export function deriveVisitedNodeIds(map: MapNode[], actions: Array<{ type: stri
   return visitedNodeIds;
 }
 
-function buildLayerViews(map: MapNode[], observation: Observation, visitedNodeIds: string[]): MapNodeView[][] {
-  const layers = buildMapLayers(map);
-  const nextNodes = getNextNodes(map, observation);
-  const nextNodeOrder = new Map(nextNodes.map((node, index) => [node.id, index]));
-  const visitedSet = new Set(visitedNodeIds);
-  const futureNodeIds = collectDescendantNodeIds(map, observation.currentNode.id);
-  const maxNodes = Math.max(...layers.map((layer) => layer.length), 1);
-  const slotCount = getSlotCount(maxNodes);
+function buildMapTree(map: MapNode[]): MapTreeNode[] {
+  const nodeById = new Map(map.map((node) => [node.id, node]));
 
-  return layers.map((nodes) => {
-    const positionedNodes = nodes
-      .map((node, index) => {
-        const nextOrder = nextNodeOrder.get(node.id);
-        const status = getNodeStatus(node.id, observation.currentNode.id, nextOrder, observation.phase, visitedSet, futureNodeIds);
+  const expandNode = (nodeId: string, path: string[]): MapTreeNode => {
+    const node = nodeById.get(nodeId);
 
-        return {
-          node,
-          position: getLayerPosition(index, nodes.length, slotCount),
-          status,
-          nextOrder,
-        };
-      })
-      .sort((left, right) => left.position - right.position);
+    if (!node) {
+      throw new Error(`map references unknown node ${nodeId}`);
+    }
 
-    return positionedNodes;
+    const nextPath = [...path, node.id];
+    return {
+      node,
+      path: nextPath,
+      children: node.nextIds.map((nextId) => expandNode(nextId, nextPath)),
+    };
+  };
+
+  return findRootNodeIds(map).map((nodeId) => expandNode(nodeId, []));
+}
+
+function buildActivePath(map: MapNode[], currentNodeId: string, visitedNodeIds: string[]): string[] {
+  const firstNode = map[0];
+
+  if (!firstNode) {
+    return currentNodeId ? [currentNodeId] : [];
+  }
+
+  const activePath = visitedNodeIds.length > 0 ? [...visitedNodeIds] : [firstNode.id];
+
+  if (activePath[0] !== firstNode.id) {
+    activePath.unshift(firstNode.id);
+  }
+
+  if (activePath.at(-1) !== currentNodeId) {
+    activePath.push(currentNodeId);
+  }
+
+  return activePath;
+}
+
+function appendTreeRows(
+  rows: MapTreeRow[],
+  treeNode: MapTreeNode,
+  locale: Locale,
+  activePath: string[],
+  nextNodeOrder: Map<string, number>,
+  ancestorHasMoreSiblings: boolean[],
+  hasMoreSiblings: boolean,
+): void {
+  const prefix = treeNode.path.length === 1 ? "" : createTreePrefix(ancestorHasMoreSiblings, hasMoreSiblings);
+  const status = getNodeStatus(treeNode.path, activePath, nextNodeOrder);
+  const nodeLabel = `${getNodeStatusPrefix(status, nextNodeOrder.get(treeNode.node.id))}${getNodeIcon(treeNode.node.kind)} ${formatNodeLabel(treeNode.node, locale)}`;
+  const row: MapTreeRow = [];
+
+  if (prefix.length > 0) {
+    row.push(createCell(prefix, "connector"));
+  }
+
+  row.push(createCell(nodeLabel, status));
+  rows.push(row);
+
+  treeNode.children.forEach((child, index) => {
+    appendTreeRows(
+      rows,
+      child,
+      locale,
+      activePath,
+      nextNodeOrder,
+      prefix.length > 0 ? [...ancestorHasMoreSiblings, hasMoreSiblings] : [],
+      index < treeNode.children.length - 1,
+    );
   });
 }
 
-function createNodeRow(layer: MapNodeView[]): MapTreeRow {
-  const maxPosition = layer.reduce((value, node) => Math.max(value, node.position), 0);
-  const cells = Array.from({ length: maxPosition + 1 }, () => createCell(" ".repeat(MAP_CELL_WIDTH), "empty"));
-
-  for (const node of layer) {
-    cells[node.position] = createCell(centerText(getNodeToken(node), MAP_CELL_WIDTH), node.status);
-  }
-
-  return cells;
-}
-
-function getNodeToken(node: MapNodeView): string {
-  return `${getNodeStatusPrefix(node)}${getNodeIcon(node.node.kind)}`;
+function createTreePrefix(ancestorHasMoreSiblings: boolean[], hasMoreSiblings: boolean): string {
+  return ancestorHasMoreSiblings
+    .map((value) => (value ? "│   " : "    "))
+    .join("") + (hasMoreSiblings ? "├── " : "└── ");
 }
 
 function getNodeIcon(kind: MapNode["kind"]): string {
@@ -165,198 +209,6 @@ function createCell(text: string, status: MapCellStatus): MapTreeCell {
   return { text, status };
 }
 
-function centerText(value: string, width: number): string {
-  const fitted = truncateDisplayWidth(value, width);
-  const fittedWidth = getDisplayWidth(fitted);
-
-  if (fittedWidth >= width) {
-    return fitted;
-  }
-
-  const totalPadding = width - fittedWidth;
-  const leftPadding = Math.floor(totalPadding / 2);
-  const rightPadding = totalPadding - leftPadding;
-  return `${" ".repeat(leftPadding)}${fitted}${" ".repeat(rightPadding)}`;
-}
-
-function truncateDisplayWidth(value: string, width: number): string {
-  let result = "";
-  let currentWidth = 0;
-
-  for (const char of value) {
-    const charWidth = getCharacterWidth(char);
-
-    if (currentWidth + charWidth > width) {
-      break;
-    }
-
-    result += char;
-    currentWidth += charWidth;
-  }
-
-  return result;
-}
-
-function getDisplayWidth(value: string): number {
-  let width = 0;
-
-  for (const char of value) {
-    width += getCharacterWidth(char);
-  }
-
-  return width;
-}
-
-function getCharacterWidth(char: string): number {
-  const codePoint = char.codePointAt(0);
-
-  if (codePoint === undefined) {
-    return 0;
-  }
-
-  if (
-    codePoint >= 0x1100 && (
-      codePoint <= 0x115f ||
-      codePoint === 0x2329 ||
-      codePoint === 0x232a ||
-      (codePoint >= 0x2e80 && codePoint <= 0xa4cf && codePoint !== 0x303f) ||
-      (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
-      (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
-      (codePoint >= 0xfe10 && codePoint <= 0xfe19) ||
-      (codePoint >= 0xfe30 && codePoint <= 0xfe6f) ||
-      (codePoint >= 0xff00 && codePoint <= 0xff60) ||
-      (codePoint >= 0xffe0 && codePoint <= 0xffe6) ||
-      (codePoint >= 0x1f300 && codePoint <= 0x1f64f) ||
-      (codePoint >= 0x1f900 && codePoint <= 0x1f9ff) ||
-      (codePoint >= 0x20000 && codePoint <= 0x3fffd)
-    )
-  ) {
-    return 2;
-  }
-
-  return 1;
-}
-
-function getSlotCount(maxNodes: number): number {
-  return maxNodes <= 1 ? 1 : (maxNodes - 1) * MAP_SLOT_SPACING + 1;
-}
-
-function getLayerPosition(index: number, nodeCount: number, slotCount: number): number {
-  if (nodeCount <= 1) {
-    return Math.floor(slotCount / 2);
-  }
-
-  return Math.round((index * (slotCount - 1)) / (nodeCount - 1));
-}
-
-function buildMapLayers(map: MapNode[]): MapNode[][] {
-  const nodeById = new Map(map.map((node) => [node.id, node]));
-  const originalOrderById = new Map(map.map((node, index) => [node.id, index]));
-  const parentsById = buildParentsById(map);
-  const depthById = new Map<string, number>();
-  const queue = [...findRootNodeIds(map)];
-
-  for (const rootId of queue) {
-    depthById.set(rootId, 0);
-  }
-
-  while (queue.length > 0) {
-    const nodeId = queue.shift();
-
-    if (!nodeId) {
-      continue;
-    }
-
-    const node = nodeById.get(nodeId);
-    const depth = depthById.get(nodeId) ?? 0;
-
-    if (!node) {
-      continue;
-    }
-
-    for (const nextId of node.nextIds) {
-      const nextDepth = depth + 1;
-      const previousDepth = depthById.get(nextId);
-
-      if (previousDepth === undefined || nextDepth > previousDepth) {
-        depthById.set(nextId, nextDepth);
-        queue.push(nextId);
-      }
-    }
-  }
-
-  const layers: MapNode[][] = [];
-
-  for (const node of map) {
-    const depth = depthById.get(node.id) ?? 0;
-
-    if (!layers[depth]) {
-      layers[depth] = [];
-    }
-
-    layers[depth].push(node);
-  }
-
-  const orderById = new Map<string, number>();
-
-  for (const [layerIndex, layer] of layers.entries()) {
-    if (layerIndex === 0) {
-      layer.forEach((node, index) => {
-        orderById.set(node.id, index);
-      });
-      continue;
-    }
-
-    layer.sort((left, right) => {
-      const leftScore = getParentOrderScore(left.id, parentsById, orderById, originalOrderById);
-      const rightScore = getParentOrderScore(right.id, parentsById, orderById, originalOrderById);
-
-      if (leftScore !== rightScore) {
-        return leftScore - rightScore;
-      }
-
-      return (originalOrderById.get(left.id) ?? 0) - (originalOrderById.get(right.id) ?? 0);
-    });
-
-    layer.forEach((node, index) => {
-      orderById.set(node.id, index);
-    });
-  }
-
-  return layers;
-}
-
-function buildParentsById(map: MapNode[]): Map<string, string[]> {
-  const parentsById = new Map<string, string[]>();
-
-  for (const node of map) {
-    for (const nextId of node.nextIds) {
-      const parents = parentsById.get(nextId) ?? [];
-      parents.push(node.id);
-      parentsById.set(nextId, parents);
-    }
-  }
-
-  return parentsById;
-}
-
-function getParentOrderScore(
-  nodeId: string,
-  parentsById: Map<string, string[]>,
-  orderById: Map<string, number>,
-  originalOrderById: Map<string, number>,
-): number {
-  const parentOrders = (parentsById.get(nodeId) ?? [])
-    .map((parentId) => orderById.get(parentId))
-    .filter((order): order is number => order !== undefined);
-
-  if (parentOrders.length === 0) {
-    return originalOrderById.get(nodeId) ?? 0;
-  }
-
-  return parentOrders.reduce((sum, order) => sum + order, 0) / parentOrders.length;
-}
-
 function findRootNodeIds(map: MapNode[]): string[] {
   const incoming = new Set<string>();
 
@@ -379,53 +231,66 @@ function getNextNodes(map: MapNode[], observation: Observation): MapNode[] {
   return observation.currentNode.nextIds.map((nodeId) => nodeById.get(nodeId)).filter((node): node is MapNode => node !== undefined);
 }
 
-function collectDescendantNodeIds(map: MapNode[], currentNodeId: string): Set<string> {
-  const nodeById = new Map(map.map((node) => [node.id, node]));
-  const descendants = new Set<string>();
-  const queue = [...(nodeById.get(currentNodeId)?.nextIds ?? [])];
-
-  while (queue.length > 0) {
-    const nodeId = queue.shift();
-
-    if (!nodeId || descendants.has(nodeId)) {
-      continue;
-    }
-
-    descendants.add(nodeId);
-
-    for (const nextId of nodeById.get(nodeId)?.nextIds ?? []) {
-      queue.push(nextId);
-    }
+function getNodeStatus(
+  path: string[],
+  activePath: string[],
+  nextNodeOrder: Map<string, number>,
+): MapNodeStatus {
+  if (!isCompatiblePath(path, activePath)) {
+    return "closed";
   }
 
-  return descendants;
-}
-
-function getNodeStatus(
-  nodeId: string,
-  currentNodeId: string,
-  nextOrder: number | undefined,
-  phase: Observation["phase"],
-  visitedSet: Set<string>,
-  futureNodeIds: Set<string>,
-): Extract<MapCellStatus, "closed" | "current" | "future" | "next" | "past"> {
-  if (nodeId === currentNodeId) {
+  if (arePathsEqual(path, activePath)) {
     return "current";
   }
 
-  if (nextOrder !== undefined) {
+  if (path.length === activePath.length + 1 && isPathPrefix(activePath, path) && nextNodeOrder.has(path.at(-1) ?? "")) {
     return "next";
   }
 
-  if (visitedSet.has(nodeId)) {
+  if (path.length < activePath.length && isPathPrefix(path, activePath)) {
     return "past";
   }
 
-  if (futureNodeIds.has(nodeId)) {
+  if (path.length > activePath.length && isPathPrefix(activePath, path)) {
     return "future";
   }
 
-  return visitedSet.size > 0 || phase !== "combat" ? "closed" : "future";
+  return "future";
+}
+
+function isCompatiblePath(path: string[], activePath: string[]): boolean {
+  const limit = Math.min(path.length, activePath.length);
+
+  for (let index = 0; index < limit; index += 1) {
+    if (path[index] !== activePath[index]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function isPathPrefix(prefix: string[], path: string[]): boolean {
+  if (prefix.length > path.length) {
+    return false;
+  }
+
+  for (let index = 0; index < prefix.length; index += 1) {
+    if (prefix[index] !== path[index]) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+function arePathsEqual(left: string[], right: string[]): boolean {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  return isPathPrefix(left, right);
 }
 
 export function getMapStatusSummary(locale: Locale): string {
@@ -442,20 +307,20 @@ export function getNodeSummary(node: MapNode, locale: Locale): string {
   return `${getNodeIcon(node.kind)} ${localizeNodeKind(node.kind, locale)}`;
 }
 
-function getNodeStatusPrefix(node: MapNodeView): string {
-  if (node.status === "current") {
+function getNodeStatusPrefix(status: MapNodeStatus, nextOrder?: number): string {
+  if (status === "current") {
     return "@";
   }
 
-  if (node.status === "next") {
-    return String(Math.min((node.nextOrder ?? 0) + 1, 9));
+  if (status === "next") {
+    return String(Math.min((nextOrder ?? 0) + 1, 9));
   }
 
-  if (node.status === "past") {
+  if (status === "past") {
     return "+";
   }
 
-  if (node.status === "future") {
+  if (status === "future") {
     return ".";
   }
 

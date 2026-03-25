@@ -21,7 +21,19 @@ describe("cli view helpers", () => {
 
     const tree = formatMapLines(createMapTreeRows(sampleContent.map, observation, "en", deriveVisitedNodeIds(sampleContent.map, [])));
 
-    expect(tree).toEqual(["             @S", " 1F                      2E", " .R          .$          .F", "             .B"]);
+    expect(tree).toEqual([
+      "@S Crossroads (start)",
+      "├── 1F Gate (battle)",
+      "│   ├── .R Rest Camp (rest)",
+      "│   │   └── .B Summit (boss)",
+      "│   └── .$ Market (shop)",
+      "│       └── .B Summit (boss)",
+      "└── 2E Forge (elite)",
+      "    ├── .F Hall (battle)",
+      "    │   └── .B Summit (boss)",
+      "    └── .$ Market (shop)",
+      "        └── .B Summit (boss)",
+    ]);
   });
 
   test("map view marks current, future, and closed branches after choosing a path", () => {
@@ -59,7 +71,19 @@ describe("cli view helpers", () => {
       ),
     );
 
-    expect(tree).toEqual(["             +S", " @F                      xE", " 1R          2$          xF", "             .B"]);
+    expect(tree).toEqual([
+      "+S Crossroads (start)",
+      "├── @F Gate (battle)",
+      "│   ├── 1R Rest Camp (rest)",
+      "│   │   └── .B Summit (boss)",
+      "│   └── 2$ Market (shop)",
+      "│       └── .B Summit (boss)",
+      "└── xE Forge (elite)",
+      "    ├── xF Hall (battle)",
+      "    │   └── xB Summit (boss)",
+      "    └── x$ Market (shop)",
+      "        └── xB Summit (boss)",
+    ]);
   });
 
   test("recent log view truncates older entries and reports hidden count", () => {
