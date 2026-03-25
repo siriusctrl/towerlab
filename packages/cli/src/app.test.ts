@@ -13,15 +13,15 @@ describe("App layout", () => {
     const frame = await renderFrame({ columns: 80, rows: 24 });
 
     expect(frame).toContain("\n Map\n");
-    expect(frame).toContain("@S Crossroads (start)");
+    expect(frame).toContain("S start");
     expect(frame).not.toContain("Recent Activity");
   });
 
   test("does not enable the sidebar on 100x20 combat terminals", async () => {
     const frame = await renderFrame({ columns: 100, rows: 20, inputs: ["1"] });
 
-    expect(frame).toContain("\n Combat\n");
-    expect(frame).toContain("Enemy Sentry");
+    expect(frame).toContain("Combat");
+    expect(frame).toContain("Sentry");
     expect(frame).not.toContain("Recent Activity");
     expect(frame).not.toContain("│ Map");
   });
@@ -30,7 +30,7 @@ describe("App layout", () => {
     const frame = await renderFrame({ columns: 100, rows: 24 });
 
     expect(frame).toContain("│ Map");
-    expect(frame).toContain("@ current  1 next  + passed  . future  x closed");
+    expect(frame).toContain("S start");
     expect(frame).toContain("Recent Activity");
   });
 });

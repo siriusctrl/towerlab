@@ -22,7 +22,7 @@ import {
   readShopAction,
 } from "./shop.js";
 import {
-  createMapTreeRows,
+  createMapFloorRows,
   deriveVisitedNodeIds,
   getEarlierEventsLine,
   getHpColor,
@@ -168,7 +168,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
       <Box flexDirection="row" flexGrow={1} overflow="hidden">
         <Box flexDirection="column" flexGrow={1} paddingLeft={1} overflow="hidden">
           {!showSidebar && view.phase === "map" ? (
-            <MapTreeView observation={view} actions={actions} locale={locale} />
+            <MapTreeView observation={view} actions={actions} locale={locale} width={columns - 2} />
           ) : null}
           <PhaseBody observation={view} locale={locale} shopMenu={shopMenu} hpBarWidth={hpBarWidth} />
           {showInlineLog ? (
@@ -192,7 +192,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
             paddingLeft={1}
             overflow="hidden"
           >
-            <MapTreeView observation={view} actions={actions} locale={locale} compact compactLegendLine={compactLegendLine} />
+            <MapTreeView observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
             <Box marginTop={1} flexDirection="column" overflow="hidden">
               <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
             </Box>
@@ -289,17 +289,19 @@ function MapTreeView({
   observation,
   actions,
   locale,
+  width,
   compact = false,
   compactLegendLine,
 }: {
   observation: Observation;
   actions: RunAction[];
   locale: Locale;
+  width: number;
   compact?: boolean;
   compactLegendLine?: string;
 }) {
   const visitedNodeIds = deriveVisitedNodeIds(sampleContent.map, actions);
-  const mapRows = createMapTreeRows(sampleContent.map, observation, locale, visitedNodeIds);
+  const mapRows = createMapFloorRows(sampleContent.map, observation, locale, visitedNodeIds, width, compact ? "icon" : "icon");
 
   return (
     <>
@@ -359,24 +361,20 @@ function PhaseBody({
 
     return (
       <>
-        <Text bold color="red">
-          {text(locale, "combat")}
+        <Text wrap="truncate-end">
+          <Text bold color="red">{text(locale, "combat")}</Text>
+          <Text dimColor>{"  "}{text(locale, "draw")} {observation.drawPileCount} {"\u00b7"} {text(locale, "discard")} {observation.discardPileCount}</Text>
         </Text>
         <Text wrap="truncate-end">
-          <Text>{text(locale, "enemy")} {observation.enemy.name} </Text>
+          <Text>{observation.enemy.name} </Text>
           <Text color={enemyHpColor}>{enemyHpBar}</Text>
           <Text> {observation.enemy.hp}/{observation.enemy.maxHp}</Text>
           {observation.enemy.block > 0 ? (
             <Text dimColor> {text(locale, "block")} {observation.enemy.block}</Text>
           ) : null}
+          <Text dimColor> {"\u2192"} </Text>
+          <Text>{observation.enemy.intent.description}</Text>
         </Text>
-        <Text wrap="truncate-end">
-          {text(locale, "intent")}: {observation.enemy.intent.description}
-        </Text>
-        <Text dimColor wrap="truncate-end">
-          {text(locale, "draw")} {observation.drawPileCount} {"\u00b7"} {text(locale, "discard")} {observation.discardPileCount}
-        </Text>
-        <Text bold>{text(locale, "hand")}</Text>
         {observation.hand.length > 0 ? (
           observation.hand.map((card, index) => (
             <Text key={`${index}-${card.id}`} color={card.cost > observation.energy ? "gray" : undefined} wrap="truncate-end">

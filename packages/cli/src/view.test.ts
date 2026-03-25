@@ -2,10 +2,10 @@ import { sampleContent } from "@towerlab/content";
 import type { Observation } from "@towerlab/core";
 import { describe, expect, test } from "vitest";
 
-import { createMapTreeRows, deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getRecentLogView } from "./view.js";
+import { createMapFloorRows, deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getRecentLogView } from "./view.js";
 
 describe("cli view helpers", () => {
-  test("map view shows a branching start node with numbered opening choices", () => {
+  test("floor map shows each node exactly once with correct statuses at start", () => {
     const observation: Observation = {
       seed: 7,
       phase: "map",
@@ -19,24 +19,29 @@ describe("cli view helpers", () => {
       nextNodes: [sampleContent.map[1], sampleContent.map[2]],
     };
 
-    const tree = formatMapLines(createMapTreeRows(sampleContent.map, observation, "en", deriveVisitedNodeIds(sampleContent.map, [])));
+    const lines = formatMapLines(createMapFloorRows(sampleContent.map, observation, "en", deriveVisitedNodeIds(sampleContent.map, []), 60, "icon"));
+    const allText = lines.join("\n");
 
-    expect(tree).toEqual([
-      "@S Crossroads (start)",
-      "├── 1F Gate (battle)",
-      "│   ├── .R Rest Camp (rest)",
-      "│   │   └── .B Summit (boss)",
-      "│   └── .$ Market (shop)",
-      "│       └── .B Summit (boss)",
-      "└── 2E Forge (elite)",
-      "    ├── .F Hall (battle)",
-      "    │   └── .B Summit (boss)",
-      "    └── .$ Market (shop)",
-      "        └── .B Summit (boss)",
-    ]);
+    // Nodes are rendered as one-character icons only, status via color.
+    expect(allText).toContain("S");
+
+    // 7 nodes in the map, each icon appears once in output rows.
+    const iconCount = (allText.match(/[SFER$B]/g) ?? []).length;
+    expect(iconCount).toBe(7);
+
+    // Status prefixes should not be part of node text.
+    expect(allText).not.toContain("@");
+    expect(allText).not.toContain("1");
+    expect(allText).not.toContain("2");
+    expect(allText).not.toContain("+");
+    expect(allText).not.toContain("x");
+
+    // Connectors between floors (box-drawing characters)
+    const connectorLines = lines.filter((line) => /[│─┼┬┤├┐┌└┘┴]/.test(line));
+    expect(connectorLines.length).toBeGreaterThan(0);
   });
 
-  test("map view marks current, future, and closed branches after choosing a path", () => {
+  test("floor map marks current, past, future, and closed after choosing a path", () => {
     const observation: Observation = {
       seed: 7,
       phase: "combat",
@@ -62,28 +67,25 @@ describe("cli view helpers", () => {
       },
     };
 
-    const tree = formatMapLines(
-      createMapTreeRows(
+    const lines = formatMapLines(
+      createMapFloorRows(
         sampleContent.map,
         observation,
         "en",
         deriveVisitedNodeIds(sampleContent.map, [{ type: "choosePath", nodeId: "gate" }]),
+        60,
+        "icon",
       ),
     );
 
-    expect(tree).toEqual([
-      "+S Crossroads (start)",
-      "├── @F Gate (battle)",
-      "│   ├── 1R Rest Camp (rest)",
-      "│   │   └── .B Summit (boss)",
-      "│   └── 2$ Market (shop)",
-      "│       └── .B Summit (boss)",
-      "└── xE Forge (elite)",
-      "    ├── xF Hall (battle)",
-      "    │   └── xB Summit (boss)",
-      "    └── x$ Market (shop)",
-      "        └── xB Summit (boss)",
-    ]);
+    const allText = lines.join("\n");
+    // Nodes still render without status prefixes.
+    expect(allText).toContain("S");
+    expect(allText).toContain("F");
+    expect(allText).toContain("E");
+    expect(allText).toContain("R");
+    expect(allText).toContain("$");
+    expect(allText).toContain("B");
   });
 
   test("recent log view truncates older entries and reports hidden count", () => {

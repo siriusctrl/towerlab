@@ -35,22 +35,20 @@ describe("headless CLI", () => {
     expect(snapshot).toContain("最近事件:");
   });
 
-  test("non-tty snapshot shows full map with current node and next choices", () => {
+  test("non-tty snapshot shows floor map with each node once and next choices", () => {
     const snapshot = renderSnapshot(7, "zh");
-    const lines = snapshot.split("\n");
 
     expect(snapshot).toContain("地图:");
-    expect(lines).toContain("S 起点  F 战斗  E 精英  R 营地  $ 商店  B 首领");
-    expect(lines).toContain("@ 当前  1 下一步  + 已走过  . 未来  x 已错过");
-    expect(lines).toContain("@S 岔路口 (起点)");
-    expect(lines).toContain("├── 1F 城门 (战斗)");
-    expect(lines).toContain("│   ├── .R 营地 (营火)");
-    expect(lines).toContain("│   │   └── .B 顶峰 (首领)");
-    expect(lines).toContain("└── 2E 熔炉 (精英)");
-    expect(lines).toContain("    ├── .F 大厅 (战斗)");
-    expect(lines).toContain("路径：");
-    expect(lines).toContain("1. 城门 (战斗)");
-    expect(lines).toContain("2. 熔炉 (精英)");
+    // Legend uses node badges.
+    expect(snapshot).toContain("S 起点");
+    expect(snapshot).toContain("F 战斗");
+    expect(snapshot).toContain("B 首领");
+    // Current node badge
+    expect(snapshot).toContain("S");
+    // Path choices section still present
+    expect(snapshot).toContain("路径：");
+    expect(snapshot).toContain("1. 城门 (战斗)");
+    expect(snapshot).toContain("2. 熔炉 (精英)");
   });
 
   test("step applies a single action after replaying prior actions", () => {

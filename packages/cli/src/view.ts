@@ -1,6 +1,7 @@
 import type { MapNode, Observation } from "@towerlab/core";
 
-import { formatNodeLabel, formatText, localizeNodeKindBadge, type Locale } from "./i18n.js";
+import { formatText, type Locale } from "./i18n.js";
+import { renderDagreMap, type MapRenderMode } from "./map-renderer.js";
 
 export const RECENT_LOG_LIMIT = 4;
 
@@ -32,30 +33,28 @@ export type RecentLogView = {
   hiddenCount: number;
 };
 
-type MapNodeStatus = Extract<MapCellStatus, "closed" | "current" | "future" | "next" | "past">;
+// ---------------------------------------------------------------------------
+// Map rendering (delegates to dagre-based renderer)
+// ---------------------------------------------------------------------------
 
-type MapTreeNode = {
-  node: MapNode;
-  path: string[];
-  children: MapTreeNode[];
-};
-
-export function createMapTreeRows(map: MapNode[], observation: Observation, locale: Locale, visitedNodeIds: string[] = []): MapTreeRow[] {
-  const roots = buildMapTree(map);
-  const activePath = buildActivePath(map, observation.currentNode.id, visitedNodeIds);
-  const nextNodeOrder = new Map(getNextNodes(map, observation).map((node, index) => [node.id, index]));
-  const rows: MapTreeRow[] = [];
-
-  roots.forEach((root, index) => {
-    appendTreeRows(rows, root, locale, activePath, nextNodeOrder, [], index < roots.length - 1);
-  });
-
-  return rows;
+export function createMapFloorRows(
+  map: MapNode[],
+  observation: Observation,
+  locale: Locale,
+  visitedNodeIds: string[],
+  width: number,
+  mode: MapRenderMode = "icon",
+): MapTreeRow[] {
+  return renderDagreMap(map, observation, locale, visitedNodeIds, width, mode);
 }
 
 export function formatMapLines(rows: MapTreeRow[]): string[] {
   return rows.map((row) => row.map((cell) => cell.text).join("").replace(/\s+$/u, ""));
 }
+
+// ---------------------------------------------------------------------------
+// Legend and log helpers
+// ---------------------------------------------------------------------------
 
 export function getMapLegendLines(locale: Locale): string[] {
   return [
@@ -67,24 +66,18 @@ export function getMapLegendLines(locale: Locale): string[] {
       shop: "$",
       boss: "B",
     }),
-    [
-      formatText(locale, "mapLegendCurrentLine", { marker: "@" }),
-      formatText(locale, "mapLegendNextLine", { marker: "1" }),
-      formatText(locale, "mapLegendPastLine", { marker: "+" }),
-      formatText(locale, "mapLegendFutureLine", { marker: "." }),
-      formatText(locale, "mapLegendClosedLine", { marker: "x" }),
-    ].join("  "),
   ];
 }
 
 export function getMapCompactLegendLine(locale: Locale): string {
-  return [
-    formatText(locale, "mapLegendCurrentLine", { marker: "@" }),
-    formatText(locale, "mapLegendNextLine", { marker: "1" }),
-    formatText(locale, "mapLegendPastLine", { marker: "+" }),
-    formatText(locale, "mapLegendFutureLine", { marker: "." }),
-    formatText(locale, "mapLegendClosedLine", { marker: "x" }),
-  ].join("  ");
+  return formatText(locale, "mapIconLegend", {
+    start: "S",
+    battle: "F",
+    elite: "E",
+    rest: "R",
+    shop: "$",
+    boss: "B",
+  });
 }
 
 export function getRecentLogView(log: string[], limit = RECENT_LOG_LIMIT): RecentLogView {
@@ -122,190 +115,4 @@ export function deriveVisitedNodeIds(map: MapNode[], actions: Array<{ type: stri
   }
 
   return visitedNodeIds;
-}
-
-function buildMapTree(map: MapNode[]): MapTreeNode[] {
-  const nodeById = new Map(map.map((node) => [node.id, node]));
-
-  const expandNode = (nodeId: string, path: string[]): MapTreeNode => {
-    const node = nodeById.get(nodeId);
-
-    if (!node) {
-      throw new Error(`map references unknown node ${nodeId}`);
-    }
-
-    const nextPath = [...path, node.id];
-    return {
-      node,
-      path: nextPath,
-      children: node.nextIds.map((nextId) => expandNode(nextId, nextPath)),
-    };
-  };
-
-  return findRootNodeIds(map).map((nodeId) => expandNode(nodeId, []));
-}
-
-function buildActivePath(map: MapNode[], currentNodeId: string, visitedNodeIds: string[]): string[] {
-  const firstNode = map[0];
-
-  if (!firstNode) {
-    return currentNodeId ? [currentNodeId] : [];
-  }
-
-  const activePath = visitedNodeIds.length > 0 ? [...visitedNodeIds] : [firstNode.id];
-
-  if (activePath[0] !== firstNode.id) {
-    activePath.unshift(firstNode.id);
-  }
-
-  if (activePath.at(-1) !== currentNodeId) {
-    activePath.push(currentNodeId);
-  }
-
-  return activePath;
-}
-
-function appendTreeRows(
-  rows: MapTreeRow[],
-  treeNode: MapTreeNode,
-  locale: Locale,
-  activePath: string[],
-  nextNodeOrder: Map<string, number>,
-  ancestorHasMoreSiblings: boolean[],
-  hasMoreSiblings: boolean,
-): void {
-  const prefix = treeNode.path.length === 1 ? "" : createTreePrefix(ancestorHasMoreSiblings, hasMoreSiblings);
-  const status = getNodeStatus(treeNode.path, activePath, nextNodeOrder);
-  const nodeLabel = `${getNodeStatusPrefix(status, nextNodeOrder.get(treeNode.node.id))}${localizeNodeKindBadge(treeNode.node.kind, "en")} ${formatNodeLabel(treeNode.node, locale)}`;
-  const row: MapTreeRow = [];
-
-  if (prefix.length > 0) {
-    row.push(createCell(prefix, "connector"));
-  }
-
-  row.push(createCell(nodeLabel, status));
-  rows.push(row);
-
-  treeNode.children.forEach((child, index) => {
-    appendTreeRows(
-      rows,
-      child,
-      locale,
-      activePath,
-      nextNodeOrder,
-      prefix.length > 0 ? [...ancestorHasMoreSiblings, hasMoreSiblings] : [],
-      index < treeNode.children.length - 1,
-    );
-  });
-}
-
-function createTreePrefix(ancestorHasMoreSiblings: boolean[], hasMoreSiblings: boolean): string {
-  return ancestorHasMoreSiblings
-    .map((value) => (value ? "│   " : "    "))
-    .join("") + (hasMoreSiblings ? "├── " : "└── ");
-}
-
-function createCell(text: string, status: MapCellStatus): MapTreeCell {
-  return { text, status };
-}
-
-function findRootNodeIds(map: MapNode[]): string[] {
-  const incoming = new Set<string>();
-
-  for (const node of map) {
-    for (const nextId of node.nextIds) {
-      incoming.add(nextId);
-    }
-  }
-
-  const roots = map.filter((node) => !incoming.has(node.id)).map((node) => node.id);
-  return roots.length > 0 ? roots : map.slice(0, 1).map((node) => node.id);
-}
-
-function getNextNodes(map: MapNode[], observation: Observation): MapNode[] {
-  if (observation.phase !== "combat") {
-    return observation.nextNodes;
-  }
-
-  const nodeById = new Map(map.map((node) => [node.id, node]));
-  return observation.currentNode.nextIds.map((nodeId) => nodeById.get(nodeId)).filter((node): node is MapNode => node !== undefined);
-}
-
-function getNodeStatus(
-  path: string[],
-  activePath: string[],
-  nextNodeOrder: Map<string, number>,
-): MapNodeStatus {
-  if (!isCompatiblePath(path, activePath)) {
-    return "closed";
-  }
-
-  if (arePathsEqual(path, activePath)) {
-    return "current";
-  }
-
-  if (path.length === activePath.length + 1 && isPathPrefix(activePath, path) && nextNodeOrder.has(path.at(-1) ?? "")) {
-    return "next";
-  }
-
-  if (path.length < activePath.length && isPathPrefix(path, activePath)) {
-    return "past";
-  }
-
-  if (path.length > activePath.length && isPathPrefix(activePath, path)) {
-    return "future";
-  }
-
-  return "future";
-}
-
-function isCompatiblePath(path: string[], activePath: string[]): boolean {
-  const limit = Math.min(path.length, activePath.length);
-
-  for (let index = 0; index < limit; index += 1) {
-    if (path[index] !== activePath[index]) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function isPathPrefix(prefix: string[], path: string[]): boolean {
-  if (prefix.length > path.length) {
-    return false;
-  }
-
-  for (let index = 0; index < prefix.length; index += 1) {
-    if (prefix[index] !== path[index]) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function arePathsEqual(left: string[], right: string[]): boolean {
-  if (left.length !== right.length) {
-    return false;
-  }
-
-  return isPathPrefix(left, right);
-}
-
-
-const STATUS_PREFIXES: Record<MapNodeStatus, string> = {
-  current: "@",
-  next: "",
-  past: "+",
-  future: ".",
-  closed: "x",
-};
-
-function getNodeStatusPrefix(status: MapNodeStatus, nextOrder?: number): string {
-  if (status === "next") {
-    return String(Math.min((nextOrder ?? 0) + 1, 9));
-  }
-
-  return STATUS_PREFIXES[status];
 }

@@ -29,7 +29,7 @@ import {
 } from "./i18n.js";
 import { BASELINE_POLICY_NAMES, getBaselinePolicy, type BaselinePolicyName } from "./policies.js";
 import { createShopBindings } from "./shop.js";
-import { createMapTreeRows, deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getMapLegendLines, getRecentLogView } from "./view.js";
+import { createMapFloorRows, deriveVisitedNodeIds, formatMapLines, getEarlierEventsLine, getMapLegendLines, getRecentLogView } from "./view.js";
 
 export { App, type AppProps } from "./app.js";
 
@@ -541,7 +541,7 @@ export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE): s
 }
 
 function renderObservation(observation: Observation, locale: Locale, visitedNodeIds: string[] = []): string {
-  const mapSection = formatMapLines(createMapTreeRows(sampleContent.map, observation, locale, visitedNodeIds));
+  const mapSection = formatMapLines(createMapFloorRows(sampleContent.map, observation, locale, visitedNodeIds, 60));
   const recentLog = getRecentLogView(observation.log);
   const mapLegendLines = getMapLegendLines(locale);
 
@@ -561,11 +561,9 @@ function renderObservation(observation: Observation, locale: Locale, visitedNode
 
   if (observation.phase === "combat") {
     lines.push(
-      `${text(locale, "enemy")}: ${observation.enemy.name} ${text(locale, "hp")} ${observation.enemy.hp}/${observation.enemy.maxHp} ${text(locale, "block")} ${observation.enemy.block}`,
-      `${text(locale, "intent")}: ${observation.enemy.intent.description}`,
-      `${text(locale, "energy")} ${observation.energy}  ${text(locale, "block")} ${observation.block}  ${text(locale, "draw")} ${observation.drawPileCount}  ${text(locale, "discard")} ${observation.discardPileCount}`,
-      "",
-      `${text(locale, "hand")}:`,
+      `${text(locale, "combat")}  ${text(locale, "draw")} ${observation.drawPileCount} ${text(locale, "discard")} ${observation.discardPileCount}`,
+      `${observation.enemy.name} ${text(locale, "hp")} ${observation.enemy.hp}/${observation.enemy.maxHp} ${text(locale, "block")} ${observation.enemy.block} \u2192 ${observation.enemy.intent.description}`,
+      `${text(locale, "energy")} ${observation.energy}  ${text(locale, "block")} ${observation.block}`,
     );
 
     for (const [index, card] of observation.hand.entries()) {

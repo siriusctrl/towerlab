@@ -14,5 +14,8 @@
     "tsx": "^4.20.5",
     "typescript": "^5.8.2",
     "vitest": "^3.0.8"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^3.0.0"
   }
 }
