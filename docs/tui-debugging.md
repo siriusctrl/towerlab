@@ -39,6 +39,26 @@ After any edit to `view.ts`, `app.tsx`, or rendering-related code:
 If the snapshot looks wrong, the TUI will look wrong too. Fix the snapshot
 first.
 
+## Verification Ladder
+
+For TUI work, do not stop after one green test file. Use this order:
+
+1. Non-TTY snapshot
+   - `node packages/cli/dist/cli/src/main.js --seed 7 --lang zh`
+   - Fastest way to catch layout regressions in the opening state.
+2. `ink-testing-library`
+   - Assert the actual rendered frame for concrete sizes such as `80x24` and
+     `100x24`.
+   - Use this for compact layout, clipping, and text wrapping checks.
+3. Real CLI in a TTY
+   - Run `corepack pnpm cli -- --seed <seed> --lang zh` in a real terminal, or
+     drive the built CLI in `tmux`.
+   - If the change affects navigation or minimaps, actually move into the next
+     state instead of only checking the opening frame.
+
+For map rendering changes, the work is not verified until all three layers
+agree.
+
 ## Stepping Through Game States
 
 The `--json` headless mode lets you advance the game and inspect state at
@@ -87,6 +107,34 @@ console.log(lastFrame());
 `lastFrame()` gives you the exact text the user would see, minus colors.
 Use this in tests to assert layout properties.
 
+## Using tmux for Real-CLI Verification
+
+When you need a real TTY but want deterministic automation, use `tmux` and
+capture the pane after driving input:
+
+```bash
+session="codex_verify_17"
+tmux new-session -d -x 100 -y 24 -s "$session" \
+  "cd /root/towerlab && node packages/cli/dist/cli/src/main.js --seed 17 --lang zh"
+
+sleep 1
+tmux send-keys -t "$session" '1'
+sleep 1
+tmux capture-pane -pt "$session" -S -24
+tmux kill-session -t "$session"
+```
+
+Rules:
+
+- Always kill temporary `tmux` sessions after verification.
+- Prefer the built CLI in `dist/` so the code under test matches what users
+  run.
+- For renderer bugs, check at least one opening frame and one frame after
+  advancing the game state.
+
+For broad map changes, verify at least five different seeds. This catches
+branching and minimap regressions that a single authored example will miss.
+
 ## Map Rendering Specifically
 
 The map is a seeded DAG generated in `packages/content/src/map/`. The view
@@ -130,4 +178,6 @@ console.log(formatMapLines(rows).join('\n'));
 3. [ ] Does the non-TTY snapshot (`node packages/cli/dist/cli/src/main.js --seed 7`) look correct?
 4. [ ] Does the `--json observe` output still match the expected schema?
 5. [ ] If map rendering changed, do the `view.test.ts` snapshots match?
-6. [ ] Have you tested with at least two seeds to catch layout edge cases?
+6. [ ] Have you checked `ink-testing-library` frames for the target terminal sizes?
+7. [ ] If the change affects interactive map rendering, have you verified a real TTY frame after moving into the next state?
+8. [ ] For map generation or routing changes, have you verified at least five seeds and cleaned up temporary `tmux` sessions?

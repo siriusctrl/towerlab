@@ -86,6 +86,19 @@ When starting work, route yourself by task type:
 - Treat `docs/plans/INDEX.md` as the roadmap source of truth.
 - When milestone scope or status changes, update the relevant plan doc and the index in the same change.
 
+## Verification Requirements
+
+- Do not claim a TUI or renderer change is done without running the built CLI and the relevant tests.
+- For terminal UI work, follow `docs/tui-debugging.md` instead of relying on reasoning or raw ANSI output.
+- Minimum bar for TUI changes:
+  - `corepack pnpm build`
+  - `corepack pnpm test`
+  - non-TTY snapshot check against `dist/`
+  - `ink-testing-library` frame check for the affected terminal sizes
+- If the change affects interactive map rendering, also verify a real TTY state after taking at least one in-game action.
+- If the change affects map generation, map routing, compact map layout, minimaps, or connector rendering, verify at least five seeds, not just one happy-path seed.
+- When using `tmux` or other terminal harnesses for verification, always close temporary sessions after use. Do not leave idle terminals behind.
+
 ## Collaboration Preferences
 
 - Use direct engineering judgment.
