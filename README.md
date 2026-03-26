@@ -137,8 +137,9 @@ The current structured card vocabulary includes:
 - `heal`
 - `keywords`
 
-The first structured keyword currently in use is:
+The structured keywords currently in use are:
 - `exhaust`
+- `retain`
 
 ## Why TypeScript
 

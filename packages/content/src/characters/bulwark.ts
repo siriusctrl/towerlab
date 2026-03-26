@@ -19,7 +19,7 @@ export const bulwark: CharacterDefinition = {
     "towerSlam",
   ],
   startingRelicId: "guardTraining",
-  blessingCards: ["reserveDrill", "wardensSignal", "rampartBuildup"],
+  blessingCards: ["braceLine", "quarterWatch", "bastionCall"],
   rewardCardPools: {
     common: [
       "brace",
@@ -36,9 +36,12 @@ export const bulwark: CharacterDefinition = {
       "fortifySignal",
       "lineWard",
       "rearGuard",
+      "braceLine",
+      "shieldRelay",
+      "quarterWatch",
     ],
-    rare: ["safeguard", "wallStance", "gatebreaker", "towerSlam", "holdFast", "riposte", "citadel", "lastStand", "aegisDrive", "keepersOath", "breakFormation"],
-    epic: ["bastion", "stronghold", "citadelBreaker", "bulwarkRecovery", "aegisPulse"],
+    rare: ["safeguard", "wallStance", "gatebreaker", "towerSlam", "holdFast", "riposte", "citadel", "lastStand", "aegisDrive", "keepersOath", "breakFormation", "siegeRam", "watchtower"],
+    epic: ["bastion", "stronghold", "citadelBreaker", "bulwarkRecovery", "aegisPulse", "bastionCall"],
   },
   shopCardPools: {
     common: [
@@ -56,6 +59,9 @@ export const bulwark: CharacterDefinition = {
       "fortifySignal",
       "lineWard",
       "rearGuard",
+      "braceLine",
+      "shieldRelay",
+      "quarterWatch",
     ],
     rare: [
       "safeguard",
@@ -70,11 +76,13 @@ export const bulwark: CharacterDefinition = {
       "keepersOath",
       "breakFormation",
       "ironAnchor",
+      "siegeRam",
+      "watchtower",
     ],
-    epic: ["bastion", "stronghold", "citadelBreaker", "bulwarkRecovery", "aegisPulse", "rampartBuildup"],
+    epic: ["bastion", "stronghold", "citadelBreaker", "bulwarkRecovery", "aegisPulse", "rampartBuildup", "bastionCall"],
   },
   relicPools: {
-    elite: ["bucklerFrame", "wardCharm", "caravanSeal", "reservePlate"],
-    boss: ["bulwarkCore", "reinforcedFrame"],
+    elite: ["bucklerFrame", "wardCharm", "caravanSeal", "reservePlate", "sentryGreaves", "quartermasterSeal", "triageKit", "garrisonPlate"],
+    boss: ["bulwarkCore", "reinforcedFrame", "holdfastEngine", "citadelFrame"],
   },
 };

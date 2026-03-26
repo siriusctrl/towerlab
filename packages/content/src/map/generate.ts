@@ -21,9 +21,11 @@ type GeneratedNode = MapNode & {
 
 export function generateActs(seed: number, character: CharacterDefinition): TowerAct[] {
   let rng = normalizeSeed(seed);
+  const usedEliteRelics = new Set<string>();
+  const usedBossRelics = new Set<string>();
 
   return ACT_CONFIGS.map((config, index) => {
-    const generated = generateAct(index + 1, rng, character, config);
+    const generated = generateAct(index + 1, rng, character, config, usedEliteRelics, usedBossRelics);
     rng = generated.rng;
     return generated.act;
   });
@@ -34,6 +36,8 @@ function generateAct(
   seed: number,
   character: CharacterDefinition,
   config: ActGenerationConfig,
+  usedEliteRelics: Set<string>,
+  usedBossRelics: Set<string>,
 ): { act: TowerAct; rng: number } {
   let rng = seed;
   const patternPick = pickFrom(REGULAR_ROW_PATTERNS, rng);
@@ -52,14 +56,14 @@ function generateAct(
 
   patternPick.value.forEach((count, rowIndex) => {
     const rowNumber = rowIndex + 1;
-    const builtRow = buildRegularRow(actNumber, rowNumber, count, character, config, rng);
+    const builtRow = buildRegularRow(actNumber, rowNumber, count, character, config, rng, usedEliteRelics);
     rng = builtRow.rng;
     rows.push(builtRow.nodes);
   });
 
   const bossPick = pickFrom(config.bossPool, rng);
   rng = bossPick.rng;
-  const bossRelicPick = pickFrom(character.relicPools.boss, rng);
+  const bossRelicPick = pickUniqueFromPool(character.relicPools.boss, rng, usedBossRelics);
   rng = bossRelicPick.rng;
   rows.push([
     {
@@ -131,11 +135,12 @@ function buildRegularRow(
   character: CharacterDefinition,
   config: ActGenerationConfig,
   seed: number,
+  usedEliteRelics: Set<string>,
 ): { nodes: GeneratedNode[]; rng: number } {
   const kindsResult = buildRowKinds(rowNumber, count, seed);
   let rng = kindsResult.rng;
   const nodes = kindsResult.kinds.map((kind, index) => {
-    const node = createRegularNode(actNumber, kind, rowNumber, index + 1, character, config, rng);
+    const node = createRegularNode(actNumber, kind, rowNumber, index + 1, character, config, rng, usedEliteRelics);
     rng = node.rng;
     return node.node;
   });
@@ -153,15 +158,12 @@ function buildRowKinds(rowNumber: number, count: number, seed: number): { kinds:
   const shuffled = shuffle(pool, seed);
   const kinds = shuffled.items.slice(0, count);
 
-  if (!kinds.includes("shop")) {
-    kinds[kinds.length - 1] = "shop";
+  const requiredUtility = rowNumber % 2 === 0 ? "shop" : "rest";
+  if (!kinds.includes(requiredUtility)) {
+    kinds[kinds.length - 1] = requiredUtility;
   }
 
-  if (!kinds.includes("rest")) {
-    kinds[Math.min(1, kinds.length - 1)] = "rest";
-  }
-
-  if (rowNumber <= 4 && !kinds.includes("elite")) {
+  if (rowNumber <= 5 && !kinds.includes("elite")) {
     kinds[0] = "elite";
   }
 
@@ -179,6 +181,7 @@ function createRegularNode(
   character: CharacterDefinition,
   config: ActGenerationConfig,
   seed: number,
+  usedEliteRelics: Set<string>,
 ): { node: GeneratedNode; rng: number } {
   const id = `act${actNumber}-${kind}-r${row}-p${position}`;
 
@@ -199,7 +202,7 @@ function createRegularNode(
 
   if (kind === "elite") {
     const encounterPick = pickFrom(config.elitePool, seed);
-    const relicPick = pickFrom(character.relicPools.elite, encounterPick.rng);
+    const relicPick = pickUniqueFromPool(character.relicPools.elite, encounterPick.rng, usedEliteRelics);
     return {
       node: {
         id,
@@ -224,6 +227,19 @@ function createRegularNode(
     },
     rng: nextSeed(seed),
   };
+}
+
+function pickUniqueFromPool(pool: string[], seed: number, used: Set<string>): { value: string; rng: number } {
+  const available = pool.filter((item) => !used.has(item));
+  const source = available.length > 0 ? available : pool;
+
+  if (available.length === 0) {
+    used.clear();
+  }
+
+  const pick = pickFrom(source, seed);
+  used.add(pick.value);
+  return pick;
 }
 
 function connectRows(previousRow: GeneratedNode[], nextRow: GeneratedNode[], seed: number): number {

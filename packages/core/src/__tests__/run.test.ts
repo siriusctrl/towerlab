@@ -246,6 +246,65 @@ describe("card effects", () => {
     expect(state.combat?.discardPile).not.toContain("burn");
     expect(logEvent).toMatchObject({ type: "playedCard", cardId: "burn", effects: [{ type: "exhaust" }] });
   });
+
+  it("keeps retained cards in hand and only refills the empty slots next turn", () => {
+    const retainContent: RunContent = {
+      cards: {
+        hold: {
+          id: "hold",
+          name: "Hold",
+          cost: 1,
+          description: "Gain 5 block.",
+          keywords: ["retain"],
+          block: 5,
+          retain: true,
+        },
+        strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
+      },
+      enemies: {
+        drone: {
+          id: "drone",
+          name: "Drone",
+          maxHp: 50,
+          goldReward: 10,
+          intents: [{ kind: "attack", description: "Peck for 1", damage: 1 }],
+        },
+      },
+      relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
+      },
+      character: createCharacter(["hold", "strike", "strike", "strike", "strike", "strike"]),
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
+    };
+
+    let state = enterOpeningCombat(retainContent, createRun(retainContent, 105));
+
+    state = {
+      ...state,
+      combat: {
+        ...state.combat!,
+        hand: ["hold", "strike"],
+        drawPile: ["strike", "strike", "strike", "strike"],
+        discardPile: [],
+        turn: 1,
+      },
+    };
+
+    state = applyAction(retainContent, state, { type: "endTurn" });
+    const after = observeCombat(retainContent, state);
+
+    expect(state.combat?.turn).toBe(2);
+    expect(after.hand.map((card) => card.id)).toEqual(["hold", "strike", "strike", "strike", "strike"]);
+    expect(after.drawPileCount).toBe(0);
+    expect(after.discardPileCount).toBe(1);
+    expect(state.combat?.discardPile).toEqual(["strike"]);
+  });
 });
 
 describe("run progression", () => {

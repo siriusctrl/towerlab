@@ -132,7 +132,7 @@ export function formatLogEntries(content: RunContent, log: LogEvent[], locale: L
 export function formatLogEvent(content: RunContent, event: LogEvent, locale: Locale): string {
   switch (event.type) {
     case "actStarted":
-      return locale === "zh" ? `进入第 ${event.act} 层。先古之民在等待。` : `Entered act ${event.act}. The Ancient waits.`;
+      return locale === "zh" ? `进入第 ${event.act} 层。新的祝福在等待。` : `Entered act ${event.act}. New blessings await.`;
     case "enteredNode":
       return locale === "zh"
         ? `进入 ${localizeNodeName(event.nodeId, locale)}（${localizeNodeKind(event.kind, locale)}）。`
@@ -413,6 +413,7 @@ export function localizeErrorMessage(message: string, locale: Locale): string {
     [/^shop actions are only available at shop nodes$/, () => "只有在商店节点才能执行商店行动"],
     [/^deck removal is only available at shop nodes$/, () => "只有在商店节点才能移除卡牌"],
     [/^can only leave when in shop$/, () => "只有在商店中才能离开商店"],
+    [/^Unknown option: (.+)$/, (arg) => `未知参数：${arg}`],
     [/^Unknown positional argument: (.+)$/, (arg) => `未知的位置参数：${arg}`],
     [/^Invalid JSON action: (.+)$/, (raw) => `动作 JSON 非法：${raw}`],
     [/^Invalid action shape: (.+)$/, (raw) => `动作结构非法：${raw}`],

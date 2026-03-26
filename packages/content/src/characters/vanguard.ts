@@ -19,7 +19,7 @@ export const vanguard: CharacterDefinition = {
     "surge",
   ],
   startingRelicId: "battleStandard",
-  blessingCards: ["bloodPact", "tempoDrill", "assaultSignal"],
+  blessingCards: ["bloodRush", "battleTrance", "overrun"],
   rewardCardPools: {
     common: [
       "surge",
@@ -35,6 +35,8 @@ export const vanguard: CharacterDefinition = {
       "assaultSignal",
       "vanguardVolley",
       "forgedAdvance",
+      "bloodRush",
+      "skirmishPlan",
     ],
     rare: [
       "punishingHit",
@@ -49,8 +51,11 @@ export const vanguard: CharacterDefinition = {
       "advanceSignal",
       "rallySprint",
       "stormAssault",
+      "battleTrance",
+      "overrun",
+      "heldBlade",
     ],
-    epic: ["crushingTempo", "executioner", "finalCharge", "burningBanner", "vanguardRecovery"],
+    epic: ["crushingTempo", "executioner", "finalCharge", "burningBanner", "vanguardRecovery", "warSpoils"],
   },
   shopCardPools: {
     common: [
@@ -67,6 +72,8 @@ export const vanguard: CharacterDefinition = {
       "assaultSignal",
       "vanguardVolley",
       "forgedAdvance",
+      "bloodRush",
+      "skirmishPlan",
     ],
     rare: [
       "punishingHit",
@@ -81,11 +88,14 @@ export const vanguard: CharacterDefinition = {
       "advanceSignal",
       "rallySprint",
       "stormAssault",
+      "battleTrance",
+      "overrun",
+      "heldBlade",
     ],
-    epic: ["crushingTempo", "executioner", "finalCharge", "burningBanner", "vanguardRecovery"],
+    epic: ["crushingTempo", "executioner", "finalCharge", "burningBanner", "vanguardRecovery", "warSpoils"],
   },
   relicPools: {
-    elite: ["combatFocus", "medicinePack", "merchantTag", "razorsigil"],
-    boss: ["warEngine", "reinforcedFrame"],
+    elite: ["combatFocus", "medicinePack", "merchantTag", "razorsigil", "berserkerCharm", "fieldTonic", "scavengerMark", "warPaint"],
+    boss: ["warEngine", "reinforcedFrame", "conquestFrame", "emberCrest"],
   },
 };

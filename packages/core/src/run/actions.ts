@@ -194,12 +194,14 @@ function endTurn(content: RunContent, state: RunState): RunState {
   }
 
   const combat = getCombat(state);
+  const retainedHand = combat.hand.filter((cardId) => getCard(content, cardId).retain);
+  const discardedHand = combat.hand.filter((cardId) => !getCard(content, cardId).retain);
   let nextState: RunState = {
     ...state,
     combat: {
       ...combat,
-      discardPile: [...combat.discardPile, ...combat.hand],
-      hand: [],
+      discardPile: [...combat.discardPile, ...discardedHand],
+      hand: retainedHand,
       energy: 0,
     },
   };

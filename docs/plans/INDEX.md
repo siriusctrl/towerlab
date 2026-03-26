@@ -37,4 +37,4 @@ When a contributor starts or finishes milestone work:
 ## Current recommendation
 
 The current active milestone is M6.
-Keep post-M5 content expansion, relic growth, and lightweight combat-vocabulary work inside that milestone doc rather than scattering the plan across chat.
+Keep post-M5 content expansion, relic growth, route-depth work, and lightweight combat-vocabulary work inside that milestone doc rather than scattering the plan across chat.

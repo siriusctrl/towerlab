@@ -150,9 +150,11 @@ export function parseHeadlessArgs(args: string[], locale: Locale): HeadlessParse
       continue;
     }
 
-    if (!arg.startsWith("--")) {
-      throw new Error(`Unknown positional argument: ${arg}`);
+    if (arg.startsWith("--")) {
+      throw new Error(localizeErrorMessage(`Unknown option: ${arg}`, locale));
     }
+
+    throw new Error(`Unknown positional argument: ${arg}`);
   }
 
   if (seedStart !== undefined || count !== undefined) {

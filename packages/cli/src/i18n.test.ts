@@ -2,7 +2,7 @@ import { sampleContent } from "@towerlab/content";
 import type { LogEvent } from "@towerlab/core";
 import { describe, expect, test } from "vitest";
 
-import { formatBlessingAcquisition, formatBlessingDescription, formatBlessingName, formatLogEntries } from "./i18n.js";
+import { formatBlessingAcquisition, formatBlessingDescription, formatBlessingName, formatLogEntries, localizeCardKeyword } from "./i18n.js";
 
 describe("i18n log localization", () => {
   test("formats every current core log event template in zh", () => {
@@ -70,12 +70,12 @@ describe("i18n log localization", () => {
   test("shows card blessing names directly and includes card effects", () => {
     const blessing = sampleContent.acts[0]!.blessings[2]!;
 
-    expect(formatBlessingName(sampleContent, blessing, "en")).toBe("Blood Pact");
+    expect(formatBlessingName(sampleContent, blessing, "en")).toBe("Blood Rush");
     expect(formatBlessingAcquisition(blessing, "en")).toBe("Add to deck");
-    expect(formatBlessingDescription(sampleContent, blessing, "en")).toBe("Deal 7 damage. Recover 2 HP.");
-    expect(formatBlessingName(sampleContent, blessing, "zh")).toBe("血契");
+    expect(formatBlessingDescription(sampleContent, blessing, "en")).toBe("Deal 6 damage. Gain 1 energy.");
+    expect(formatBlessingName(sampleContent, blessing, "zh")).toBe("血性奔袭");
     expect(formatBlessingAcquisition(blessing, "zh")).toBe("加入牌组");
-    expect(formatBlessingDescription(sampleContent, blessing, "zh")).toBe("造成 7 点伤害。恢复 2 点生命。");
+    expect(formatBlessingDescription(sampleContent, blessing, "zh")).toBe("造成 6 点伤害。获得 1 点能量。");
   });
 
   test("formats draw/energy/heal/exhaust card effects in both locales", () => {
@@ -99,5 +99,10 @@ describe("i18n log localization", () => {
       "打出heal-tester：恢复 5 点生命。",
       "打出exhaust-tester：消耗。",
     ]);
+  });
+
+  test("localizes retain keyword labels in both locales", () => {
+    expect(localizeCardKeyword("retain", "en")).toBe("Retain");
+    expect(localizeCardKeyword("retain", "zh")).toBe("保留");
   });
 });

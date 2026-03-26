@@ -3,7 +3,7 @@ export type RunPhase = "blessing" | "combat" | "map" | "rest" | "reward" | "shop
 export type RestOptionId = "recover" | "fortify";
 export type CardRarity = "common" | "rare" | "epic";
 export type BlessingKind = "heal" | "gold" | "maxHp" | "card";
-export type CardKeyword = "exhaust";
+export type CardKeyword = "exhaust" | "retain";
 
 export interface CardRarityBuckets {
   common: string[];
@@ -63,6 +63,7 @@ export interface CardDefinition {
   energy?: number;
   heal?: number;
   exhaust?: boolean;
+  retain?: boolean;
 }
 
 export interface EnemyIntent {

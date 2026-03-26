@@ -33,13 +33,14 @@ M6 exists to deepen the actual game while preserving the current KISS architectu
 ## Current landed sub-scope
 
 The following M6 work is already on `main`:
-- card effects now support `draw`, `energy`, `heal`, and `exhaust`
-- `exhaust` is represented as a structured card keyword rather than prose-only text
+- card effects now support `draw`, `energy`, `heal`, `exhaust`, and `retain`
+- `exhaust` and `retain` are represented as structured card keywords rather than prose-only text
 - cards render as:
   - name + cost
   - keyword lines
   - effect body
 - both current characters have broader first-pass and second-pass card pools than M5 shipped with
+- acts now need deeper route stacks and more meaningful combat-to-utility pacing than the post-M5 map shape provided
 
 This milestone remains active because the full content-depth target is still ahead.
 
@@ -69,9 +70,9 @@ Already landed:
 - `energy`
 - `heal`
 - `keywords: ["exhaust"]`
+- `keywords: ["retain"]`
 
 Planned next candidates, in order of pressure:
-- `retain`
 - `ethereal`
 - lightweight discard interactions
 - a minimal debuff layer such as `weak` or `vulnerable` only if the content pressure justifies the state cost
@@ -110,11 +111,13 @@ Included:
 - maintain enemies as shared content across characters
 - expand or tune encounter variety where card/relic growth makes current enemies too solved
 - keep each act readable while improving pressure diversity
+- deepen act route length so a run cannot skip from blessing to boss through only a handful of meaningful decisions
 
 Focus:
 - pressure patterns that punish one-dimensional decks
 - enough variation that build choices matter
 - no character-specific enemy pools
+- maps should remain legible in TTY while carrying more medium-horizon planning weight than the current shallow route tree
 
 ### 5. Balance and benchmark sanity
 
@@ -163,6 +166,7 @@ M6 can move to `done` when all of the following are true:
 - card views in TTY and snapshot mode consistently render keyword lines separate from effect text
 - relic pools are materially deeper than M5 and produce visibly different run incentives
 - act encounters remain shared across characters and still create pressure against narrow deck shapes
+- map depth and route pacing create more than a handful of consequential choices per act without breaking TTY readability
 - batch sanity checks across both characters do not show an obviously broken baseline state
 - docs accurately describe the current card rendering, agent-facing card data, and active milestone scope
 

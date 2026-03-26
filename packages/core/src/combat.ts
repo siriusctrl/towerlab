@@ -145,7 +145,8 @@ export function resolveEnemyTurn(state: RunState): RunState {
 
 export function startPlayerTurn(content: RunContent, state: RunState): RunState {
   const combat = getCombat(state);
-  const drawn = drawCards(combat.drawPile, combat.discardPile, HAND_SIZE, state.rng);
+  const cardsToDraw = Math.max(0, HAND_SIZE - combat.hand.length);
+  const drawn = drawCards(combat.drawPile, combat.discardPile, cardsToDraw, state.rng);
 
   return appendLog(
     {
@@ -155,7 +156,7 @@ export function startPlayerTurn(content: RunContent, state: RunState): RunState 
         ...combat,
         drawPile: drawn.drawPile,
         discardPile: drawn.discardPile,
-        hand: drawn.drawn,
+        hand: [...combat.hand, ...drawn.drawn],
         energy: STARTING_ENERGY + getRelicValue(content, state, "combatEnergy"),
         block: 0,
         turn: combat.turn + 1,

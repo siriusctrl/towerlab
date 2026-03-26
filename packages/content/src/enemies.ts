@@ -45,6 +45,28 @@ export const enemies: Record<string, EnemyDefinition> = {
       { kind: "attack", description: "Scorch for 8", damage: 8 },
     ],
   },
+  ashScout: {
+    id: "ashScout",
+    name: "Ash Scout",
+    maxHp: 28,
+    goldReward: 18,
+    intents: [
+      { kind: "attack", description: "Flare for 6", damage: 6 },
+      { kind: "attackBlock", description: "Skirmish for 5 and gain 4 block", damage: 5, block: 4 },
+      { kind: "attack", description: "Rush for 9", damage: 9 },
+    ],
+  },
+  pikeBrute: {
+    id: "pikeBrute",
+    name: "Pike Brute",
+    maxHp: 30,
+    goldReward: 20,
+    intents: [
+      { kind: "attack", description: "Pike jab for 7", damage: 7 },
+      { kind: "block", description: "Dig in for 7 block", block: 7 },
+      { kind: "attackBlock", description: "Press for 7 and gain 3 block", damage: 7, block: 3 },
+    ],
+  },
   crusher: {
     id: "crusher",
     name: "Crusher",
@@ -54,6 +76,17 @@ export const enemies: Record<string, EnemyDefinition> = {
       { kind: "attackBlock", description: "Crush for 8 and gain 4 block", damage: 8, block: 4 },
       { kind: "heal", description: "Patch 6 HP", heal: 6 },
       { kind: "attack", description: "Hammer for 12", damage: 12 },
+    ],
+  },
+  siegeSmith: {
+    id: "siegeSmith",
+    name: "Siege Smith",
+    maxHp: 44,
+    goldReward: 30,
+    intents: [
+      { kind: "attackBlock", description: "Forge strike for 9 and gain 4 block", damage: 9, block: 4 },
+      { kind: "block", description: "Temper 9 block", block: 9 },
+      { kind: "attack", description: "Anvil drop for 13", damage: 13 },
     ],
   },
   bannerCaptain: {
@@ -134,6 +167,28 @@ export const enemies: Record<string, EnemyDefinition> = {
       { kind: "attack", description: "Arc Lash for 9", damage: 9 },
     ],
   },
+  sparkRogue: {
+    id: "sparkRogue",
+    name: "Spark Rogue",
+    maxHp: 34,
+    goldReward: 25,
+    intents: [
+      { kind: "attack", description: "Spark knife for 8", damage: 8 },
+      { kind: "attackBlock", description: "Slip for 6 and gain 4 block", damage: 6, block: 4 },
+      { kind: "attack", description: "Flash cut for 10", damage: 10 },
+    ],
+  },
+  mirrorDrone: {
+    id: "mirrorDrone",
+    name: "Mirror Drone",
+    maxHp: 36,
+    goldReward: 26,
+    intents: [
+      { kind: "block", description: "Reflect 8 block", block: 8 },
+      { kind: "attack", description: "Beam for 9", damage: 9 },
+      { kind: "attackBlock", description: "Copy strike for 8 and gain 3 block", damage: 8, block: 3 },
+    ],
+  },
   watchCore: {
     id: "watchCore",
     name: "Watch Core",
@@ -143,6 +198,17 @@ export const enemies: Record<string, EnemyDefinition> = {
       { kind: "block", description: "Charge 8 block", block: 8 },
       { kind: "attack", description: "Pulse for 11", damage: 11 },
       { kind: "attackBlock", description: "Overload for 14 and gain 5 block", damage: 14, block: 5 },
+    ],
+  },
+  voltSentinel: {
+    id: "voltSentinel",
+    name: "Volt Sentinel",
+    maxHp: 58,
+    goldReward: 37,
+    intents: [
+      { kind: "attack", description: "Discharge for 12", damage: 12 },
+      { kind: "block", description: "Polarize 9 block", block: 9 },
+      { kind: "attackBlock", description: "Voltage crush for 11 and gain 5 block", damage: 11, block: 5 },
     ],
   },
   stormBishop: {
@@ -224,6 +290,28 @@ export const enemies: Record<string, EnemyDefinition> = {
       { kind: "attackBlock", description: "Stalk for 9 and gain 4 block", damage: 9, block: 4 },
     ],
   },
+  graveBinder: {
+    id: "graveBinder",
+    name: "Grave Binder",
+    maxHp: 42,
+    goldReward: 31,
+    intents: [
+      { kind: "attack", description: "Hex bolt for 11", damage: 11 },
+      { kind: "block", description: "Bone ward 9 block", block: 9 },
+      { kind: "attackBlock", description: "Bind for 10 and gain 4 block", damage: 10, block: 4 },
+    ],
+  },
+  duskMarauder: {
+    id: "duskMarauder",
+    name: "Dusk Marauder",
+    maxHp: 44,
+    goldReward: 32,
+    intents: [
+      { kind: "attack", description: "Night strike for 12", damage: 12 },
+      { kind: "attackBlock", description: "Stalk for 10 and gain 5 block", damage: 10, block: 5 },
+      { kind: "heal", description: "Feed 6 HP", heal: 6 },
+    ],
+  },
   grimEngine: {
     id: "grimEngine",
     name: "Grim Engine",
@@ -233,6 +321,17 @@ export const enemies: Record<string, EnemyDefinition> = {
       { kind: "attackBlock", description: "Drive for 15 and gain 6 block", damage: 15, block: 6 },
       { kind: "heal", description: "Refit 8 HP", heal: 8 },
       { kind: "attack", description: "Overrun for 18", damage: 18 },
+    ],
+  },
+  ruinBehemoth: {
+    id: "ruinBehemoth",
+    name: "Ruin Behemoth",
+    maxHp: 70,
+    goldReward: 46,
+    intents: [
+      { kind: "attackBlock", description: "Crush for 16 and gain 6 block", damage: 16, block: 6 },
+      { kind: "block", description: "Fortify 13 block", block: 13 },
+      { kind: "attack", description: "Raze for 19", damage: 19 },
     ],
   },
   hollowRegent: {

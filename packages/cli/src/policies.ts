@@ -212,15 +212,15 @@ function chooseBestRewardAction(
 
   const bestReward = rewardActions.reduce((best, action) => {
     const card = cards[action.rewardIndex]!;
-    const score = scoreRewardCard(card.id, card.damage ?? 0, card.block ?? 0, preferFlexibleCards);
+    const score = scoreRewardCard(content, card.id, card.damage ?? 0, card.block ?? 0, preferFlexibleCards);
     const bestCard = cards[best.rewardIndex]!;
-    const bestScore = scoreRewardCard(bestCard.id, bestCard.damage ?? 0, bestCard.block ?? 0, preferFlexibleCards);
+    const bestScore = scoreRewardCard(content, bestCard.id, bestCard.damage ?? 0, bestCard.block ?? 0, preferFlexibleCards);
 
     return score > bestScore ? action : best;
   });
 
   const bestCard = cards[bestReward.rewardIndex]!;
-  const bestScore = scoreRewardCard(bestCard.id, bestCard.damage ?? 0, bestCard.block ?? 0, preferFlexibleCards);
+  const bestScore = scoreRewardCard(content, bestCard.id, bestCard.damage ?? 0, bestCard.block ?? 0, preferFlexibleCards);
 
   return preferFlexibleCards && bestScore <= 10 ? { type: "skipReward" } : bestReward;
 }
@@ -233,8 +233,8 @@ function chooseGreedyShopAction(content: RunContent, state: RunState, actions: R
       const cardId = state.shop?.forSale[action.saleIndex]!;
       const bestCardId = state.shop?.forSale[best.saleIndex]!;
 
-      return scoreRewardCard(cardId, content.cards[cardId]?.damage ?? 0, content.cards[cardId]?.block ?? 0, false) >
-          scoreRewardCard(bestCardId, content.cards[bestCardId]?.damage ?? 0, content.cards[bestCardId]?.block ?? 0, false)
+      return scoreRewardCard(content, cardId, content.cards[cardId]?.damage ?? 0, content.cards[cardId]?.block ?? 0, false) >
+          scoreRewardCard(content, bestCardId, content.cards[bestCardId]?.damage ?? 0, content.cards[bestCardId]?.block ?? 0, false)
         ? action
         : best;
     });
@@ -259,8 +259,9 @@ function chooseHeuristicShopAction(content: RunContent, state: RunState, actions
   const bestBuy = buyActions.reduce((best, action) => {
     const cardId = state.shop?.forSale[action.saleIndex]!;
     const bestCardId = state.shop?.forSale[best.saleIndex]!;
-    const score = scoreRewardCard(cardId, content.cards[cardId]?.damage ?? 0, content.cards[cardId]?.block ?? 0, true);
+    const score = scoreRewardCard(content, cardId, content.cards[cardId]?.damage ?? 0, content.cards[cardId]?.block ?? 0, true);
     const bestScore = scoreRewardCard(
+      content,
       bestCardId,
       content.cards[bestCardId]?.damage ?? 0,
       content.cards[bestCardId]?.block ?? 0,
@@ -272,6 +273,7 @@ function chooseHeuristicShopAction(content: RunContent, state: RunState, actions
 
   const bestCardId = state.shop.forSale[bestBuy.saleIndex]!;
   const bestScore = scoreRewardCard(
+    content,
     bestCardId,
     content.cards[bestCardId]?.damage ?? 0,
     content.cards[bestCardId]?.block ?? 0,
@@ -286,7 +288,15 @@ function chooseStarterRemoval(content: RunContent, state: RunState, actions: Run
     return null;
   }
 
-  for (const cardId of ["strike", "defend"]) {
+  const starterPriority = [...new Set(content.character.starterDeck)].sort((left, right) => {
+    const leftCard = content.cards[left];
+    const rightCard = content.cards[right];
+    const leftScore = (leftCard?.damage ?? 0) + (leftCard?.block ?? 0) + (leftCard?.draw ?? 0) + (leftCard?.energy ?? 0) + (leftCard?.heal ?? 0);
+    const rightScore = (rightCard?.damage ?? 0) + (rightCard?.block ?? 0) + (rightCard?.draw ?? 0) + (rightCard?.energy ?? 0) + (rightCard?.heal ?? 0);
+    return leftScore - rightScore;
+  });
+
+  for (const cardId of starterPriority) {
     const action = actions.find(
       (candidate): candidate is Extract<RunAction, { type: "removeDeckCard" }> =>
         candidate.type === "removeDeckCard" && state.deck[candidate.deckIndex] === cardId,
@@ -301,17 +311,7 @@ function chooseStarterRemoval(content: RunContent, state: RunState, actions: Run
 }
 
 function chooseRemovalOrLeave(state: RunState, actions: RunAction[]): RunAction | null {
-  return (
-    actions.find(
-      (action): action is Extract<RunAction, { type: "removeDeckCard" }> =>
-        action.type === "removeDeckCard" && state.deck[action.deckIndex] === "strike",
-    ) ??
-    actions.find(
-      (action): action is Extract<RunAction, { type: "removeDeckCard" }> =>
-        action.type === "removeDeckCard" && state.deck[action.deckIndex] === "defend",
-    ) ??
-    null
-  );
+  return actions.find((action): action is Extract<RunAction, { type: "removeDeckCard" }> => action.type === "removeDeckCard") ?? null;
 }
 
 function scoreCombatCard(damage: number, block: number, cost: number, blockGap: number): number {
@@ -319,14 +319,24 @@ function scoreCombatCard(damage: number, block: number, cost: number, blockGap: 
   return damage * 100 + block * 12 + defenseBonus - cost;
 }
 
-function scoreRewardCard(id: string, damage: number, block: number, preferFlexibleCards: boolean): number {
+function scoreRewardCard(
+  content: RunContent,
+  id: string,
+  damage: number,
+  block: number,
+  preferFlexibleCards: boolean,
+): number {
   const flexibilityBonus = preferFlexibleCards && damage > 0 && block > 0 ? 12 : 0;
-  const nonStarterBonus = id !== "strike" && id !== "defend" ? 4 : 0;
+  const nonStarterBonus = isStarterCard(content, id) ? 0 : 4;
   return damage * 3 + block * 3 + flexibilityBonus + nonStarterBonus;
 }
 
 function countStarterCards(content: RunContent, deck: string[]): number {
-  return deck.filter((cardId) => cardId === "strike" || cardId === "defend").filter((cardId) => content.cards[cardId]).length;
+  return deck.filter((cardId) => isStarterCard(content, cardId)).filter((cardId) => content.cards[cardId]).length;
+}
+
+function isStarterCard(content: RunContent, cardId: string): boolean {
+  return content.character.starterDeck.includes(cardId);
 }
 
 function scoreBlessing(
@@ -342,7 +352,7 @@ function scoreBlessing(
       return 0;
     }
 
-    return scoreRewardCard(card.id, card.damage ?? 0, card.block ?? 0, preferSafety) + 30;
+    return scoreRewardCard(content, card.id, card.damage ?? 0, card.block ?? 0, preferSafety) + 30;
   }
 
   if (blessing.kind === "maxHp") {

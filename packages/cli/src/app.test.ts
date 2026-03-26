@@ -86,7 +86,7 @@ describe("App layout", () => {
     const frame = await renderFrame({ columns: 100, rows: 20, inputs: ["1", "1"] });
 
     expect(frame).toContain("Combat");
-    expect(frame).toMatch(/Raider|Sentry|Skirmisher|Ember Adept|Crusher|Banner Captain|Forge Keeper|Iron Colossus/);
+    expect(frame).toMatch(/Raider|Sentry|Skirmisher|Ember Adept|Ash Scout|Pike Brute|Crusher|Banner Captain|Siege Smith|Forge Keeper|Iron Colossus/);
     expect(frame).not.toContain("Recent Activity");
     expect(frame).not.toContain("│ Map");
   });
@@ -96,7 +96,7 @@ describe("App layout", () => {
 
     expect(frame).toContain("┌");
     expect(frame).toContain("B");
-    expect(frame).toContain("- Choose the next path.");
+    expect(frame).toMatch(/- Gained 30 gold\.|- Moved to Room 1-1 \(elite\)\./);
     expect(frame).toMatch(/- .*appears\./);
     expect(frame).not.toContain("act1-battle");
   });
@@ -106,8 +106,8 @@ describe("App layout", () => {
 
     expect(frame).toContain("┌");
     expect(frame).toContain("B");
-    expect(frame).toContain("请选择下一条路径");
-    expect(frame).toMatch(/袭掠者出现|哨卫出现|游击者出现|余烬术士出现|军旗队长出现|粉碎者出现/);
+    expect(frame).toMatch(/获得 30 金币|前往 房间 1-1（精英）/);
+    expect(frame).toMatch(/袭掠者出现|哨卫出现|游击者出现|余烬术士出现|灰烬斥候出现|长枪暴徒出现|军旗队长出现|攻城铁匠出现|粉碎者出现/);
     expect(frame).not.toContain("act1-battle");
   });
 
@@ -131,8 +131,8 @@ describe("App layout", () => {
   test("renders blessing options without spacer gaps between choices", async () => {
     const frame = await renderFrame({ columns: 80, rows: 24, locale: "zh" });
 
-    expect(frame).toMatch(/效果：获得 30 金币。\n\s*2\. 伟躯/u);
-    expect(frame).toMatch(/效果：获得 6 点最大生命并回复 6 点生命。\n\s*3\. 血契/u);
+    expect(frame).toMatch(/效果：获得 30 金币。\n\s*2\. 强健/u);
+    expect(frame).toMatch(/效果：获得 6 点最大生命并回复 6 点生命。\n\s*3\. 血性奔袭/u);
   });
 
   test("keeps opening blessings, compact map, and post-move minimap stable across multiple seeds", async () => {
@@ -148,7 +148,7 @@ describe("App layout", () => {
       expect(startFrame).toContain("2. ");
       expect(startFrame).toContain("3. ");
       expect(startFrame).toContain("获得：加入牌组");
-      expect(startFrame).toContain("效果：造成 7 点伤害。恢复 2 点生命。");
+      expect(startFrame).toContain("效果：造成 6 点伤害。获得 1 点能量。");
       expect(startFrame).not.toContain("：:");
       expect(startFrame).not.toContain("::");
       expect(mapFrame).toContain("路径： 1.");
@@ -156,7 +156,7 @@ describe("App layout", () => {
       expect(mapFrame).toContain("3.");
       expect(movedFrame).toContain("┌");
       expect(movedFrame).toContain("B");
-      expect(movedFrame).toContain("请选择下一条路径");
+      expect(movedFrame).toMatch(/获得 30 金币|前往 房间 1-1（精英）|前往 房间 1-1（战斗）/);
       expect(movedFrame).not.toContain("act1-battle");
     }
   }, 15000);

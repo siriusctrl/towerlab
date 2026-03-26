@@ -32,11 +32,11 @@ describe("headless CLI", () => {
     expect(snapshot).toContain("层: 1/3");
     expect(snapshot).toContain("节点: 岔路口 (起点)");
     expect(snapshot).toContain("祝福:");
-    expect(snapshot).toContain("1. 先古财富");
-    expect(snapshot).toContain("2. 伟躯");
-    expect(snapshot).toContain("3. 血契");
+    expect(snapshot).toContain("1. 厚赏");
+    expect(snapshot).toContain("2. 强健");
+    expect(snapshot).toContain("3. 血性奔袭");
     expect(snapshot).toContain("获得：加入牌组");
-    expect(snapshot).toContain("效果：造成 7 点伤害。恢复 2 点生命。");
+    expect(snapshot).toContain("效果：造成 6 点伤害。获得 1 点能量。");
     expect(snapshot).toContain("- 来到入口。请选择第一条路径。");
     expect(snapshot).toContain("最近事件:");
   });
@@ -169,6 +169,19 @@ describe("headless CLI", () => {
     expect(output.runs).toHaveLength(2);
   });
 
+  test("generated relic rewards stay unique across early elite and boss previews", () => {
+    const output = JSON.parse(runHeadless(["--json", "create", "--seed", "7", "--character", "vanguard"]));
+    const actOneEliteRelics = output.acts[0].map
+      .filter((node: { kind: string; relicReward?: string }) => node.kind === "elite")
+      .map((node: { relicReward: string }) => node.relicReward);
+    const bossRelics = output.acts
+      .map((act: { map: Array<{ kind: string; relicReward?: string }> }) => act.map.find((node) => node.kind === "boss")?.relicReward)
+      .filter(Boolean);
+
+    expect(new Set(actOneEliteRelics).size).toBe(actOneEliteRelics.length);
+    expect(new Set(bossRelics).size).toBe(bossRelics.length);
+  });
+
   test("batch-only flags are rejected outside batch mode", () => {
     expect(() => runHeadless(["--json", "create", "--character", "vanguard", "--policy", "random", "--seeds", "1,2"])).toThrow(
       "--policy, --seeds, --seed-start, and --count are only valid in batch mode",
@@ -205,6 +218,7 @@ describe("headless CLI", () => {
       "动作 JSON 非法：not-json",
     );
     expect(() => runHeadless(["--json", "create", "--lang", "zh", "--character", "vanguard", "bogus"])).toThrow("未知的位置参数：bogus");
+    expect(() => runHeadless(["--json", "create", "--lang", "zh", "--character", "vanguard", "--bogus"])).toThrow("未知参数：--bogus");
     expect(() => runHeadless(["--json", "create", "--lang", "zh"])).toThrow("headless 模式需要提供 --character");
   });
 
