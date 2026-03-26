@@ -1,4 +1,4 @@
-import { REST_OPTIONS, SHOP_CARD_PRICE, SHOP_CARD_REMOVE_PRICE } from "../constants.js";
+import { REST_OPTIONS, SHOP_CARD_PRICE, SHOP_CARD_REMOVE_PRICE, STARTING_ENERGY } from "../constants.js";
 import { getAct, getCombat, getCurrentIntent, getNode, getRelicValue } from "../shared.js";
 import type { Observation, RunAction, RunContent, RunState } from "../types.js";
 import { getCard, getRelic } from "../validate.js";
@@ -28,6 +28,7 @@ export function observeRun(content: RunContent, state: RunState): Observation {
       ...base,
       phase: "combat",
       energy: combat.energy,
+      baseEnergy: STARTING_ENERGY + getRelicValue(content, state, "combatEnergy"),
       block: combat.block,
       hand: combat.hand.map((cardId) => getCard(content, cardId)),
       drawPileCount: combat.drawPile.length,

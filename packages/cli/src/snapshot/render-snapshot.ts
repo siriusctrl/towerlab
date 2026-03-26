@@ -63,7 +63,7 @@ function renderObservation(content: RunContent, observation: Observation, locale
     lines.push(
       `${text(locale, "combat")}  ${text(locale, "draw")} ${observation.drawPileCount} ${text(locale, "discard")} ${observation.discardPileCount}`,
       `${observation.enemy.name} ${text(locale, "hp")} ${observation.enemy.hp}/${observation.enemy.maxHp} ${text(locale, "block")} ${observation.enemy.block} → ${observation.enemy.intent.description}`,
-      `${text(locale, "energy")} ${observation.energy}  ${text(locale, "block")} ${observation.block}`,
+      `${text(locale, "energy")} ${observation.energy}/${observation.baseEnergy}  ${text(locale, "block")} ${observation.block}`,
     );
 
     for (const [index, card] of observation.hand.entries()) {

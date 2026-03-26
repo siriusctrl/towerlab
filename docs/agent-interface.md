@@ -55,6 +55,7 @@ Important properties of the current contract:
 - `state.log` and `observation.log` are structured `LogEvent[]` arrays
 - runs are multi-act and include character context, current act, and total act count
 - observed card objects may include structured fields such as `damage`, `block`, `draw`, `energy`, `heal`, and `keywords`
+- combat observations expose both current `energy` and turn-base `baseEnergy`
 
 Agent rule:
 - treat card metadata as structured data

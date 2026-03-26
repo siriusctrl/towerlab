@@ -232,6 +232,7 @@ export interface BlessingObservation extends ObservationBase {
 export interface CombatObservation extends ObservationBase {
   phase: "combat";
   energy: number;
+  baseEnergy: number;
   block: number;
   hand: CardDefinition[];
   drawPileCount: number;

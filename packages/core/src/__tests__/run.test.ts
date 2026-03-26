@@ -753,6 +753,7 @@ describe("relic systems", () => {
     const combat = observeCombat(relicContent, state);
     expect(combat.phase).toBe("combat");
     expect(combat.energy).toBe(4);
+    expect(combat.baseEnergy).toBe(4);
   });
 
   it("applies rest healing bonus and shop discount through relics", () => {

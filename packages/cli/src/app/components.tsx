@@ -101,7 +101,7 @@ export function StatusBar({
         <Text>{"  "}{text(locale, "gold")} {observation.gold}</Text>
         {observation.phase === "combat" ? (
           <>
-            <Text>{"  "}{text(locale, "energy")} {observation.energy}</Text>
+            <Text>{"  "}{text(locale, "energy")} {observation.energy}/{observation.baseEnergy}</Text>
             <Text>{"  "}{text(locale, "block")} {observation.block}</Text>
           </>
         ) : null}

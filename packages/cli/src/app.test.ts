@@ -96,6 +96,7 @@ describe("App layout", () => {
 
     expect(frame).toContain("┌");
     expect(frame).toContain("B");
+    expect(frame).toContain("Energy 3/3");
     expect(frame).toMatch(/- Gained 30 gold\.|- Moved to Room 1-1 \(elite\)\./);
     expect(frame).toMatch(/- .*appears\./);
     expect(frame).not.toContain("act1-battle");
