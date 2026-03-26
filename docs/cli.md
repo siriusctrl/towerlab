@@ -13,7 +13,10 @@ The same executable supports both.
 ```bash
 corepack pnpm cli -- --seed 7
 corepack pnpm cli -- --seed 7 --lang zh
-corepack pnpm cli -- --json create --seed 7 --lang zh
+corepack pnpm cli -- --seed 7 --character vanguard
+
+corepack pnpm cli -- --json create --seed 7 --character vanguard --pretty
+corepack pnpm cli -- --json batch --policy heuristic --seeds 7,8,9 --character bulwark --pretty
 ```
 
 Language can be selected with `--lang en|zh`.
@@ -23,23 +26,76 @@ Language can be selected with `--lang en|zh`.
 
 When stdout and stdin are attached to a TTY, `pnpm cli` starts the Ink interface.
 The TUI enters the terminal alternate screen, redraws on terminal resize, and restores the previous screen on exit.
-The opening state starts at a branching map crossroads instead of dropping straight into combat.
-The route tree is rendered inside the main play panel so combat, shop, and route context stay in one place.
+
+Entry behavior:
+- without `--character`, the TUI starts at character selection
+- with `--character`, the TUI starts that character directly
+- each act begins with a blessing choice before the first route selection
+- the current tower has 3 acts
+
+In-run UI structure:
+- the map tree is rendered inside the main play panel
+- recent activity is shown as a compact panel instead of a full raw log dump
+- `d` opens the current status panel
+- `l` opens the current character library
 
 Controls:
-- combat: `1-9` play the indexed card, `e` ends the turn
-- map: `1-9` choose the indexed path
-- rest: `1-9` choose the indexed campfire action
-- reward: `1-9` take the indexed reward, `s` skips
-- shop top menu: `1` buy, `2` remove, `0` leave
-- shop buy menu: `1-9` buy the indexed card, `b` goes back
-- shop remove menu: `a-z` remove the indexed deck card, `b` goes back
-- `q` quits
-- `r` restarts after victory or defeat
+- character select:
+  - `1-9` choose a character and start a run
+  - `l` open the character library
+  - while the library is open: `1-9` switch character page, `[` `]` switch section, `j/k` or `↑/↓` scroll, `l` or `esc` close
+- blessing:
+  - `1-9` choose the indexed blessing
+- combat:
+  - `1-9` play the indexed card
+  - `e` end the turn
+- map:
+  - `1-9` choose the indexed path
+- rest:
+  - `1-9` choose the indexed campfire action
+- reward:
+  - `1-9` take the indexed reward
+  - `s` skip
+- shop top menu:
+  - `1` buy
+  - `2` remove
+  - `0` leave
+- shop buy menu:
+  - `1-9` buy the indexed card
+  - `b` go back
+- shop remove menu:
+  - `a-z` remove the indexed deck card
+  - `b` go back
+- inspection panels:
+  - `d` toggle status
+  - `l` toggle library
+  - `[` `]` switch sections
+  - `j/k` or `↑/↓` scroll
+  - `esc` close
+- global:
+  - `q` quit
+  - `r` restart after victory or defeat
+
+## Status And Library Panels
+
+Status panel sections:
+- `Deck`
+- `Current Relics`
+
+The relic section shows the active relic descriptions inline.
+
+Library panel sections:
+- starter deck
+- common cards
+- rare cards
+- epic cards
+- relic library
+
+The current rarity model is `common / rare / epic`.
 
 ## Route Tree
 
-The TUI and non-TTY snapshot both show the full tower as a top-down branching tree with explicit connector lines.
+The TUI and non-TTY snapshot both show the tower as a top-down branching tree with explicit connector lines.
 
 Markers:
 - `S` start / crossroads
@@ -66,19 +122,25 @@ The CLI keeps a compact recent-activity panel instead of rendering the full log 
 - if older entries exist, the UI shows how many earlier events were collapsed
 - on wide terminals, the panel can move to a right-hand column to preserve vertical room
 - on tighter terminals, the panel may be hidden so combat and map information stay readable
-- core replay state still preserves the log behavior defined by `packages/core`
+- core state preserves structured `LogEvent[]`
+- the CLI formats those events into localized human-readable lines for TTY and snapshot output
 
 ## Non-TTY Snapshot Mode
 
 When the CLI is not attached to a TTY and `--json` is not present, it prints a deterministic text snapshot.
 
-Example:
+Examples:
 
 ```bash
 node packages/cli/dist/cli/src/main.js --seed 7 --lang zh
+node packages/cli/dist/cli/src/main.js --seed 7 --lang zh --character bulwark
 ```
 
-This snapshot includes:
+Snapshot behavior:
+- if `--character` is passed, that character is rendered
+- if `--character` is omitted, snapshot mode falls back to the default character so the snapshot stays deterministic
+
+The snapshot includes:
 - run header
 - full tower map
 - current phase details
@@ -95,19 +157,22 @@ Commands:
 - `replay`
 - `batch`
 
+Headless mode requires `--character` for every command except `--help`.
+
 Examples:
 
 ```bash
-towerlab --json create --seed 7 --lang zh
-towerlab --json observe --seed 7 --actions '[{"type":"endTurn"}]'
-towerlab --json step --seed 7 --actions '[{"type":"endTurn"}]' --action '{"type":"playCard","handIndex":0}'
-towerlab --json replay --seed 7 --actions-file actions.json
-towerlab --json batch --policy heuristic --seed-start 1 --count 10
+towerlab --json create --seed 7 --character vanguard
+towerlab --json observe --seed 7 --character vanguard --actions-file actions.json
+towerlab --json step --seed 7 --character vanguard --actions-file actions.json --action '{"type":"endTurn"}'
+towerlab --json replay --seed 7 --character vanguard --actions-file actions.json
+towerlab --json batch --policy heuristic --seed-start 1 --count 10 --character bulwark
 ```
 
 Useful flags:
 - `--pretty` pretty-prints JSON
 - `--seed <int>` selects the deterministic run seed
+- `--character <id>` selects the character context for the run
 - `--actions <json-array>` supplies prior actions inline
 - `--actions-file <path>` loads prior actions from disk
 - `--action <json-object>` supplies the single step action for `step`
@@ -129,17 +194,19 @@ Useful flags:
 Additional command-specific fields:
 - `step`: `action`, `previousActions`
 - `replay`: `trace`
-- `batch`: aggregated metrics plus per-seed run summaries
+- `batch`: aggregate metrics plus per-seed run summaries
 
 Field semantics:
 - `state` is the raw core state and remains the source of truth
 - `observation` is the player-facing projection and is localized when `--lang` is set
+- `state.log` and `observation.log` are structured `LogEvent[]` arrays, not localized prose strings
 - `map` is the full graph from content so agents do not need to infer the tower from `nextNodes` alone
 - `legalActions` is the current valid action set from `packages/core`
+- `state` and `observation` include character and act context for multi-act runs
 
 Node naming:
 - TUI and snapshot text use localized display names such as `城门` or `Gate`
-- JSON payloads keep stable raw ids such as `gate`, `hall`, and `market`
+- JSON payloads keep stable raw ids such as generated map node ids and blessing ids
 - action objects must continue using the raw `nodeId`
 
 ## Action Shapes
@@ -147,7 +214,8 @@ Node naming:
 Supported action objects:
 
 ```json
-{"type":"choosePath","nodeId":"hall"}
+{"type":"chooseBlessing","blessingId":"<blessingId>"}
+{"type":"choosePath","nodeId":"<nodeId>"}
 {"type":"playCard","handIndex":0}
 {"type":"endTurn"}
 {"type":"chooseRest","optionId":"recover"}
@@ -163,3 +231,4 @@ Supported action objects:
 - The renderer is a view. Game rules remain in `packages/core`.
 - Localization is applied in the CLI layer.
 - Seeds are deterministic across interactive, snapshot, and JSON paths.
+- Headless runs are deterministic only when both `seed` and `character` are fixed.

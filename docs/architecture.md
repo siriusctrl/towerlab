@@ -5,44 +5,59 @@
 The repository is intentionally small.
 
 ### `packages/core`
+
 Pure game logic and deterministic state transitions.
 
 Responsibilities:
-- state types
+- run state types and legal actions
 - seeded randomness
-- run creation and node progression
-- legal action enumeration for the current observation
-- combat, reward, and shop transitions
-- relic application and simple deterministic effects
+- run creation and act progression
+- blessing, combat, map, rest, reward, shop, victory, and defeat transitions
+- relic application and deterministic effects
+- structured `LogEvent[]` recording for state and observation
 - pure observation shaping
+- replay from seed plus ordered action history
 
 ### `packages/content`
-Static game content.
+
+Static game content plus seeded content assembly.
 
 Responsibilities:
+- character definitions
 - card definitions
+- relic definitions
 - enemy definitions
-- starter deck
-- seeded tower map generation
+- per-character starter decks, blessing pools, reward pools, and shop pools
+- per-character relic pools
+- act configuration and seeded tower map generation
 
 ### `packages/cli`
+
 Ink renderer and local entrypoint.
 
 Responsibilities:
 - render human-readable state
 - collect keyboard input
-- load sample content
-- create a run from a seed
-- drive pure core actions for the current observation
-- print a deterministic snapshot when the CLI is not attached to a TTY
-- expose a deterministic headless JSON mode for agents and batch tooling
+- host character selection and TUI-only shell state
+- render status and library inspection panels
+- create a run from seed plus character context
+- print deterministic snapshots when the CLI is not attached to a TTY
+- expose deterministic headless JSON mode for agents and batch tooling
 - host simple baseline policies and batch evaluation helpers
+- localize structured state into human-facing strings without becoming the source of truth
 
 ## Dependency rules
 
 - `content` may depend on `core` types.
 - `cli` may depend on `core` and `content`.
 - `core` must stay pure and must not depend on renderer code.
+
+## Boundary notes
+
+- `core` owns the rules and the structured log/event protocol.
+- `content` owns character content, card/relic pools, and seeded act/map inputs.
+- `cli` owns presentation, localization, keybindings, and convenience policy tooling.
+- renderer output is never the source of truth; headless and replay surfaces must stay aligned with core state.
 
 ## Explicit non-goals for v0
 

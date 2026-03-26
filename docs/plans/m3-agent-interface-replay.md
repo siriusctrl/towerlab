@@ -8,16 +8,16 @@ Expose TowerLab as a clean, deterministic environment for agents without letting
 
 ## Why this milestone exists
 
-Right now TowerLab is playable for humans, but the benchmark side is still weak.
 A real harness needs explicit legal actions, replayable state transitions, and a headless way to run agents against the same game logic.
 
 ## Included
 
-- machine-enumerable `legalActions(state)` surface
-- stable headless entrypoint for create / observe / step flows
+- machine-enumerable `legalActions(content, state)` surface
+- stable headless entrypoint for create / observe / step / replay flows
+- seed plus character based replay contract
 - step-by-step trace output for each run
-- replay support from seed + action history
 - deterministic CLI/JSON mode for automation-friendly execution
+- structured `LogEvent[]` logs in state and observation payloads
 
 ## Explicit non-goals
 
@@ -25,28 +25,28 @@ A real harness needs explicit legal actions, replayable state transitions, and a
 - web UI
 - plugin architecture
 - training infrastructure
-- large new content expansion
+- large content explosion unrelated to the interface contract
 
 ## Acceptance criteria
 
-- every interactive phase has a corresponding legal action representation
+- every interactive phase has a corresponding legal action representation, including blessing selection
 - an agent can play a full run without scraping Ink output
 - traces capture enough information to explain run outcomes
-- a finished run can be replayed deterministically from seed plus chosen actions
+- a finished run can be replayed deterministically from seed, character, and chosen actions
 - the TUI continues to consume core state rather than own it
 
-## Proposed deliverables
+## Delivered surface
 
-1. `legalActions(state)` in core
-2. headless runner entrypoint for create / observe / apply flows
+1. `legalActions(content, state)` in core
+2. headless runner entrypoint for create / observe / step / replay
 3. trace format for run steps and terminal outcomes
-4. replay utility that can rebuild a run from recorded actions
+4. replay utility that rebuilds a run from recorded actions
 5. docs describing the agent-facing surface
 
 ## Agent Surface Doc
 
 The concrete surface is tracked in [`docs/agent-interface.md`](../agent-interface.md).
-This milestone is complete once that surface is implemented and verified in both core and CLI.
+This milestone is complete because that surface is implemented and verified in both core and CLI.
 
 ## Review bias
 
