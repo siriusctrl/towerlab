@@ -1,5 +1,5 @@
-import { sampleContent } from "@towerlab/content";
-import { applyAction, createRun, observeRun, type Observation, type RunAction, type RunState } from "@towerlab/core";
+import { createSeededContent } from "@towerlab/content";
+import { applyAction, createRun, observeRun, type MapNode, type Observation, type RunAction, type RunState } from "@towerlab/core";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
 import { useEffect, useRef, useState } from "react";
 
@@ -42,13 +42,14 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const { columns, rows } = useTerminalDimensions(stdout);
-  const [state, setState] = useState<RunState>(() => createRun(sampleContent, seed));
+  const content = createSeededContent(seed);
+  const [state, setState] = useState<RunState>(() => createRun(content, seed));
   const [actions, setActions] = useState<RunAction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const stateRef = useRef(state);
   const actionsRef = useRef(actions);
   const [shopMenu, setShopMenu] = useState<ShopMenuMode>("top");
-  const view = localizeObservation(observeRun(sampleContent, state), locale);
+  const view = localizeObservation(observeRun(content, state), locale);
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
   const compactLegendLine = getMapCompactLegendLine(locale);
   const sidebarWidth = Math.max(32, Math.min(52, Math.max(getTerminalTextWidth(compactLegendLine) + 4, Math.floor(columns * 0.35))));
@@ -59,7 +60,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
 
   const runAction = (action: RunAction) => {
     try {
-      const nextState = applyAction(sampleContent, stateRef.current, action);
+      const nextState = applyAction(content, stateRef.current, action);
       const nextActions = [...actionsRef.current, action];
       stateRef.current = nextState;
       actionsRef.current = nextActions;
@@ -72,7 +73,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   };
 
   const restart = () => {
-    const nextState = createRun(sampleContent, seed);
+    const nextState = createRun(content, seed);
     stateRef.current = nextState;
     actionsRef.current = [];
     setState(nextState);
@@ -168,7 +169,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
       <Box flexDirection="row" flexGrow={1} overflow="hidden">
         <Box flexDirection="column" flexGrow={1} paddingLeft={1} overflow="hidden">
           {!showSidebar && view.phase === "map" ? (
-            <MapTreeView observation={view} actions={actions} locale={locale} width={columns - 2} />
+            <MapTreeView map={content.map} observation={view} actions={actions} locale={locale} width={columns - 2} />
           ) : null}
           <PhaseBody observation={view} locale={locale} shopMenu={shopMenu} hpBarWidth={hpBarWidth} />
           {showInlineLog ? (
@@ -192,7 +193,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
             paddingLeft={1}
             overflow="hidden"
           >
-            <MapTreeView observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
+            <MapTreeView map={content.map} observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
             <Box marginTop={1} flexDirection="column" overflow="hidden">
               <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
             </Box>
@@ -286,6 +287,7 @@ function useTerminalDimensions(stdout: NodeJS.WriteStream): { columns: number; r
 }
 
 function MapTreeView({
+  map,
   observation,
   actions,
   locale,
@@ -293,6 +295,7 @@ function MapTreeView({
   compact = false,
   compactLegendLine,
 }: {
+  map: MapNode[];
   observation: Observation;
   actions: RunAction[];
   locale: Locale;
@@ -300,8 +303,8 @@ function MapTreeView({
   compact?: boolean;
   compactLegendLine?: string;
 }) {
-  const visitedNodeIds = deriveVisitedNodeIds(sampleContent.map, actions);
-  const mapRows = createMapFloorRows(sampleContent.map, observation, locale, visitedNodeIds, width, compact ? "icon" : "icon");
+  const visitedNodeIds = deriveVisitedNodeIds(map, actions);
+  const mapRows = createMapFloorRows(map, observation, locale, visitedNodeIds, width, compact ? "icon" : "icon");
 
   return (
     <>

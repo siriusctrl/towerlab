@@ -1,4 +1,4 @@
-import { sampleContent } from "@towerlab/content";
+import { createSeededContent, sampleContent } from "@towerlab/content";
 import {
   applyAction,
   createRun,
@@ -90,7 +90,8 @@ function mergePathChoices(a: Record<string, number>, b: Record<string, number>):
 }
 
 export function runSeedWithPolicy({ policy, policyName, seed, content = sampleContent, maxSteps = DEFAULT_MAX_STEPS }: RunSeedConfig): RunSeedSummary {
-  let state = createRun(content, seed);
+  const runContent = content === sampleContent ? createSeededContent(seed) : content;
+  let state = createRun(runContent, seed);
   const actions: RunAction[] = [];
   const pathChoiceCounts: Record<string, number> = {};
   let error: string | undefined;
@@ -98,14 +99,14 @@ export function runSeedWithPolicy({ policy, policyName, seed, content = sampleCo
   let status: "ok" | "error" = "ok";
 
   for (let step = 0; step < maxSteps; step++) {
-    const observation = observeRun(content, state);
+    const observation = observeRun(runContent, state);
 
     if (state.phase === "victory" || state.phase === "defeat") {
       outcome = state.phase === "victory" ? "win" : "loss";
       break;
     }
 
-    const legal = legalActions(content, state);
+    const legal = legalActions(runContent, state);
     if (legal.length === 0) {
       status = "error";
       error = "policy run ended with no legal actions";
@@ -113,7 +114,7 @@ export function runSeedWithPolicy({ policy, policyName, seed, content = sampleCo
     }
 
     const action = policy({
-      content,
+      content: runContent,
       legalActions: legal,
       observation,
       seed,
@@ -136,7 +137,7 @@ export function runSeedWithPolicy({ policy, policyName, seed, content = sampleCo
       pathChoiceCounts[action.nodeId] = (pathChoiceCounts[action.nodeId] ?? 0) + 1;
     }
 
-    state = applyAction(content, state, action);
+    state = applyAction(runContent, state, action);
     actions.push(action);
   }
 

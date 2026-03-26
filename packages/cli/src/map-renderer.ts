@@ -14,7 +14,8 @@ const NODE_BADGES: Record<string, string> = {
 };
 
 const GRID_SIDE_MARGIN = 1;
-const RANK_GAP_ROWS = 4;
+const DEFAULT_RANK_GAP_ROWS = 4;
+const COMPACT_RANK_GAP_ROWS = 1;
 
 const DIR_NORTH = 1;
 const DIR_EAST = 2;
@@ -92,10 +93,11 @@ export function renderDagreMap(
   const edgeChoiceOwners = computeEdgeChoiceOwners(map, observation.currentNode.id, nextNodes);
   const labels = createLabels(map, locale, mode);
   const layoutGraph = createLayoutGraph(map, labels);
-  const positionedNodes = positionNodes(layoutGraph, map, labels, width);
+  const rankGapRows = chooseRankGapRows(layoutGraph);
+  const positionedNodes = positionNodes(layoutGraph, map, labels, width, rankGapRows);
 
   const maxRankIndex = Math.max(...[...positionedNodes.values()].map((node) => node.rankIndex), 0);
-  const gridHeight = maxRankIndex * (RANK_GAP_ROWS + 1) + 1;
+  const gridHeight = maxRankIndex * (rankGapRows + 1) + 1;
   const grid = createGrid(width, gridHeight);
 
   for (const node of map) {
@@ -154,6 +156,7 @@ function positionNodes(
   map: MapNode[],
   labels: Map<string, string>,
   width: number,
+  rankGapRows: number,
 ): Map<string, PositionedNode> {
   const rankGroups = new Map<number, string[]>();
   let minX = Number.POSITIVE_INFINITY;
@@ -193,7 +196,7 @@ function positionNodes(
     const labelWidths = ids.map((id) => (labels.get(id) ?? id).length);
     const centers = spreadCenters(desiredCenters, labelWidths, width);
     const rankIndex = rankIndexByValue.get(rank) ?? 0;
-    const row = rankIndex * (RANK_GAP_ROWS + 1);
+    const row = rankIndex * (rankGapRows + 1);
 
     ids.forEach((id, index) => {
       positionedNodes.set(id, {
@@ -229,6 +232,17 @@ function normalizeX(x: number, minX: number, maxX: number, width: number): numbe
 
   const ratio = (x - minX) / (maxX - minX);
   return GRID_SIDE_MARGIN + Math.round(ratio * (usableWidth - 1));
+}
+
+function chooseRankGapRows(graph: Graph): number {
+  const rankCount = new Set(
+    graph
+      .nodes()
+      .map((nodeId) => graph.node(nodeId)?.rank)
+      .filter((rank): rank is number => typeof rank === "number"),
+  ).size;
+
+  return rankCount >= 8 ? COMPACT_RANK_GAP_ROWS : DEFAULT_RANK_GAP_ROWS;
 }
 
 function spreadCenters(desiredCenters: number[], labelWidths: number[], width: number): number[] {

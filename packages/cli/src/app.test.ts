@@ -31,7 +31,7 @@ describe("App layout", () => {
     const frame = await renderFrame({ columns: 100, rows: 20, inputs: ["1"] });
 
     expect(frame).toContain("Combat");
-    expect(frame).toContain("Sentry");
+    expect(frame).toMatch(/Sentry|Crusher|Forge Keeper/);
     expect(frame).not.toContain("Recent Activity");
     expect(frame).not.toContain("│ Map");
   });
@@ -41,7 +41,7 @@ describe("App layout", () => {
 
     expect(frame).toContain("S start");
     expect(frame).toContain("- At the entrance. Choose the first path.");
-    expect(frame).toContain("- Moved to gate (battle).");
+    expect(frame).toContain("- Moved to");
   });
 
   test("keeps the compact legend readable in zh combat sidebars", async () => {

@@ -1,6 +1,8 @@
 import type { RunContent } from "@towerlab/core";
 
-export const sampleContent: RunContent = {
+import { generateMap } from "./map.js";
+
+const baseContent: Omit<RunContent, "map"> = {
   cards: {
     strike: {
       id: "strike",
@@ -202,13 +204,13 @@ export const sampleContent: RunContent = {
     "surge",
     "heavyBlow",
   ],
-  map: [
-    { id: "crossroads", kind: "start", nextIds: ["gate", "forge"] },
-    { id: "gate", kind: "battle", encounterId: "sentry", nextIds: ["restCamp", "market"] },
-    { id: "forge", kind: "elite", encounterId: "forgeKeeper", relicReward: "combatFocus", nextIds: ["hall", "market"] },
-    { id: "hall", kind: "battle", encounterId: "sentry", nextIds: ["summit"] },
-    { id: "restCamp", kind: "rest", nextIds: ["summit"] },
-    { id: "market", kind: "shop", nextIds: ["summit"] },
-    { id: "summit", kind: "boss", encounterId: "watchCore", relicReward: "reinforcedFrame", nextIds: [] },
-  ],
 };
+
+export function createSeededContent(seed: number): RunContent {
+  return {
+    ...baseContent,
+    map: generateMap(seed),
+  };
+}
+
+export const sampleContent: RunContent = createSeededContent(7);

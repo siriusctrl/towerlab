@@ -12,7 +12,7 @@ The project has two equally important goals:
 
 The current repo intentionally stays small:
 - pure game state in `packages/core`
-- data-only starter content in `packages/content`
+- starter content plus seeded map generation in `packages/content`
 - Ink-based terminal UI in `packages/cli`
 
 There is no web app, no service layer, and no speculative abstraction in v0.
@@ -30,7 +30,7 @@ There is no web app, no service layer, and no speculative abstraction in v0.
 ```text
 packages/
   core/     pure rules and state transitions
-  content/  cards, starter deck, sample tower map
+  content/  cards, starter deck, seeded tower map generation
   cli/      terminal renderer and local executable
 
 docs/
@@ -72,8 +72,8 @@ corepack pnpm cli -- --json create --seed 7 --lang zh
 - `r` restarts after win/loss
 
 CLI language can be selected with `--lang en` or `--lang zh` for both the interactive TTY UI and the snapshot/headless flows.
-The TUI runs in the terminal alternate screen, adapts to terminal resize, starts from a branching crossroads map, and renders the route tree directly inside the main play panel instead of a separate map sidebar.
-The route tree uses connector lines plus self-describing status tokens like `@S`, `1F`, `+F`, `.R`, and `x$`, and each line includes the localized node name for readability.
+The TUI runs in the terminal alternate screen, adapts to terminal resize, starts from a seed-generated branching tower map, and renders the route tree directly inside the main play panel instead of a separate map sidebar.
+The route tree uses single-character node badges, orthogonal connector lines, and choice highlighting to keep deeper routes readable in the terminal.
 Detailed CLI usage lives in `docs/cli.md`.
 
 The same entrypoint also exposes the headless harness surface. The current target shape is:

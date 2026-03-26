@@ -23,7 +23,7 @@ Responsibilities:
 - card definitions
 - enemy definitions
 - starter deck
-- sample map
+- seeded tower map generation
 
 ### `packages/cli`
 Ink renderer and local entrypoint.

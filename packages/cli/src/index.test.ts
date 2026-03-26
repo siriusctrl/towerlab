@@ -17,14 +17,9 @@ describe("headless CLI", () => {
     const output = JSON.parse(runHeadless(["--json", "create", "--seed", "7", "--lang", "zh"]));
 
     expect(output.locale).toBe("zh");
-    expect(output.map).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ id: "crossroads" }),
-        expect.objectContaining({ id: "gate" }),
-        expect.objectContaining({ id: "summit" }),
-      ]),
-    );
-    expect(output.observation.nextNodes[0].id).toBe("gate");
+    expect(output.map[0]).toEqual(expect.objectContaining({ id: "start-r0", kind: "start" }));
+    expect(output.map.at(-1)).toEqual(expect.objectContaining({ kind: "boss" }));
+    expect(output.observation.nextNodes).toHaveLength(3);
     expect(output.observation.log[0]).toContain("入口");
 
     const snapshot = renderSnapshot(7, "zh");
@@ -47,13 +42,15 @@ describe("headless CLI", () => {
     expect(snapshot).toContain("S");
     // Path choices section still present
     expect(snapshot).toContain("路径：");
-    expect(snapshot).toContain("1. 城门 (战斗)");
-    expect(snapshot).toContain("2. 熔炉 (精英)");
+    expect(snapshot).toContain("1. 房间");
+    expect(snapshot).toContain("2. 房间");
   });
 
   test("step applies a single action after replaying prior actions", () => {
+    const create = JSON.parse(runHeadless(["--json", "create", "--seed", "9"]));
+    const firstChoiceId = create.observation.nextNodes[0].id;
     const observe = JSON.parse(
-      runHeadless(["--json", "observe", "--seed", "9", "--actions", JSON.stringify([{ type: "choosePath", nodeId: "gate" }])]),
+      runHeadless(["--json", "observe", "--seed", "9", "--actions", JSON.stringify([{ type: "choosePath", nodeId: firstChoiceId }])]),
     );
     const output = JSON.parse(
       runHeadless([
@@ -62,7 +59,7 @@ describe("headless CLI", () => {
         "--seed",
         "9",
         "--actions",
-        JSON.stringify([{ type: "choosePath", nodeId: "gate" }]),
+        JSON.stringify([{ type: "choosePath", nodeId: firstChoiceId }]),
         "--action",
         JSON.stringify({ type: "endTurn" }),
       ]),
@@ -70,16 +67,18 @@ describe("headless CLI", () => {
 
     expect(output.command).toBe("step");
     expect(output.seed).toBe(9);
-    expect(output.previousActions).toEqual([{ type: "choosePath", nodeId: "gate" }]);
+    expect(output.previousActions).toEqual([{ type: "choosePath", nodeId: firstChoiceId }]);
     expect(output.action.type).toBe("endTurn");
-    expect(output.actions).toEqual([{ type: "choosePath", nodeId: "gate" }, { type: "endTurn" }]);
+    expect(output.actions).toEqual([{ type: "choosePath", nodeId: firstChoiceId }, { type: "endTurn" }]);
     expect(output.state.phase).toBe("combat");
     expect(output.observation).not.toEqual(observe.observation);
   });
 
   test("observe and replay produce consistent end state and trace", () => {
+    const create = JSON.parse(runHeadless(["--json", "create", "--seed", "9"]));
+    const firstChoiceId = create.observation.nextNodes[0].id;
     const actions = [
-      { type: "choosePath", nodeId: "gate" },
+      { type: "choosePath", nodeId: firstChoiceId },
       { type: "endTurn" },
     ];
     const observe = JSON.parse(
@@ -189,7 +188,7 @@ describe("headless CLI", () => {
         "--action",
         JSON.stringify({ type: "choosePath", nodeId: "bogus" }),
       ]),
-    ).toThrow("node bogus is not reachable from crossroads");
+    ).toThrow("node bogus is not reachable from start-r0");
 
     expect(() =>
       runHeadless([

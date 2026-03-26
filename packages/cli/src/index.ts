@@ -1,6 +1,6 @@
 import fs from "node:fs";
 
-import { sampleContent } from "@towerlab/content";
+import { createSeededContent } from "@towerlab/content";
 import {
   applyAction,
   createRun,
@@ -11,6 +11,7 @@ import {
   traceRun,
   type Observation,
   type RunAction,
+  type RunContent,
   type RunState,
 } from "@towerlab/core";
 
@@ -164,22 +165,24 @@ function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
     };
   }
 
+  const content = createSeededContent(parsed.seed);
+
   if (parsed.command === "create") {
-    const state = createRun(sampleContent, parsed.seed);
+    const state = createRun(content, parsed.seed);
 
     return {
       command: "create",
-      ...createSnapshot(parsed.seed, [], state, parsed.locale),
+      ...createSnapshot(content, parsed.seed, [], state, parsed.locale),
       locale: parsed.locale,
     };
   }
 
   if (parsed.command === "observe") {
-    const state = replayRun(sampleContent, parsed.seed, parsed.actions);
+    const state = replayRun(content, parsed.seed, parsed.actions);
 
     return {
       command: "observe",
-      ...createSnapshot(parsed.seed, parsed.actions, state, parsed.locale),
+      ...createSnapshot(content, parsed.seed, parsed.actions, state, parsed.locale),
       locale: parsed.locale,
     };
   }
@@ -189,21 +192,21 @@ function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
       throw new Error(localizeErrorMessage("step mode requires --action", parsed.locale));
     }
 
-    const previousState = replayRun(sampleContent, parsed.seed, parsed.actions);
-    const nextState = applyAction(sampleContent, previousState, parsed.action);
+    const previousState = replayRun(content, parsed.seed, parsed.actions);
+    const nextState = applyAction(content, previousState, parsed.action);
     const allActions = [...parsed.actions, parsed.action];
 
     return {
       command: "step",
       action: parsed.action,
       previousActions: parsed.actions,
-      ...createSnapshot(parsed.seed, allActions, nextState, parsed.locale),
+      ...createSnapshot(content, parsed.seed, allActions, nextState, parsed.locale),
       locale: parsed.locale,
     };
   }
 
-  const state = replayRun(sampleContent, parsed.seed, parsed.actions);
-  const trace = traceRun(sampleContent, parsed.seed, parsed.actions).steps.map((entry, index) => ({
+  const state = replayRun(content, parsed.seed, parsed.actions);
+  const trace = traceRun(content, parsed.seed, parsed.actions).steps.map((entry, index) => ({
     step: index,
     action: entry.action,
     observation: localizeObservation(entry.observation, parsed.locale),
@@ -212,20 +215,26 @@ function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
   return {
     command: "replay",
     trace,
-    ...createSnapshot(parsed.seed, parsed.actions, state, parsed.locale),
+    ...createSnapshot(content, parsed.seed, parsed.actions, state, parsed.locale),
     locale: parsed.locale,
   };
 }
 
-function createSnapshot(seed: number, actions: RunAction[], state: RunState, locale: Locale = DEFAULT_LOCALE): HeadlessSnapshot {
+function createSnapshot(
+  content: RunContent,
+  seed: number,
+  actions: RunAction[],
+  state: RunState,
+  locale: Locale = DEFAULT_LOCALE,
+): HeadlessSnapshot {
   return {
     seed,
     actions,
     locale,
-    map: sampleContent.map,
+    map: content.map,
     state,
-    observation: localizeObservation(observeRun(sampleContent, state), locale),
-    legalActions: legalActions(sampleContent, state),
+    observation: localizeObservation(observeRun(content, state), locale),
+    legalActions: legalActions(content, state),
   };
 }
 
@@ -533,15 +542,16 @@ function getHeadlessUsage(locale: Locale): { commands: string[]; examples: strin
 }
 
 export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE): string {
-  const state = createRun(sampleContent, seed);
-  const observation = localizeObservation(observeRun(sampleContent, state), locale);
-  const visitedNodeIds = deriveVisitedNodeIds(sampleContent.map, []);
+  const content = createSeededContent(seed);
+  const state = createRun(content, seed);
+  const observation = localizeObservation(observeRun(content, state), locale);
+  const visitedNodeIds = deriveVisitedNodeIds(content.map, []);
 
-  return renderObservation(observation, locale, visitedNodeIds);
+  return renderObservation(content.map, observation, locale, visitedNodeIds);
 }
 
-function renderObservation(observation: Observation, locale: Locale, visitedNodeIds: string[] = []): string {
-  const mapSection = formatMapLines(createMapFloorRows(sampleContent.map, observation, locale, visitedNodeIds, 60));
+function renderObservation(map: MapNode[], observation: Observation, locale: Locale, visitedNodeIds: string[] = []): string {
+  const mapSection = formatMapLines(createMapFloorRows(map, observation, locale, visitedNodeIds, 60));
   const recentLog = getRecentLogView(observation.log);
   const mapLegendLines = getMapLegendLines(locale);
 

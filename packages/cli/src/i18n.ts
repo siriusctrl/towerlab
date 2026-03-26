@@ -161,7 +161,25 @@ export function localizeNodeKind(kind: string, locale: Locale): string {
 
 export function localizeNodeName(nodeId: string, locale: Locale): string {
   const names = nodeNames[locale] as Dictionary;
-  return names[nodeId] ?? nodeId;
+  if (names[nodeId]) {
+    return names[nodeId];
+  }
+
+  const generated = nodeId.match(/^(start|battle|elite|rest|shop|boss)-r(\d+)(?:-p(\d+))?$/u);
+  if (generated) {
+    const [, kind, row, position] = generated;
+    if (kind === "start") {
+      return locale === "zh" ? "岔路口" : "Crossroads";
+    }
+    if (kind === "boss") {
+      return locale === "zh" ? "顶峰" : "Summit";
+    }
+
+    const suffix = `${Number(row)}-${Number(position ?? "1")}`;
+    return locale === "zh" ? `房间 ${suffix}` : `Room ${suffix}`;
+  }
+
+  return nodeId;
 }
 
 export function formatNodeLabel(

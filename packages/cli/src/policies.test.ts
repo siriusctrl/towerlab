@@ -18,7 +18,8 @@ describe("baseline policies", () => {
   });
 
   it("greedy prefers the highest-damage playable combat card", () => {
-    const state = applyAction(sampleContent, createRun(sampleContent, 7), { type: "choosePath", nodeId: "gate" });
+    const battleNode = getOpeningChoiceByKind("battle");
+    const state = applyAction(sampleContent, createRun(sampleContent, 7), { type: "choosePath", nodeId: battleNode.id });
     const action = choosePolicyAction("greedy", state);
     const view = observeCombat(state);
 
@@ -31,14 +32,18 @@ describe("baseline policies", () => {
 
   it("greedy prefers the elite route from the opening map choice", () => {
     const state = createRun(sampleContent, 7);
+    const action = choosePolicyAction("greedy", state);
 
-    expect(choosePolicyAction("greedy", state)).toEqual({ type: "choosePath", nodeId: "forge" });
+    expect(action.type).toBe("choosePath");
+    expect(getNode(action.nodeId).kind).toBe("elite");
   });
 
   it("heuristic prefers the shop route when gold is available", () => {
     const state = gateMapState(7);
+    const action = choosePolicyAction("heuristic", state);
 
-    expect(choosePolicyAction("heuristic", state)).toEqual({ type: "choosePath", nodeId: "market" });
+    expect(action.type).toBe("choosePath");
+    expect(getNode(action.nodeId).kind).toBe("shop");
   });
 
   it("heuristic removes a starter strike in shop before buying", () => {
@@ -65,7 +70,7 @@ function firstMapState(seed: number): RunState {
 
 function gateMapState(seed: number): RunState {
   let state = firstMapState(seed);
-  state = applyAction(sampleContent, state, { type: "choosePath", nodeId: "gate" });
+  state = applyAction(sampleContent, state, { type: "choosePath", nodeId: getBattleChoiceWithShopFollowUp().id });
   state = finishCombat(state);
 
   if (state.phase === "reward") {
@@ -80,7 +85,8 @@ function gateMapState(seed: number): RunState {
 }
 
 function gateShopState(seed: number): RunState {
-  const state = applyAction(sampleContent, gateMapState(seed), { type: "choosePath", nodeId: "market" });
+  const shopNode = getImmediateNextByKind(getBattleChoiceWithShopFollowUp().id, "shop");
+  const state = applyAction(sampleContent, gateMapState(seed), { type: "choosePath", nodeId: shopNode.id });
 
   if (state.phase !== "shop") {
     throw new Error(`expected shop phase, received ${state.phase}`);
@@ -113,4 +119,58 @@ function observeCombat(state: RunState) {
   }
 
   return observation;
+}
+
+function getNode(nodeId: string) {
+  const node = sampleContent.map.find((candidate) => candidate.id === nodeId);
+  if (!node) {
+    throw new Error(`missing node ${nodeId}`);
+  }
+  return node;
+}
+
+function getOpeningChoiceByKind(kind: string) {
+  const state = createRun(sampleContent, 7);
+  const observation = observeRun(sampleContent, state);
+
+  if (observation.phase !== "map") {
+    throw new Error(`expected map phase, received ${observation.phase}`);
+  }
+
+  const node = observation.nextNodes.find((candidate) => candidate.kind === kind);
+  if (!node) {
+    throw new Error(`missing opening ${kind} node`);
+  }
+
+  return node;
+}
+
+function getBattleChoiceWithShopFollowUp() {
+  const openingBattles = createRun(sampleContent, 7);
+  const observation = observeRun(sampleContent, openingBattles);
+
+  if (observation.phase !== "map") {
+    throw new Error(`expected map phase, received ${observation.phase}`);
+  }
+
+  const node = observation.nextNodes.find(
+    (candidate) => candidate.kind === "battle" && candidate.nextIds.some((nextId) => getNode(nextId).kind === "shop"),
+  );
+
+  if (!node) {
+    throw new Error("missing battle route that leads to a shop");
+  }
+
+  return node;
+}
+
+function getImmediateNextByKind(nodeId: string, kind: string) {
+  const node = getNode(nodeId);
+  const nextNode = node.nextIds.map((nextId) => getNode(nextId)).find((candidate) => candidate.kind === kind);
+
+  if (!nextNode) {
+    throw new Error(`missing ${kind} follow-up from ${nodeId}`);
+  }
+
+  return nextNode;
 }
