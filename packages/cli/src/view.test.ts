@@ -1,4 +1,4 @@
-import { sampleContent } from "@towerlab/content";
+import { createSeededContent, sampleContent } from "@towerlab/content";
 import type { MapNode, Observation } from "@towerlab/core";
 import { describe, expect, test } from "vitest";
 
@@ -365,6 +365,53 @@ describe("cli view helpers", () => {
     }
   });
 
+  test("keeps owned corner connectors highlighted on the seed 7 left-elite path", () => {
+    const content = createSeededContent(7, "vanguard");
+    const map = content.acts[0]!.map;
+    const nodeById = new Map(map.map((node) => [node.id, node]));
+    const currentNode = nodeById.get("act1-shop-r3-p1")!;
+    const nextNodes = currentNode.nextIds.map((nodeId) => nodeById.get(nodeId)).filter((node): node is MapNode => node !== undefined);
+    const observation: Observation = {
+      seed: 7,
+      phase: "shop",
+      act: 1,
+      totalActs: content.acts.length,
+      characterId: "vanguard",
+      hp: 60,
+      maxHp: 80,
+      gold: 50,
+      floor: 4,
+      currentNode,
+      relics: [],
+      log: [],
+      sales: [],
+      removeCost: 75,
+      nextNodes,
+    };
+
+    const rows = createMapFloorRows(
+      map,
+      observation,
+      "en",
+      deriveVisitedNodeIds(map, [
+        { type: "choosePath", nodeId: "act1-elite-r1-p1" },
+        { type: "choosePath", nodeId: "act1-elite-r2-p1" },
+        { type: "choosePath", nodeId: "act1-shop-r3-p1" },
+      ]),
+      200,
+      "icon",
+    ).map(expandRowCells);
+
+    expect(rows[16]?.[18]?.text).toBe("┐");
+    expect(rows[16]?.[18]?.status).toBe("connectorChoice1");
+    expect(rows[17]?.[18]?.text).toBe("│");
+    expect(rows[17]?.[18]?.status).toBe("connectorChoice1");
+    expect(rows[18]?.[18]?.text).toBe("├");
+    expect(rows[18]?.[18]?.status).toBe("connectorChoice1");
+    expect(rows[19]?.[18]?.text).toBe("│");
+    expect(rows[19]?.[18]?.status).toBe("connectorChoice1");
+  });
+
   test("recent log view truncates older entries and reports hidden count", () => {
     const view = getRecentLogView(["a", "b", "c", "d", "e", "f"], 4);
 
@@ -399,6 +446,10 @@ function createMapObservation(map: MapNode[]): Observation {
 function getNextNodes(map: MapNode[], currentNode: MapNode): MapNode[] {
   const nodeById = new Map(map.map((node) => [node.id, node]));
   return currentNode.nextIds.map((nodeId) => nodeById.get(nodeId)).filter((node): node is MapNode => node !== undefined);
+}
+
+function expandRowCells(row: ReturnType<typeof createMapFloorRows>[number]) {
+  return row.flatMap((cell) => [...cell.text].map((text) => ({ text, status: cell.status })));
 }
 
 const sampleMap = sampleContent.acts[0]!.map;

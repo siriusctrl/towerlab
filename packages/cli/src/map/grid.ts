@@ -28,6 +28,7 @@ type GridCell = {
   ch: string;
   status: MapCellStatus;
   mask: number;
+  ownersMask: number;
 };
 
 export type CharGrid = {
@@ -47,7 +48,7 @@ export function createGrid(width: number, height: number): CharGrid {
   for (let y = 0; y < height; y++) {
     const row: GridCell[] = [];
     for (let x = 0; x < width; x++) {
-      row.push({ ch: " ", status: "connector", mask: 0 });
+      row.push({ ch: " ", status: "connector", mask: 0, ownersMask: 0 });
     }
     cells.push(row);
   }
@@ -68,7 +69,7 @@ export function placeLabel(grid: CharGrid, centerX: number, y: number, label: st
   }
 
   for (let index = 0; index < label.length && startX + index < grid.width; index++) {
-    grid.cells[y][startX + index] = { ch: label[index], status, mask: 0 };
+    grid.cells[y][startX + index] = { ch: label[index], status, mask: 0, ownersMask: 0 };
   }
 }
 
@@ -131,7 +132,8 @@ function addConnectorDirection(grid: CharGrid, x: number, y: number, direction: 
 
   cell.mask |= direction;
   cell.ch = CONNECTOR_GLYPHS.get(cell.mask) ?? "┼";
-  cell.status = mergeConnectorStatus(cell.status, status);
+  cell.ownersMask |= connectorOwnerMask(status);
+  cell.status = connectorStatusFromOwnersMask(cell.ownersMask);
 }
 
 function dedupePoints(points: Point[]): Point[] {
@@ -148,10 +150,17 @@ function dedupePoints(points: Point[]): Point[] {
   return filtered;
 }
 
-function mergeConnectorStatus(current: MapCellStatus, incoming: MapCellStatus): MapCellStatus {
-  if (current === "connector") return incoming;
-  if (incoming === "connector") return current;
-  if (current === incoming) return current;
+function connectorOwnerMask(status: MapCellStatus): number {
+  if (status === "connectorChoice1") return 1;
+  if (status === "connectorChoice2") return 2;
+  if (status === "connectorChoice3") return 4;
+  return 0;
+}
+
+function connectorStatusFromOwnersMask(ownersMask: number): MapCellStatus {
+  if (ownersMask === 1) return "connectorChoice1";
+  if (ownersMask === 2) return "connectorChoice2";
+  if (ownersMask === 4) return "connectorChoice3";
   return "connector";
 }
 
