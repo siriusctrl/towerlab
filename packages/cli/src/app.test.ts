@@ -60,6 +60,33 @@ describe("App layout", () => {
     expect(frame).not.toContain("act1-battle");
   });
 
+  test("shows the current character library and cycles card sections by rarity", async () => {
+    const starterFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["l"] });
+    const rareFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["l", "]", "]", "]"] });
+
+    expect(starterFrame).toContain("图鉴");
+    expect(starterFrame).toContain("起始牌组");
+    expect(starterFrame).toContain("4x 打击 [1] 造成 6 点伤害。");
+    expect(rareFrame).toContain("稀有卡");
+    expect(rareFrame).toContain("处决 [2] 造成 14 点伤害。");
+  });
+
+  test("shows the current deck during combat without leaving the TUI", async () => {
+    const frame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["1", "1", "d"] });
+
+    expect(frame).toContain("当前牌组");
+    expect(frame).toContain("牌组数量 10");
+    expect(frame).toContain("4x 打击 [1] 造成 6 点伤害。");
+    expect(frame).toContain("2x 突进 [1] 造成 4 点伤害。获得 4 点格挡。");
+  });
+
+  test("renders blessing options without spacer gaps between choices", async () => {
+    const frame = await renderFrame({ columns: 80, rows: 24, locale: "zh" });
+
+    expect(frame).toMatch(/效果：获得 30 金币。\n\s*2\. 伟躯/u);
+    expect(frame).toMatch(/效果：获得 6 点最大生命并回复 6 点生命。\n\s*3\. 莽撞突刺/u);
+  });
+
   test("keeps opening blessings, compact map, and post-move minimap stable across multiple seeds", async () => {
     const seeds = [17, 29, 43, 58, 71];
 

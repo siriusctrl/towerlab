@@ -1,4 +1,4 @@
-import type { CharacterDefinition, MapNode, Observation, RunAction, RunContent } from "@towerlab/core";
+import type { CharacterDefinition, MapNode, Observation, RunAction, RunContent, RunState } from "@towerlab/core";
 import { Box, Text } from "ink";
 
 import {
@@ -7,9 +7,11 @@ import {
   formatBlessingName,
   formatNodeLabel,
   formatText,
+  localizeCardDefinition,
   localizeCharacterName,
   localizeCharacterSummary,
   localizePhaseLabel,
+  localizeRelicDefinition,
   text,
   type Locale,
 } from "../i18n.js";
@@ -31,6 +33,19 @@ import {
   renderHpBar,
 } from "../view.js";
 import { getChoiceColor, getMapCellColor, isDimmedMapCell, isEmphasizedMapCell } from "./utils.js";
+
+type ReferenceMode = "hidden" | "deck" | "library";
+type LibrarySection = "starter" | "common" | "uncommon" | "rare" | "relics";
+type ReferenceLine = {
+  text: string;
+  bold?: boolean;
+  dim?: boolean;
+  color?: string;
+};
+
+const LIBRARY_SECTIONS: LibrarySection[] = ["starter", "common", "uncommon", "rare", "relics"];
+
+export const LIBRARY_SECTION_COUNT = LIBRARY_SECTIONS.length;
 
 export function StatusBar({
   observation,
@@ -219,7 +234,7 @@ export function PhaseBody({
           const description = formatBlessingDescription(content, blessing, locale);
 
           return (
-            <Box key={blessing.id} flexDirection="column" marginBottom={1}>
+            <Box key={blessing.id} flexDirection="column">
               <Text bold wrap="truncate-end">
                 {index + 1}. {formatBlessingName(content, blessing, locale)}
               </Text>
@@ -414,39 +429,179 @@ export function PhaseBody({
 }
 
 export function Controls({ observation, locale, shopMenu }: { observation: Observation; locale: Locale; shopMenu: ShopMenuMode }) {
-  if (observation.phase === "blessing") {
-    return <Text dimColor wrap="truncate-end">{text(locale, "controlsBlessing")}</Text>;
+  const baseControls =
+    observation.phase === "blessing"
+      ? text(locale, "controlsBlessing")
+      : observation.phase === "combat"
+        ? text(locale, "controlsCombat")
+        : observation.phase === "map"
+          ? text(locale, "controlsMap")
+          : observation.phase === "rest"
+            ? text(locale, "controlsRest")
+            : observation.phase === "reward"
+              ? text(locale, "controlsReward")
+              : observation.phase === "shop"
+                ? shopMenu === "buy"
+                  ? text(locale, "controlsShopBuy")
+                  : shopMenu === "remove"
+                    ? text(locale, "controlsShopRemove")
+                    : text(locale, "controlsShop")
+                : text(locale, "controlsEnd");
+
+  return <Text dimColor wrap="truncate-end">{baseControls}</Text>;
+}
+
+export function ReferenceControls({ locale, referenceMode }: { locale: Locale; referenceMode: ReferenceMode }) {
+  return (
+    <Text dimColor wrap="truncate-end">
+      {referenceMode === "hidden" ? text(locale, "controlsReferenceClosed") : text(locale, "controlsReferenceOpen")}
+    </Text>
+  );
+}
+
+export function ReferencePanel({
+  content,
+  state,
+  locale,
+  referenceMode,
+  librarySectionIndex,
+  scrollOffset,
+  height,
+}: {
+  content: RunContent;
+  state: RunState;
+  locale: Locale;
+  referenceMode: Exclude<ReferenceMode, "hidden">;
+  librarySectionIndex: number;
+  scrollOffset: number;
+  height: number;
+}) {
+  const section =
+    referenceMode === "deck"
+      ? buildDeckSection(content, state, locale)
+      : buildLibrarySection(content, locale, LIBRARY_SECTIONS[librarySectionIndex] ?? LIBRARY_SECTIONS[0]!);
+  const characterName = localizeCharacterName(content.character.id, locale);
+  const headerLines = referenceMode === "library" ? 4 : 3;
+  const bodyHeight = Math.max(4, height - headerLines);
+  const maxScroll = Math.max(0, section.lines.length - bodyHeight);
+  const clampedScroll = Math.min(scrollOffset, maxScroll);
+  const visibleLines = section.lines.slice(clampedScroll, clampedScroll + bodyHeight);
+  const start = section.lines.length === 0 ? 0 : clampedScroll + 1;
+  const end = clampedScroll + visibleLines.length;
+
+  return (
+    <Box flexDirection="column" overflow="hidden">
+      <Text bold color="cyan" wrap="truncate-end">
+        {referenceMode === "deck" ? text(locale, "currentDeck") : text(locale, "library")}
+      </Text>
+      <Text dimColor wrap="truncate-end">
+        {characterName} {"·"} {section.title}
+      </Text>
+      {referenceMode === "library" ? (
+        <Text wrap="truncate-end">
+          {LIBRARY_SECTIONS.map((candidate, index) => (
+            <Text key={candidate} color={candidate === section.key ? "yellow" : "gray"} bold={candidate === section.key}>
+              {index > 0 ? "  " : ""}
+              {librarySectionLabel(locale, candidate)}
+            </Text>
+          ))}
+        </Text>
+      ) : null}
+      <Text dimColor wrap="truncate-end">
+        {formatText(locale, "referenceScrollStatus", { start, end, total: section.lines.length })}
+      </Text>
+      {visibleLines.length > 0 ? (
+        visibleLines.map((line, index) => (
+          <Text key={`${section.key}-${clampedScroll + index}-${line.text}`} color={line.color} bold={line.bold} dimColor={line.dim} wrap="truncate-end">
+            {line.text}
+          </Text>
+        ))
+      ) : (
+        <Text dimColor wrap="truncate-end">
+          {text(locale, "emptyReferenceSection")}
+        </Text>
+      )}
+    </Box>
+  );
+}
+
+function buildDeckSection(content: RunContent, state: RunState, locale: Locale): { key: "deck"; title: string; lines: ReferenceLine[] } {
+  return {
+    key: "deck",
+    title: formatText(locale, "deckSize", { count: state.deck.length }),
+    lines: formatCardCollectionLines(state.deck, content, locale),
+  };
+}
+
+function buildLibrarySection(content: RunContent, locale: Locale, section: LibrarySection): { key: LibrarySection; title: string; lines: ReferenceLine[] } {
+  if (section === "starter") {
+    return {
+      key: section,
+      title: text(locale, "starterDeckSection"),
+      lines: formatCardCollectionLines(content.character.starterDeck, content, locale),
+    };
   }
 
-  if (observation.phase === "combat") {
-    return <Text dimColor wrap="truncate-end">{text(locale, "controlsCombat")}</Text>;
+  if (section === "common" || section === "uncommon" || section === "rare") {
+    return {
+      key: section,
+      title: librarySectionLabel(locale, section),
+      lines: formatCardCollectionLines(content.character.rewardCardPools[section], content, locale),
+    };
   }
 
-  if (observation.phase === "map") {
-    return <Text dimColor wrap="truncate-end">{text(locale, "controlsMap")}</Text>;
-  }
+  const startingRelic = content.relics[content.character.startingRelicId];
+  const eliteRelics = content.character.relicPools.elite
+    .map((relicId) => content.relics[relicId])
+    .filter((relic): relic is NonNullable<typeof relic> => relic !== undefined);
+  const bossRelics = content.character.relicPools.boss
+    .map((relicId) => content.relics[relicId])
+    .filter((relic): relic is NonNullable<typeof relic> => relic !== undefined);
 
-  if (observation.phase === "rest") {
-    return <Text dimColor wrap="truncate-end">{text(locale, "controlsRest")}</Text>;
-  }
+  return {
+    key: section,
+    title: text(locale, "relicLibrarySection"),
+    lines: [
+      { text: text(locale, "starterRelic"), bold: true, dim: true },
+      ...(startingRelic ? [formatRelicLine(startingRelic, locale)] : []),
+      { text: text(locale, "eliteRelicsSection"), bold: true, dim: true },
+      ...eliteRelics.map((relic) => formatRelicLine(relic, locale)),
+      { text: text(locale, "bossRelicsSection"), bold: true, dim: true },
+      ...bossRelics.map((relic) => formatRelicLine(relic, locale)),
+    ],
+  };
+}
 
-  if (observation.phase === "reward") {
-    return <Text dimColor wrap="truncate-end">{text(locale, "controlsReward")}</Text>;
-  }
+function librarySectionLabel(locale: Locale, section: LibrarySection): string {
+  if (section === "starter") return text(locale, "starterDeckSection");
+  if (section === "common") return text(locale, "commonCardsSection");
+  if (section === "uncommon") return text(locale, "uncommonCardsSection");
+  if (section === "rare") return text(locale, "rareCardsSection");
+  return text(locale, "relicLibrarySection");
+}
 
-  if (observation.phase === "shop") {
-    if (shopMenu === "buy") {
-      return <Text dimColor wrap="truncate-end">{text(locale, "controlsShopBuy")}</Text>;
+function formatCardCollectionLines(cardIds: string[], content: RunContent, locale: Locale): ReferenceLine[] {
+  const counts = new Map<string, number>();
+
+  for (const cardId of cardIds) {
+    if (!content.cards[cardId]) {
+      continue;
     }
 
-    if (shopMenu === "remove") {
-      return <Text dimColor wrap="truncate-end">{text(locale, "controlsShopRemove")}</Text>;
-    }
-
-    return <Text dimColor wrap="truncate-end">{text(locale, "controlsShop")}</Text>;
+    counts.set(cardId, (counts.get(cardId) ?? 0) + 1);
   }
 
-  return <Text dimColor wrap="truncate-end">{text(locale, "controlsEnd")}</Text>;
+  return [...counts.entries()].map(([cardId, count]) => {
+    const card = localizeCardDefinition(content.cards[cardId]!, locale);
+    return {
+      text: `${count > 1 ? `${count}x ` : ""}${card.name} [${card.cost}] ${card.description}`,
+    };
+  });
+}
+
+function formatRelicLine(relic: NonNullable<RunContent["relics"][string]>, locale: Locale): ReferenceLine {
+  const localized = localizeRelicDefinition(relic, locale);
+  return { text: `${localized.name} - ${localized.description}` };
 }
 
 export function RecentLogPanel({ entries, locale, limit }: { entries: string[]; locale: Locale; limit: number }) {

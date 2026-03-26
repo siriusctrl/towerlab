@@ -6,7 +6,17 @@ import { useEffect, useRef, useState } from "react";
 import { DEFAULT_LOCALE, formatLogEntries, localizeCharacterName, localizeObservation, text, type Locale } from "../i18n.js";
 import { readShopAction, type ShopMenuMode } from "../shop.js";
 import { getMapCompactLegendLine } from "../view.js";
-import { CharacterSelectScreen, Controls, MapTreeView, PhaseBody, RecentLogPanel, StatusBar } from "./components.js";
+import {
+  CharacterSelectScreen,
+  Controls,
+  LIBRARY_SECTION_COUNT,
+  MapTreeView,
+  PhaseBody,
+  RecentLogPanel,
+  ReferenceControls,
+  ReferencePanel,
+  StatusBar,
+} from "./components.js";
 import { useTerminalDimensions } from "./use-terminal-dimensions.js";
 import { getErrorMessage, getTerminalTextWidth, readChoiceIndex } from "./utils.js";
 
@@ -17,6 +27,7 @@ export interface AppProps {
 }
 
 const characters = listCharacters();
+type ReferenceMode = "hidden" | "deck" | "library";
 
 export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const { exit } = useApp();
@@ -27,6 +38,9 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const [state, setState] = useState<RunState | null>(() => (characterId ? createRun(createSeededContent(seed, characterId), seed) : null));
   const [actions, setActions] = useState<RunAction[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [referenceMode, setReferenceMode] = useState<ReferenceMode>("hidden");
+  const [librarySectionIndex, setLibrarySectionIndex] = useState(0);
+  const [referenceScrollOffset, setReferenceScrollOffset] = useState(0);
   const stateRef = useRef(state);
   const contentRef = useRef(content);
   const actionsRef = useRef(actions);
@@ -37,13 +51,21 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const relicNames = view && view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
   const characterName = selectedCharacterId ? localizeCharacterName(selectedCharacterId, locale) : "";
   const compactLegendLine = getMapCompactLegendLine(locale);
-  const sidebarWidth = Math.max(32, Math.min(52, Math.max(getTerminalTextWidth(compactLegendLine) + 4, Math.floor(columns * 0.35))));
+  const defaultSidebarWidth = Math.max(32, Math.min(52, Math.max(getTerminalTextWidth(compactLegendLine) + 4, Math.floor(columns * 0.35))));
+  const combatSidebarWidth = Math.max(28, Math.min(40, Math.max(getTerminalTextWidth(compactLegendLine) + 2, Math.floor(columns * 0.28))));
+  const sidebarWidth = view?.phase === "combat" ? combatSidebarWidth : defaultSidebarWidth;
   const compactMapPhase = view?.phase === "map" && rows <= 24;
   const showSidebar = view ? view.phase !== "map" && rows >= 24 && columns - sidebarWidth >= 48 : false;
+  const inspectorWidth = Math.max(42, Math.min(64, Math.max(38, Math.floor(columns * 0.42))));
+  const showInspectorSidebar = view ? referenceMode !== "hidden" && rows >= 22 && columns - inspectorWidth >= 48 : false;
+  const showReferenceInMain = Boolean(view && referenceMode !== "hidden" && !showInspectorSidebar);
+  const showAnySidebar = showSidebar || showInspectorSidebar;
   const hideMainMapLegend = compactMapPhase || (view?.phase === "map" && rows <= 24 && columns < 100);
-  const showInlineLog = !showSidebar && rows >= 28;
+  const showInlineLog = !showAnySidebar && !showReferenceInMain && rows >= 28;
   const recentLogLimit = rows >= 30 ? 6 : rows >= 26 ? 5 : 4;
   const hpBarWidth = Math.min(20, Math.max(10, Math.floor(columns * 0.15)));
+  const referenceHeight = Math.max(8, rows - (compactMapPhase ? 6 : 9));
+  const mainPaneWidth = Math.max(32, columns - (showInspectorSidebar ? inspectorWidth + 4 : 2));
 
   const startCharacterRun = (nextCharacterId: CharacterId) => {
     const nextContent = createSeededContent(seed, nextCharacterId);
@@ -57,6 +79,9 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setActions([]);
     setError(null);
     setShopMenu("top");
+    setReferenceMode("hidden");
+    setLibrarySectionIndex(0);
+    setReferenceScrollOffset(0);
   };
 
   const runAction = (action: RunAction) => {
@@ -89,6 +114,9 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setActions([]);
     setError(null);
     setShopMenu("top");
+    setReferenceMode("hidden");
+    setLibrarySectionIndex(0);
+    setReferenceScrollOffset(0);
   };
 
   useEffect(() => {
@@ -96,6 +124,17 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
       setShopMenu("top");
     }
   }, [view?.phase]);
+
+  const toggleReference = (nextMode: Exclude<ReferenceMode, "hidden">) => {
+    setReferenceMode((current) => {
+      const resolved = current === nextMode ? "hidden" : nextMode;
+      setReferenceScrollOffset(0);
+      if (resolved === "library" && current !== "library") {
+        setLibrarySectionIndex(0);
+      }
+      return resolved;
+    });
+  };
 
   useInput((input, key) => {
     if ((key.ctrl && input === "c") || input === "q") {
@@ -108,6 +147,48 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
       if (choiceIndex !== null) {
         startCharacterRun(characters[choiceIndex].id as CharacterId);
       }
+      return;
+    }
+
+    if (input === "d") {
+      toggleReference("deck");
+      return;
+    }
+
+    if (input === "l") {
+      toggleReference("library");
+      return;
+    }
+
+    if (referenceMode !== "hidden") {
+      if (key.escape) {
+        setReferenceMode("hidden");
+        setReferenceScrollOffset(0);
+        return;
+      }
+
+      if (referenceMode === "library" && (input === "[" || key.leftArrow)) {
+        setLibrarySectionIndex((current) => (current - 1 + LIBRARY_SECTION_COUNT) % LIBRARY_SECTION_COUNT);
+        setReferenceScrollOffset(0);
+        return;
+      }
+
+      if (referenceMode === "library" && (input === "]" || key.rightArrow)) {
+        setLibrarySectionIndex((current) => (current + 1) % LIBRARY_SECTION_COUNT);
+        setReferenceScrollOffset(0);
+        return;
+      }
+
+      if (input === "j" || key.downArrow) {
+        setReferenceScrollOffset((current) => current + 1);
+        return;
+      }
+
+      if (input === "k" || key.upArrow) {
+        setReferenceScrollOffset((current) => Math.max(0, current - 1));
+        return;
+      }
+
       return;
     }
 
@@ -198,19 +279,57 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
       ) : null}
 
       <Box flexDirection="row" flexGrow={1} overflow="hidden">
-        <Box flexDirection="column" flexGrow={1} paddingLeft={1} overflow="hidden">
-          {!showSidebar && view.phase === "map" ? (
-            <MapTreeView map={currentMap} observation={view} actions={actions} locale={locale} width={columns - 2} showLegend={!hideMainMapLegend} />
+          <Box flexDirection="column" flexGrow={1} paddingLeft={1} overflow="hidden">
+          {view.phase === "map" && !showReferenceInMain ? (
+            <MapTreeView map={currentMap} observation={view} actions={actions} locale={locale} width={mainPaneWidth} showLegend={!hideMainMapLegend} />
           ) : null}
-          <PhaseBody content={content!} observation={view} locale={locale} shopMenu={shopMenu} hpBarWidth={hpBarWidth} compactMapPhase={compactMapPhase} />
-          {showInlineLog ? (
-            <Box marginTop={1} flexDirection="column" overflow="hidden">
-              <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
-            </Box>
-          ) : null}
+          {showReferenceInMain ? (
+            <ReferencePanel
+              content={content!}
+              state={state!}
+              locale={locale}
+              referenceMode={referenceMode === "hidden" ? "deck" : referenceMode}
+              librarySectionIndex={librarySectionIndex}
+              scrollOffset={referenceScrollOffset}
+              height={referenceHeight}
+            />
+          ) : (
+            <>
+              <PhaseBody content={content!} observation={view} locale={locale} shopMenu={shopMenu} hpBarWidth={hpBarWidth} compactMapPhase={compactMapPhase} />
+              {showInlineLog ? (
+                <Box marginTop={1} flexDirection="column" overflow="hidden">
+                  <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
+                </Box>
+              ) : null}
+            </>
+          )}
         </Box>
 
-        {showSidebar ? (
+        {showInspectorSidebar ? (
+          <Box
+            flexDirection="column"
+            width={inspectorWidth}
+            flexShrink={0}
+            borderStyle="single"
+            borderLeft
+            borderTop={false}
+            borderBottom={false}
+            borderRight={false}
+            borderColor="gray"
+            paddingLeft={1}
+            overflow="hidden"
+          >
+            <ReferencePanel
+              content={content!}
+              state={state!}
+              locale={locale}
+              referenceMode={referenceMode === "hidden" ? "deck" : referenceMode}
+              librarySectionIndex={librarySectionIndex}
+              scrollOffset={referenceScrollOffset}
+              height={referenceHeight}
+            />
+          </Box>
+        ) : showSidebar ? (
           <Box
             flexDirection="column"
             width={sidebarWidth}
@@ -239,6 +358,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
       ) : null}
       <Box flexDirection="column" flexShrink={0} paddingX={1} overflow="hidden">
         <Controls observation={view} locale={locale} shopMenu={shopMenu} />
+        <ReferenceControls locale={locale} referenceMode={referenceMode} />
         {error ? (
           <Text color="red" wrap="truncate-end">
             {text(locale, "inputError")}: {error}

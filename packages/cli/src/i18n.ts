@@ -66,7 +66,7 @@ export function localizeObservation(observation: Observation, locale: Locale): O
     return observation;
   }
 
-  const relics = observation.relics.map((relic) => localizeRelic(relic, locale));
+  const relics = observation.relics.map((relic) => localizeRelicDefinition(relic, locale));
 
   if (observation.phase === "combat") {
     const combatObservation: CombatObservation = observation;
@@ -74,7 +74,7 @@ export function localizeObservation(observation: Observation, locale: Locale): O
     return {
       ...combatObservation,
       relics,
-      hand: combatObservation.hand.map((card) => localizeCard(card, locale)),
+      hand: combatObservation.hand.map((card) => localizeCardDefinition(card, locale)),
       enemy: {
         ...combatObservation.enemy,
         name: localizeEnemyName(combatObservation.enemy.name, locale),
@@ -99,7 +99,7 @@ export function localizeObservation(observation: Observation, locale: Locale): O
     return {
       ...rewardObservation,
       relics,
-      cardChoices: rewardObservation.cardChoices.map((card) => localizeCard(card, locale)),
+      cardChoices: rewardObservation.cardChoices.map((card) => localizeCardDefinition(card, locale)),
     };
   }
 
@@ -109,10 +109,10 @@ export function localizeObservation(observation: Observation, locale: Locale): O
     return {
       ...shopObservation,
       relics,
-      forSale: shopObservation.forSale.map((card) => localizeCard(card, locale)),
+      forSale: shopObservation.forSale.map((card) => localizeCardDefinition(card, locale)),
       removableDeckCards: shopObservation.removableDeckCards.map((entry) => ({
         ...entry,
-        card: localizeCard(entry.card, locale),
+        card: localizeCardDefinition(entry.card, locale),
       })),
     };
   }
@@ -462,7 +462,7 @@ function isLocale(value: string): value is Locale {
   return SUPPORTED_LOCALES.includes(value as Locale);
 }
 
-function localizeCard(card: CardDefinition, locale: Locale): CardDefinition {
+export function localizeCardDefinition(card: CardDefinition, locale: Locale): CardDefinition {
   if (locale === "en") {
     return card;
   }
@@ -474,7 +474,7 @@ function localizeCard(card: CardDefinition, locale: Locale): CardDefinition {
   };
 }
 
-function localizeRelic(relic: RelicDefinition, locale: Locale): RelicDefinition {
+export function localizeRelicDefinition(relic: RelicDefinition, locale: Locale): RelicDefinition {
   if (locale === "en") {
     return relic;
   }
