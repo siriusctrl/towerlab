@@ -10,7 +10,7 @@ import {
   type RunAction,
   type RunContent,
   type RunState,
-} from "../src/index.js";
+} from "../index.js";
 
 const content: RunContent = {
   cards: {

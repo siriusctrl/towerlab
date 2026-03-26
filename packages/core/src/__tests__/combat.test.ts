@@ -7,7 +7,7 @@ import {
   type CombatObservation,
   type RunContent,
   type RunState,
-} from "../src/index.js";
+} from "../index.js";
 
 describe("combat transitions", () => {
   it("plays cards, spends energy, and advances enemy intents on end turn", () => {

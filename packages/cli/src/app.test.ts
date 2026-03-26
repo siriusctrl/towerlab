@@ -2,7 +2,7 @@ import React from "react";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test } from "vitest";
 
-import { App } from "./app.js";
+import { App } from "./app/App.js";
 
 afterEach(() => {
   cleanup();
