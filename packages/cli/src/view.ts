@@ -19,7 +19,22 @@ export function getHpColor(current: number, max: number): string {
   return "red";
 }
 
-export type MapCellStatus = "closed" | "connector" | "current" | "future" | "next" | "past";
+export type MapCellStatus =
+  | "closed"
+  | "connector"
+  | "connectorChoice1"
+  | "connectorChoice2"
+  | "connectorChoice3"
+  | "current"
+  | "future"
+  | "futureChoice1"
+  | "futureChoice2"
+  | "futureChoice3"
+  | "next"
+  | "nextChoice1"
+  | "nextChoice2"
+  | "nextChoice3"
+  | "past";
 
 export type MapTreeCell = {
   status: MapCellStatus;

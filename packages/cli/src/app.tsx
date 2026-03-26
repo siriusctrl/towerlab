@@ -51,8 +51,8 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const view = localizeObservation(observeRun(sampleContent, state), locale);
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
   const compactLegendLine = getMapCompactLegendLine(locale);
-  const sidebarWidth = Math.max(32, Math.min(52, Math.max(compactLegendLine.length + 4, Math.floor(columns * 0.35))));
-  const showSidebar = rows >= 24 && columns - sidebarWidth >= 48;
+  const sidebarWidth = Math.max(32, Math.min(52, Math.max(getTerminalTextWidth(compactLegendLine) + 4, Math.floor(columns * 0.35))));
+  const showSidebar = view.phase !== "map" && rows >= 24 && columns - sidebarWidth >= 48;
   const showInlineLog = !showSidebar && rows >= 28;
   const recentLogLimit = rows >= 30 ? 6 : rows >= 26 ? 5 : 4;
   const hpBarWidth = Math.min(20, Math.max(10, Math.floor(columns * 0.15)));
@@ -332,8 +332,8 @@ function MapTreeView({
             <Text
               key={`${rowIndex}-${cellIndex}`}
               color={getMapCellColor(cell)}
-              dimColor={cell.status === "closed" || cell.status === "past" || cell.status === "connector"}
-              bold={cell.status === "current" || cell.status === "next"}
+              dimColor={isDimmedMapCell(cell)}
+              bold={isEmphasizedMapCell(cell)}
             >
               {cell.text}
             </Text>
@@ -393,7 +393,7 @@ function PhaseBody({
       <>
         <Text bold>{text(locale, "paths")}</Text>
         {observation.nextNodes.map((node, index) => (
-          <Text key={node.id} wrap="truncate-end">
+          <Text key={node.id} color={getChoiceColor(index)} bold wrap="truncate-end">
             {index + 1}. {formatNodeLabel(node, locale)}
           </Text>
         ))}
@@ -629,12 +629,64 @@ function getErrorMessage(error: unknown, locale: Locale): string {
 const MAP_CELL_COLORS: Record<string, string | undefined> = {
   current: "green",
   next: "yellow",
+  nextChoice1: "cyan",
+  nextChoice2: "magenta",
+  nextChoice3: "blue",
   future: "white",
+  futureChoice1: "cyan",
+  futureChoice2: "magenta",
+  futureChoice3: "blue",
   past: "gray",
   closed: "gray",
   connector: "gray",
+  connectorChoice1: "cyan",
+  connectorChoice2: "magenta",
+  connectorChoice3: "blue",
 };
 
 function getMapCellColor(cell: MapTreeCell): string | undefined {
   return MAP_CELL_COLORS[cell.status];
+}
+
+function isDimmedMapCell(cell: MapTreeCell): boolean {
+  return cell.status === "closed" || cell.status === "past" || cell.status === "connector";
+}
+
+function isEmphasizedMapCell(cell: MapTreeCell): boolean {
+  return cell.status === "current" || cell.status === "next" || /^nextChoice/u.test(cell.status);
+}
+
+function getChoiceColor(index: number): string | undefined {
+  if (index === 0) return "cyan";
+  if (index === 1) return "magenta";
+  if (index === 2) return "blue";
+  return undefined;
+}
+
+function getTerminalTextWidth(text: string): number {
+  let width = 0;
+
+  for (const char of text) {
+    const codePoint = char.codePointAt(0);
+    if (codePoint === undefined) continue;
+    if (codePoint <= 0x1f || (codePoint >= 0x7f && codePoint <= 0x9f)) continue;
+    width += isWideCodePoint(codePoint) ? 2 : 1;
+  }
+
+  return width;
+}
+
+function isWideCodePoint(codePoint: number): boolean {
+  return (
+    (codePoint >= 0x1100 && codePoint <= 0x115f) ||
+    codePoint === 0x2329 ||
+    codePoint === 0x232a ||
+    (codePoint >= 0x2e80 && codePoint <= 0xa4cf && codePoint !== 0x303f) ||
+    (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
+    (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+    (codePoint >= 0xfe10 && codePoint <= 0xfe19) ||
+    (codePoint >= 0xfe30 && codePoint <= 0xfe6f) ||
+    (codePoint >= 0xff00 && codePoint <= 0xff60) ||
+    (codePoint >= 0xffe0 && codePoint <= 0xffe6)
+  );
 }
