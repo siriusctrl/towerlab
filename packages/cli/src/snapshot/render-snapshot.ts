@@ -1,10 +1,11 @@
 import { createSeededContent } from "@towerlab/content";
-import { createRun, observeRun, type MapNode, type Observation } from "@towerlab/core";
+import { createRun, observeRun, type Observation, type RunContent } from "@towerlab/core";
 
 import {
   DEFAULT_LOCALE,
   formatNodeLabel,
   formatText,
+  formatLogEntries,
   localizeObservation,
   localizePhaseLabel,
   text,
@@ -26,12 +27,12 @@ export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE): s
   const observation = localizeObservation(observeRun(content, state), locale);
   const visitedNodeIds = deriveVisitedNodeIds(content.map, []);
 
-  return renderObservation(content.map, observation, locale, visitedNodeIds);
+  return renderObservation(content, observation, locale, visitedNodeIds);
 }
 
-function renderObservation(map: MapNode[], observation: Observation, locale: Locale, visitedNodeIds: string[] = []): string {
-  const mapSection = formatMapLines(createMapFloorRows(map, observation, locale, visitedNodeIds, 60));
-  const recentLog = getRecentLogView(observation.log);
+function renderObservation(content: RunContent, observation: Observation, locale: Locale, visitedNodeIds: string[] = []): string {
+  const mapSection = formatMapLines(createMapFloorRows(content.map, observation, locale, visitedNodeIds, 60));
+  const recentLog = getRecentLogView(formatLogEntries(content, observation.log, locale));
   const mapLegendLines = getMapLegendLines(locale);
 
   const lines = [

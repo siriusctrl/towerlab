@@ -13,7 +13,7 @@ export function enterNode(content: RunContent, state: RunState, node: MapNode): 
         reward: undefined,
         shop: undefined,
       },
-      "Choose the next path.",
+      { type: "chooseNextPath" },
     );
   }
 
@@ -26,7 +26,7 @@ export function enterNode(content: RunContent, state: RunState, node: MapNode): 
         reward: undefined,
         shop: undefined,
       },
-      "Choose how to use the campfire.",
+      { type: "chooseCampfire" },
     );
   }
 
@@ -42,7 +42,7 @@ export function enterNode(content: RunContent, state: RunState, node: MapNode): 
         shop: shopState.shop,
         rng: shopState.rng,
       },
-      "You found a shop. Browse the offers.",
+      { type: "shopEntered" },
     );
   }
 

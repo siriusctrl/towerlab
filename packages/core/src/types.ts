@@ -27,6 +27,37 @@ export interface EnemyIntent {
   heal?: number;
 }
 
+export type LogEffect =
+  | { type: "damage"; amount: number }
+  | { type: "block"; amount: number };
+
+export type LogEvent =
+  | { type: "enteredNode"; nodeId: string; kind: NodeKind }
+  | { type: "movedToNode"; nodeId: string; kind: NodeKind }
+  | { type: "atEntrance" }
+  | { type: "enemyAppeared"; enemyId: string; intent: EnemyIntent }
+  | { type: "playedCard"; cardId: string; effects: LogEffect[] }
+  | { type: "enemyDefeated"; enemyId: string; gold: number }
+  | { type: "rewardOffered" }
+  | { type: "rewardCardAdded"; cardId: string }
+  | { type: "rewardSkipped" }
+  | { type: "chooseNextPath" }
+  | { type: "chooseCampfire" }
+  | { type: "recoveredHp"; amount: number }
+  | { type: "fortified"; maxHp: number }
+  | { type: "shopEntered" }
+  | { type: "shopCardBought"; cardId: string; gold: number }
+  | { type: "deckCardRemoved"; cardId: string; gold: number }
+  | { type: "shopLeft" }
+  | { type: "relicAlreadyOwned"; relicId: string }
+  | { type: "relicAcquired"; relicId: string }
+  | { type: "enemyUsedIntent"; enemyId: string; intent: EnemyIntent }
+  | { type: "playerDefeated" }
+  | { type: "turnStarted"; turn: number; intent: EnemyIntent }
+  | { type: "bossCleared" }
+  | { type: "pathVictory" }
+  | { type: "climbEnded" };
+
 export interface EnemyDefinition {
   id: string;
   name: string;
@@ -104,7 +135,7 @@ export interface RunState {
   combat?: CombatState;
   reward?: RewardState;
   shop?: ShopState;
-  log: string[];
+  log: LogEvent[];
 }
 
 export interface RestOption {
@@ -131,7 +162,7 @@ interface ObservationBase {
   floor: number;
   currentNode: MapNode;
   relics: RelicDefinition[];
-  log: string[];
+  log: LogEvent[];
 }
 
 export interface CombatObservation extends ObservationBase {

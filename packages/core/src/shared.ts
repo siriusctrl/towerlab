@@ -1,6 +1,6 @@
 import { LOG_LIMIT } from "./constants.js";
 import { shuffle } from "./rng.js";
-import type { EnemyIntent, EnemyState, MapNode, RelicKind, RunContent, RunState } from "./types.js";
+import type { EnemyIntent, EnemyState, LogEvent, MapNode, RelicKind, RunContent, RunState } from "./types.js";
 import { getRelic } from "./validate.js";
 
 export function applyDamageToEnemy(enemy: EnemyState, damage: number): EnemyState {
@@ -63,15 +63,11 @@ export function buildRemovableDeckIndices(deck: string[]): number[] {
   return deck.map((_, index) => index);
 }
 
-export function appendLog(state: RunState, message: string): RunState {
+export function appendLog(state: RunState, event: LogEvent): RunState {
   return {
     ...state,
-    log: [...state.log, message].slice(-LOG_LIMIT),
+    log: [...state.log, event].slice(-LOG_LIMIT),
   };
-}
-
-export function describeNode(node: MapNode): string {
-  return `${node.id} (${node.kind})`;
 }
 
 export function getRelicValue(content: RunContent, state: RunState, kind: RelicKind): number {

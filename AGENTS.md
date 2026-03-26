@@ -20,7 +20,12 @@ The project has two goals:
    - Do not add extension points, plugin systems, version shims, or migration layers unless explicitly requested.
    - Build for the current requirements, not imaginary future ones.
 
-3. **Conventional Commits with real bodies**
+3. **Prefer strongest end-state solutions**
+   - When the right design is clear and requested, implement the strongest coherent end state directly.
+   - Do not add transitional shims, compatibility layers, or staged intermediate designs unless explicitly requested.
+   - Do not intentionally land partial architectures as stepping stones to the real design.
+
+4. **Conventional Commits with real bodies**
    - Use Conventional Commits for every commit.
    - Do not write title-only commits.
    - In the commit body, explain both:

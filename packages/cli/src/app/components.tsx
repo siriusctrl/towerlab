@@ -404,8 +404,8 @@ export function Controls({ observation, locale, shopMenu }: { observation: Obser
   return <Text dimColor wrap="truncate-end">{text(locale, "controlsEnd")}</Text>;
 }
 
-export function RecentLogPanel({ observation, locale, limit }: { observation: Observation; locale: Locale; limit: number }) {
-  const recentLog = getRecentLogView(observation.log, limit);
+export function RecentLogPanel({ entries, locale, limit }: { entries: string[]; locale: Locale; limit: number }) {
+  const recentLog = getRecentLogView(entries, limit);
   const earlierEvents = getEarlierEventsLine(recentLog.hiddenCount, locale);
 
   return (

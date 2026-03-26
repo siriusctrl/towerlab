@@ -6,6 +6,8 @@ export type {
   EnemyDefinition,
   EnemyIntent,
   EnemyState,
+  LogEffect,
+  LogEvent,
   MapNode,
   MapObservation,
   NodeKind,

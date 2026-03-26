@@ -11,7 +11,7 @@ export function grantRelicReward(content: RunContent, state: RunState, currentNo
   }
 
   if (state.relics.includes(relicId)) {
-    return appendLog(state, `Relic ${getRelic(content, relicId).name} already acquired.`);
+    return appendLog(state, { type: "relicAlreadyOwned", relicId });
   }
 
   const relic = getRelic(content, relicId);
@@ -28,7 +28,7 @@ export function grantRelicReward(content: RunContent, state: RunState, currentNo
     };
   }
 
-  return appendLog(nextState, `Acquired relic ${relic.name}.`);
+  return appendLog(nextState, { type: "relicAcquired", relicId });
 }
 
 export function getRewardChoices(content: RunContent, state: RunState): { cards: string[]; rng: number } {

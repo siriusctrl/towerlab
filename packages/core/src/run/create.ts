@@ -1,7 +1,7 @@
 import { DEFAULT_MAX_HP, STARTING_GOLD } from "../constants.js";
 import { enterNode } from "../node.js";
 import { normalizeSeed } from "../rng.js";
-import { appendLog, describeNode } from "../shared.js";
+import { appendLog } from "../shared.js";
 import type { RunContent, RunState } from "../types.js";
 import { validateContent } from "../validate.js";
 
@@ -29,8 +29,8 @@ export function createRun(content: RunContent, seed: number): RunState {
   };
 
   if (firstNode.kind === "start") {
-    return appendLog(baseState, "At the entrance. Choose the first path.");
+    return appendLog(baseState, { type: "atEntrance" });
   }
 
-  return enterNode(content, appendLog(baseState, `Entered ${describeNode(firstNode)}.`), firstNode);
+  return enterNode(content, appendLog(baseState, { type: "enteredNode", nodeId: firstNode.id, kind: firstNode.kind }), firstNode);
 }

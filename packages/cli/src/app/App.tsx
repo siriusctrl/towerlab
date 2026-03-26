@@ -3,7 +3,7 @@ import { applyAction, createRun, observeRun, type RunAction, type RunState } fro
 import { Box, Text, useApp, useInput, useStdout } from "ink";
 import { useEffect, useRef, useState } from "react";
 
-import { DEFAULT_LOCALE, localizeObservation, text, type Locale } from "../i18n.js";
+import { DEFAULT_LOCALE, formatLogEntries, localizeObservation, text, type Locale } from "../i18n.js";
 import { readShopAction, type ShopMenuMode } from "../shop.js";
 import { getMapCompactLegendLine } from "../view.js";
 import { Controls, MapTreeView, PhaseBody, RecentLogPanel, StatusBar } from "./components.js";
@@ -27,6 +27,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const actionsRef = useRef(actions);
   const [shopMenu, setShopMenu] = useState<ShopMenuMode>("top");
   const view = localizeObservation(observeRun(content, state), locale);
+  const recentLogEntries = formatLogEntries(content, view.log, locale);
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
   const compactLegendLine = getMapCompactLegendLine(locale);
   const sidebarWidth = Math.max(32, Math.min(52, Math.max(getTerminalTextWidth(compactLegendLine) + 4, Math.floor(columns * 0.35))));
@@ -155,7 +156,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
           <PhaseBody observation={view} locale={locale} shopMenu={shopMenu} hpBarWidth={hpBarWidth} compactMapPhase={compactMapPhase} />
           {showInlineLog ? (
             <Box marginTop={1} flexDirection="column" overflow="hidden">
-              <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
+              <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
             </Box>
           ) : null}
         </Box>
@@ -176,7 +177,7 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
           >
             <MapTreeView map={content.map} observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
             <Box marginTop={1} flexDirection="column" overflow="hidden">
-              <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
+              <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
             </Box>
           </Box>
         ) : null}

@@ -7,12 +7,11 @@ import {
   appendLog,
   assertNever,
   buildRemovableDeckIndices,
-  describeNode,
   getCombat,
   getNode,
   getRelicValue,
 } from "../shared.js";
-import type { RestOptionId, RunAction, RunContent, RunState } from "../types.js";
+import type { LogEffect, RestOptionId, RunAction, RunContent, RunState } from "../types.js";
 import { getCard } from "../validate.js";
 
 export function applyAction(content: RunContent, state: RunState, action: RunAction): RunState {
@@ -60,7 +59,7 @@ function choosePath(content: RunContent, state: RunState, nodeId: string): RunSt
       reward: undefined,
       shop: undefined,
     },
-    `Moved to ${describeNode(nextNode)}.`,
+    { type: "movedToNode", nodeId: nextNode.id, kind: nextNode.kind },
   );
 
   return enterNode(content, nextState, nextNode);
@@ -86,16 +85,16 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
 
   let enemy = combat.enemy;
   let block = combat.block;
-  const fragments: string[] = [];
+  const effects: LogEffect[] = [];
 
   if (card.damage && card.damage > 0) {
     enemy = applyDamageToEnemy(enemy, card.damage);
-    fragments.push(`deal ${card.damage}`);
+    effects.push({ type: "damage", amount: card.damage });
   }
 
   if (card.block && card.block > 0) {
     block += card.block;
-    fragments.push(`gain ${card.block} block`);
+    effects.push({ type: "block", amount: card.block });
   }
 
   const nextState = appendLog(
@@ -110,7 +109,7 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
         block,
       },
     },
-    fragments.length > 0 ? `Played ${card.name}: ${fragments.join(", ")}.` : `Played ${card.name}.`,
+    { type: "playedCard", cardId, effects },
   );
 
   if (enemy.hp <= 0) {
@@ -162,7 +161,7 @@ function chooseRest(content: RunContent, state: RunState, optionId: RestOptionId
         ...state,
         hp: Math.min(state.maxHp, state.hp + healAmount),
       },
-      healed > 0 ? `Recovered ${healed} HP.` : "Recovered 0 HP.",
+      { type: "recoveredHp", amount: healed },
     );
   } else if (optionId === "fortify") {
     nextState = appendLog(
@@ -171,7 +170,7 @@ function chooseRest(content: RunContent, state: RunState, optionId: RestOptionId
         maxHp: state.maxHp + REST_FORTIFY,
         hp: state.hp + REST_FORTIFY,
       },
-      `Fortified for +${REST_FORTIFY} max HP.`,
+      { type: "fortified", maxHp: REST_FORTIFY },
     );
   } else {
     return assertNever(optionId);
@@ -198,7 +197,7 @@ function takeReward(content: RunContent, state: RunState, rewardIndex: number): 
       deck: [...state.deck, cardId],
       reward: undefined,
     },
-    `Added ${getCard(content, cardId).name} to deck.`,
+    { type: "rewardCardAdded", cardId },
   );
 
   return finishNode(nextState, getNode(content, state.currentNodeId));
@@ -210,7 +209,7 @@ function skipReward(content: RunContent, state: RunState): RunState {
   }
 
   return finishNode(
-    appendLog({ ...state, reward: undefined }, "Skipped reward."),
+    appendLog({ ...state, reward: undefined }, { type: "rewardSkipped" }),
     getNode(content, state.currentNodeId),
   );
 }
@@ -249,7 +248,7 @@ function buyShop(content: RunContent, state: RunState, saleIndex: number): RunSt
         removableDeckIndices: buildRemovableDeckIndices([...state.deck, cardId]),
       },
     },
-    `Bought ${getCard(content, cardId).name} for ${price} gold.`,
+    { type: "shopCardBought", cardId, gold: price },
   );
 }
 
@@ -284,7 +283,6 @@ function removeDeckCard(content: RunContent, state: RunState, deckIndex: number)
   }
 
   nextDeck.splice(deckIndex, 1);
-  const removedCardName = getCard(content, removedCardId).name;
 
   return appendLog(
     {
@@ -296,7 +294,7 @@ function removeDeckCard(content: RunContent, state: RunState, deckIndex: number)
         removableDeckIndices: buildRemovableDeckIndices(nextDeck),
       },
     },
-    `Removed ${removedCardName} from deck for ${SHOP_CARD_REMOVE_PRICE} gold.`,
+    { type: "deckCardRemoved", cardId: removedCardId, gold: SHOP_CARD_REMOVE_PRICE },
   );
 }
 
@@ -305,5 +303,5 @@ function leaveShop(content: RunContent, state: RunState): RunState {
     throw new Error("can only leave when in shop");
   }
 
-  return finishNode(appendLog({ ...state, shop: undefined }, "Left the shop."), getNode(content, state.currentNodeId));
+  return finishNode(appendLog({ ...state, shop: undefined }, { type: "shopLeft" }), getNode(content, state.currentNodeId));
 }

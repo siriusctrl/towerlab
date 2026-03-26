@@ -45,7 +45,7 @@ export function startCombat(content: RunContent, state: RunState, node: MapNode)
       reward: undefined,
       shop: undefined,
     },
-    `${enemy.name} appears. Intent: ${getCurrentIntent(enemy).description}.`,
+    { type: "enemyAppeared", enemyId: enemy.id, intent: getCurrentIntent(enemy) },
   );
 }
 
@@ -60,7 +60,7 @@ export function finishCombat(content: RunContent, state: RunState): RunState {
       gold: state.gold + reward,
       combat: undefined,
     },
-    `Defeated ${combat.enemy.name} and gained ${reward} gold.`,
+    { type: "enemyDefeated", enemyId: combat.enemy.id, gold: reward },
   );
 
   nextState = grantRelicReward(content, nextState, currentNode);
@@ -79,7 +79,7 @@ export function finishCombat(content: RunContent, state: RunState): RunState {
         cardChoices: rewardSelection.cards,
       },
     },
-    "Won a reward. Choose a card reward or skip.",
+    { type: "rewardOffered" },
   );
 }
 
@@ -126,7 +126,7 @@ export function resolveEnemyTurn(state: RunState): RunState {
         block,
       },
     },
-    `${combat.enemy.name} uses ${intent.description}.`,
+    { type: "enemyUsedIntent", enemyId: combat.enemy.id, intent },
   );
 
   if (hp <= 0) {
@@ -136,7 +136,7 @@ export function resolveEnemyTurn(state: RunState): RunState {
         phase: "defeat",
         combat: undefined,
       },
-      "You were defeated.",
+      { type: "playerDefeated" },
     );
   }
 
@@ -161,6 +161,6 @@ export function startPlayerTurn(content: RunContent, state: RunState): RunState 
         turn: combat.turn + 1,
       },
     },
-    `Turn ${combat.turn + 1}. Intent: ${getCurrentIntent(combat.enemy).description}.`,
+    { type: "turnStarted", turn: combat.turn + 1, intent: getCurrentIntent(combat.enemy) },
   );
 }

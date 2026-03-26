@@ -20,7 +20,7 @@ describe("headless CLI", () => {
     expect(output.map[0]).toEqual(expect.objectContaining({ id: "start-r0", kind: "start" }));
     expect(output.map.at(-1)).toEqual(expect.objectContaining({ kind: "boss" }));
     expect(output.observation.nextNodes).toHaveLength(3);
-    expect(output.observation.log[0]).toContain("入口");
+    expect(output.observation.log[0]).toEqual({ type: "atEntrance" });
 
     const snapshot = renderSnapshot(7, "zh");
     expect(snapshot).toContain("种子: 7");

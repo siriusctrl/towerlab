@@ -5,11 +5,11 @@ import { appendLog } from "./shared.js";
 export function finishNode(state: RunState, currentNode: MapNode): RunState {
   if (currentNode.nextIds.length === 0) {
     const finalPhase = state.hp > 0 ? "victory" : "defeat";
-    const message = finalPhase === "victory"
+    const event = finalPhase === "victory"
       ? currentNode.kind === "boss"
-        ? "The boss falls. The tower is clear."
-        : "The path ends in victory."
-      : "Your climb ends here.";
+        ? { type: "bossCleared" as const }
+        : { type: "pathVictory" as const }
+      : { type: "climbEnded" as const };
 
     return appendLog(
       {
@@ -18,7 +18,7 @@ export function finishNode(state: RunState, currentNode: MapNode): RunState {
         reward: undefined,
         shop: undefined,
       },
-      message,
+      event,
     );
   }
 
@@ -29,6 +29,6 @@ export function finishNode(state: RunState, currentNode: MapNode): RunState {
       reward: undefined,
       shop: undefined,
     },
-    "Choose the next path.",
+    { type: "chooseNextPath" },
   );
 }

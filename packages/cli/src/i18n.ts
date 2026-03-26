@@ -2,11 +2,14 @@ import type {
   CardDefinition,
   CombatObservation,
   EnemyIntent,
+  LogEffect,
+  LogEvent,
   Observation,
   RewardObservation,
   RelicDefinition,
   RestObservation,
   RestOption,
+  RunContent,
   ShopObservation,
 } from "@towerlab/core";
 
@@ -61,7 +64,6 @@ export function localizeObservation(observation: Observation, locale: Locale): O
   }
 
   const relics = observation.relics.map((relic) => localizeRelic(relic, locale));
-  const log = observation.log.map((entry) => localizeLogEntry(entry, locale));
 
   if (observation.phase === "combat") {
     const combatObservation: CombatObservation = observation;
@@ -69,7 +71,6 @@ export function localizeObservation(observation: Observation, locale: Locale): O
     return {
       ...combatObservation,
       relics,
-      log,
       hand: combatObservation.hand.map((card) => localizeCard(card, locale)),
       enemy: {
         ...combatObservation.enemy,
@@ -85,7 +86,6 @@ export function localizeObservation(observation: Observation, locale: Locale): O
     return {
       ...restObservation,
       relics,
-      log,
       restOptions: restObservation.restOptions.map((option) => localizeRestOption(option, locale)),
     };
   }
@@ -96,7 +96,6 @@ export function localizeObservation(observation: Observation, locale: Locale): O
     return {
       ...rewardObservation,
       relics,
-      log,
       cardChoices: rewardObservation.cardChoices.map((card) => localizeCard(card, locale)),
     };
   }
@@ -107,7 +106,6 @@ export function localizeObservation(observation: Observation, locale: Locale): O
     return {
       ...shopObservation,
       relics,
-      log,
       forSale: shopObservation.forSale.map((card) => localizeCard(card, locale)),
       removableDeckCards: shopObservation.removableDeckCards.map((entry) => ({
         ...entry,
@@ -119,8 +117,114 @@ export function localizeObservation(observation: Observation, locale: Locale): O
   return {
     ...observation,
     relics,
-    log,
   };
+}
+
+export function formatLogEntries(content: RunContent, log: LogEvent[], locale: Locale): string[] {
+  return log.map((event) => formatLogEvent(content, event, locale));
+}
+
+export function formatLogEvent(content: RunContent, event: LogEvent, locale: Locale): string {
+  switch (event.type) {
+    case "enteredNode":
+      return locale === "zh"
+        ? `进入 ${localizeNodeName(event.nodeId, locale)}（${localizeNodeKind(event.kind, locale)}）。`
+        : `Entered ${event.nodeId} (${event.kind}).`;
+    case "movedToNode":
+      return locale === "zh"
+        ? `前往 ${localizeNodeName(event.nodeId, locale)}（${localizeNodeKind(event.kind, locale)}）。`
+        : `Moved to ${event.nodeId} (${event.kind}).`;
+    case "atEntrance":
+      return locale === "zh" ? "来到入口。请选择第一条路径。" : "At the entrance. Choose the first path.";
+    case "enemyAppeared": {
+      const enemyName = readEnemyName(content, event.enemyId);
+      return locale === "zh"
+        ? `${localizeEnemyName(enemyName, locale)}出现。意图：${localizeIntentDescription(event.intent.description, locale)}。`
+        : `${enemyName} appears. Intent: ${event.intent.description}.`;
+    }
+    case "playedCard": {
+      const cardName = readCardName(content, event.cardId);
+      const effects = formatLogEffects(event.effects, locale);
+
+      if (effects.length === 0) {
+        return locale === "zh" ? `打出${localizeCardName(cardName, locale)}。` : `Played ${cardName}.`;
+      }
+
+      return locale === "zh"
+        ? `打出${localizeCardName(cardName, locale)}：${effects.join("，")}。`
+        : `Played ${cardName}: ${effects.join(", ")}.`;
+    }
+    case "enemyDefeated": {
+      const enemyName = readEnemyName(content, event.enemyId);
+      return locale === "zh"
+        ? `击败${localizeEnemyName(enemyName, locale)}，获得 ${event.gold} 金币。`
+        : `Defeated ${enemyName} and gained ${event.gold} gold.`;
+    }
+    case "rewardOffered":
+      return locale === "zh" ? "获得奖励。请选择一张卡牌奖励，或跳过。" : "Won a reward. Choose a card reward or skip.";
+    case "rewardCardAdded": {
+      const cardName = readCardName(content, event.cardId);
+      return locale === "zh"
+        ? `将${localizeCardName(cardName, locale)}加入牌组。`
+        : `Added ${cardName} to deck.`;
+    }
+    case "rewardSkipped":
+      return locale === "zh" ? "跳过奖励。" : "Skipped reward.";
+    case "chooseNextPath":
+      return locale === "zh" ? "请选择下一条路径。" : "Choose the next path.";
+    case "chooseCampfire":
+      return locale === "zh" ? "请选择如何使用营火。" : "Choose how to use the campfire.";
+    case "recoveredHp":
+      return locale === "zh" ? `恢复 ${event.amount} 点生命。` : `Recovered ${event.amount} HP.`;
+    case "fortified":
+      return locale === "zh" ? `巩固成功，最大生命 +${event.maxHp}。` : `Fortified for +${event.maxHp} max HP.`;
+    case "shopEntered":
+      return locale === "zh" ? "你发现了一间商店。看看有哪些货物。" : "You found a shop. Browse the offers.";
+    case "shopCardBought": {
+      const cardName = readCardName(content, event.cardId);
+      return locale === "zh"
+        ? `购买${localizeCardName(cardName, locale)}，花费 ${event.gold} 金币。`
+        : `Bought ${cardName} for ${event.gold} gold.`;
+    }
+    case "deckCardRemoved": {
+      const cardName = readCardName(content, event.cardId);
+      return locale === "zh"
+        ? `从牌组移除${localizeCardName(cardName, locale)}，花费 ${event.gold} 金币。`
+        : `Removed ${cardName} from deck for ${event.gold} gold.`;
+    }
+    case "shopLeft":
+      return locale === "zh" ? "离开商店。" : "Left the shop.";
+    case "relicAlreadyOwned": {
+      const relicName = readRelicName(content, event.relicId);
+      return locale === "zh"
+        ? `遗物${localizeRelicName(relicName, locale)}已经获得过。`
+        : `Relic ${relicName} already acquired.`;
+    }
+    case "relicAcquired": {
+      const relicName = readRelicName(content, event.relicId);
+      return locale === "zh"
+        ? `获得遗物${localizeRelicName(relicName, locale)}。`
+        : `Acquired relic ${relicName}.`;
+    }
+    case "enemyUsedIntent": {
+      const enemyName = readEnemyName(content, event.enemyId);
+      return locale === "zh"
+        ? `${localizeEnemyName(enemyName, locale)}使用了${localizeIntentDescription(event.intent.description, locale)}。`
+        : `${enemyName} uses ${event.intent.description}.`;
+    }
+    case "playerDefeated":
+      return locale === "zh" ? "你被击败了。" : "You were defeated.";
+    case "turnStarted":
+      return locale === "zh"
+        ? `第 ${event.turn} 回合。意图：${localizeIntentDescription(event.intent.description, locale)}。`
+        : `Turn ${event.turn}. Intent: ${event.intent.description}.`;
+    case "bossCleared":
+      return locale === "zh" ? "首领倒下了。高塔已被攻克。" : "The boss falls. The tower is clear.";
+    case "pathVictory":
+      return locale === "zh" ? "道路的尽头是胜利。" : "The path ends in victory.";
+    case "climbEnded":
+      return locale === "zh" ? "你的攀登到此结束。" : "Your climb ends here.";
+  }
 }
 
 export function text(locale: Locale, key: keyof typeof localeText.en): string {
@@ -362,64 +466,24 @@ function localizeRestOptionDescription(description: string, locale: Locale): str
   return locale === "zh" ? (restOptionDescriptions[description] ?? description) : description;
 }
 
-function localizeFragment(fragment: string, locale: Locale): string {
-  if (locale === "en") {
-    return fragment;
-  }
+function formatLogEffects(effects: LogEffect[], locale: Locale): string[] {
+  return effects.map((effect) => {
+    if (effect.type === "damage") {
+      return locale === "zh" ? `造成 ${effect.amount} 点伤害` : `deal ${effect.amount}`;
+    }
 
-  const dealMatch = fragment.match(/^deal (\d+)$/);
-  if (dealMatch) {
-    return `造成 ${dealMatch[1]} 点伤害`;
-  }
-
-  const blockMatch = fragment.match(/^gain (\d+) block$/);
-  if (blockMatch) {
-    return `获得 ${blockMatch[1]} 点格挡`;
-  }
-
-  return fragment;
+    return locale === "zh" ? `获得 ${effect.amount} 点格挡` : `gain ${effect.amount} block`;
+  });
 }
 
-function localizeLogEntry(entry: string, locale: Locale): string {
-  if (locale === "en") {
-    return entry;
-  }
+function readCardName(content: RunContent, cardId: string): string {
+  return content.cards[cardId]?.name ?? cardId;
+}
 
-  const patterns: Array<[RegExp, (...groups: string[]) => string]> = [
-    [/^Entered (.+) \((battle|elite|rest|shop|boss|start)\)\.$/, (nodeId, kind) => `进入 ${localizeNodeName(nodeId, locale)}（${localizeNodeKind(kind, locale)}）。`],
-    [/^Moved to (.+) \((battle|elite|rest|shop|boss|start)\)\.$/, (nodeId, kind) => `前往 ${localizeNodeName(nodeId, locale)}（${localizeNodeKind(kind, locale)}）。`],
-    [/^At the entrance\. Choose the first path\.$/, () => "来到入口。请选择第一条路径。"],
-    [/^(.+) appears\. Intent: (.+)\.$/, (enemyName, intent) => `${localizeEnemyName(enemyName, locale)}出现。意图：${localizeIntentDescription(intent, locale)}。`],
-    [/^Played (.+): (.+)\.$/, (cardName, details) => `打出${localizeCardName(cardName, locale)}：${details.split(", ").map((fragment) => localizeFragment(fragment, locale)).join("，")}。`],
-    [/^Played (.+)\.$/, (cardName) => `打出${localizeCardName(cardName, locale)}。`],
-    [/^Defeated (.+) and gained (\d+) gold\.$/, (enemyName, gold) => `击败${localizeEnemyName(enemyName, locale)}，获得 ${gold} 金币。`],
-    [/^Won a reward\. Choose a card reward or skip\.$/, () => "获得奖励。请选择一张卡牌奖励，或跳过。"],
-    [/^Skipped reward\.$/, () => "跳过奖励。"],
-    [/^Choose the next path\.$/, () => "请选择下一条路径。"],
-    [/^Choose how to use the campfire\.$/, () => "请选择如何使用营火。"],
-    [/^Recovered (\d+) HP\.$/, (hp) => `恢复 ${hp} 点生命。`],
-    [/^Fortified for \+(\d+) max HP\.$/, (hp) => `巩固成功，最大生命 +${hp}。`],
-    [/^You found a shop\. Browse the offers\.$/, () => "你发现了一间商店。看看有哪些货物。"],
-    [/^Bought (.+) for (\d+) gold\.$/, (cardName, gold) => `购买${localizeCardName(cardName, locale)}，花费 ${gold} 金币。`],
-    [/^Removed (.+) from deck for (\d+) gold\.$/, (cardName, gold) => `从牌组移除${localizeCardName(cardName, locale)}，花费 ${gold} 金币。`],
-    [/^Left the shop\.$/, () => "离开商店。"],
-    [/^Relic (.+) already acquired\.$/, (relicName) => `遗物${localizeRelicName(relicName, locale)}已经获得过。`],
-    [/^Acquired relic (.+)\.$/, (relicName) => `获得遗物${localizeRelicName(relicName, locale)}。`],
-    [/^(.+) uses (.+)\.$/, (enemyName, intent) => `${localizeEnemyName(enemyName, locale)}使用了${localizeIntentDescription(intent, locale)}。`],
-    [/^You were defeated\.$/, () => "你被击败了。"],
-    [/^Turn (\d+)\. Intent: (.+)\.$/, (turn, intent) => `第 ${turn} 回合。意图：${localizeIntentDescription(intent, locale)}。`],
-    [/^The boss falls\. The tower is clear\.$/, () => "首领倒下了。高塔已被攻克。"],
-    [/^The path ends in victory\.$/, () => "道路的尽头是胜利。"],
-    [/^Your climb ends here\.$/, () => "你的攀登到此结束。"],
-  ];
+function readEnemyName(content: RunContent, enemyId: string): string {
+  return content.enemies[enemyId]?.name ?? enemyId;
+}
 
-  for (const [pattern, formatter] of patterns) {
-    const match = entry.match(pattern);
-
-    if (match) {
-      return formatter(...match.slice(1));
-    }
-  }
-
-  return entry;
+function readRelicName(content: RunContent, relicId: string): string {
+  return content.relics[relicId]?.name ?? relicId;
 }
