@@ -7,6 +7,7 @@ export function observeRun(content: RunContent, state: RunState): Observation {
   const currentNode = getNode(content, state.currentNodeId);
   const base = {
     seed: state.seed,
+    characterId: state.characterId,
     phase: state.phase,
     hp: state.hp,
     maxHp: state.maxHp,

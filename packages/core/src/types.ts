@@ -1,6 +1,31 @@
 export type NodeKind = "battle" | "elite" | "rest" | "shop" | "boss" | "start";
 export type RunPhase = "combat" | "map" | "rest" | "reward" | "shop" | "victory" | "defeat";
 export type RestOptionId = "recover" | "fortify";
+export type CardRarity = "common" | "uncommon" | "rare";
+
+export interface CardRarityBuckets {
+  common: string[];
+  uncommon: string[];
+  rare: string[];
+}
+
+export interface CharacterRelicPools {
+  elite: string[];
+  boss: string[];
+}
+
+export interface CharacterDefinition {
+  id: string;
+  name: string;
+  summary: string;
+  maxHp: number;
+  startGold: number;
+  starterDeck: string[];
+  startingRelicId: string;
+  rewardCardPools: CardRarityBuckets;
+  shopCardPools: CardRarityBuckets;
+  relicPools: CharacterRelicPools;
+}
 
 export interface MapNode {
   id: string;
@@ -85,9 +110,7 @@ export interface RunContent {
   cards: Record<string, CardDefinition>;
   enemies: Record<string, EnemyDefinition>;
   relics: Record<string, RelicDefinition>;
-  rewardCardPool: string[];
-  shopCardPool: string[];
-  starterDeck: string[];
+  character: CharacterDefinition;
   map: MapNode[];
 }
 
@@ -123,6 +146,7 @@ export interface ShopState {
 
 export interface RunState {
   seed: number;
+  characterId: string;
   rng: number;
   phase: RunPhase;
   hp: number;
@@ -155,6 +179,7 @@ export interface ObservedEnemy {
 
 interface ObservationBase {
   seed: number;
+  characterId: string;
   phase: RunPhase;
   hp: number;
   maxHp: number;

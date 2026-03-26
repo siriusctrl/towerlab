@@ -1,11 +1,14 @@
 import fs from "node:fs";
 
+import { listCharacters } from "@towerlab/content";
+
 import { DEFAULT_LOCALE, localizeErrorMessage, SUPPORTED_LOCALES, type Locale } from "../i18n.js";
 import { BASELINE_POLICY_NAMES, type BaselinePolicyName } from "../policies.js";
 import { parseAction, parseActions } from "./actions.js";
 import type { HeadlessMode, HeadlessParseResult } from "./types.js";
 
 const DEFAULT_SEED = 7;
+const CHARACTER_IDS = listCharacters().map((character) => character.id);
 
 export function readSeed(args: string[], locale: Locale = DEFAULT_LOCALE): number {
   const seedFlagIndex = args.indexOf("--seed");
@@ -24,10 +27,27 @@ export function readSeed(args: string[], locale: Locale = DEFAULT_LOCALE): numbe
   return seed;
 }
 
+export function readCharacterId(args: string[], locale: Locale = DEFAULT_LOCALE): string | undefined {
+  const characterFlagIndex = args.indexOf("--character");
+
+  if (characterFlagIndex === -1) {
+    return undefined;
+  }
+
+  const characterId = requireNextArg(args, characterFlagIndex, "--character");
+
+  if (!CHARACTER_IDS.includes(characterId)) {
+    throw new Error(localizeErrorMessage(`--character must be one of ${CHARACTER_IDS.join(", ")}`, locale));
+  }
+
+  return characterId;
+}
+
 export function parseHeadlessArgs(args: string[], locale: Locale): HeadlessParseResult {
   const parsed: HeadlessParseResult = {
     actions: [],
     batchSeeds: [],
+    characterId: readCharacterId(args, locale),
     command: "create",
     help: false,
     locale,
@@ -57,6 +77,12 @@ export function parseHeadlessArgs(args: string[], locale: Locale): HeadlessParse
 
     if (arg === "--seed") {
       parsed.seed = requireNextNumberArg(args, index, "--seed", locale);
+      index += 1;
+      continue;
+    }
+
+    if (arg === "--character") {
+      parsed.characterId = readCharacterId(args, locale);
       index += 1;
       continue;
     }
@@ -161,6 +187,10 @@ export function parseHeadlessArgs(args: string[], locale: Locale): HeadlessParse
     throw new Error(localizeErrorMessage("step mode requires --action", locale));
   }
 
+  if (!parsed.help && !parsed.characterId) {
+    throw new Error(localizeErrorMessage("headless mode requires --character", locale));
+  }
+
   return parsed;
 }
 
@@ -169,11 +199,11 @@ export function getHeadlessUsage(locale: Locale): { commands: string[]; examples
     commands: ["batch", "create", "observe", "step", "replay"],
     examples: [
       "towerlab --json batch --policy random --seeds 7,8,9",
-      "towerlab --json create --seed 7",
-      `towerlab --json create --seed 7 --lang ${locale}`,
-      "towerlab --json observe --seed 7 --actions '[{\"type\":\"endTurn\"}]'",
-      "towerlab --json step --seed 7 --actions '[{\"type\":\"endTurn\"}]' --action '{\"type\":\"playCard\",\"handIndex\":0}'",
-      "towerlab --json replay --seed 7 --actions-file actions.json",
+      `towerlab --json create --seed 7 --character ${CHARACTER_IDS[0]}`,
+      `towerlab --json create --seed 7 --character ${CHARACTER_IDS[0]} --lang ${locale}`,
+      `towerlab --json observe --seed 7 --character ${CHARACTER_IDS[0]} --actions '[{\"type\":\"endTurn\"}]'`,
+      `towerlab --json step --seed 7 --character ${CHARACTER_IDS[0]} --actions '[{\"type\":\"endTurn\"}]' --action '{\"type\":\"playCard\",\"handIndex\":0}'`,
+      `towerlab --json replay --seed 7 --character ${CHARACTER_IDS[0]} --actions-file actions.json`,
     ],
     localeOptions: [...SUPPORTED_LOCALES],
   };

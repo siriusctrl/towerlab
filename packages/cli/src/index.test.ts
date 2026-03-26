@@ -4,17 +4,18 @@ import { renderSnapshot, runHeadless } from "./index.js";
 
 describe("headless CLI", () => {
   test("create returns deterministic initial state and legal actions", () => {
-    const output = JSON.parse(runHeadless(["--json", "create", "--seed", "9"]));
+    const output = JSON.parse(runHeadless(["--json", "create", "--seed", "9", "--character", "vanguard"]));
 
     expect(output.command).toBe("create");
     expect(output.seed).toBe(9);
     expect(output.state.seed).toBe(9);
+    expect(output.state.characterId).toBe("vanguard");
     expect(output.state.phase).toBe("map");
     expect(Array.isArray(output.legalActions)).toBe(true);
   });
 
   test("create supports chinese localization", () => {
-    const output = JSON.parse(runHeadless(["--json", "create", "--seed", "7", "--lang", "zh"]));
+    const output = JSON.parse(runHeadless(["--json", "create", "--seed", "7", "--character", "vanguard", "--lang", "zh"]));
 
     expect(output.locale).toBe("zh");
     expect(output.map[0]).toEqual(expect.objectContaining({ id: "start-r0", kind: "start" }));
@@ -22,8 +23,9 @@ describe("headless CLI", () => {
     expect(output.observation.nextNodes).toHaveLength(3);
     expect(output.observation.log[0]).toEqual({ type: "atEntrance" });
 
-    const snapshot = renderSnapshot(7, "zh");
+    const snapshot = renderSnapshot(7, "zh", "vanguard");
     expect(snapshot).toContain("种子: 7");
+    expect(snapshot).toContain("角色: 先锋");
     expect(snapshot).toContain("阶段: 地图");
     expect(snapshot).toContain("节点: 岔路口 (起点)");
     expect(snapshot).toContain("- 来到入口。请选择第一条路径。");
@@ -31,7 +33,7 @@ describe("headless CLI", () => {
   });
 
   test("non-tty snapshot shows floor map with each node once and next choices", () => {
-    const snapshot = renderSnapshot(7, "zh");
+    const snapshot = renderSnapshot(7, "zh", "vanguard");
 
     expect(snapshot).toContain("地图:");
     // Legend uses node badges.
@@ -47,10 +49,10 @@ describe("headless CLI", () => {
   });
 
   test("step applies a single action after replaying prior actions", () => {
-    const create = JSON.parse(runHeadless(["--json", "create", "--seed", "9"]));
+    const create = JSON.parse(runHeadless(["--json", "create", "--seed", "9", "--character", "vanguard"]));
     const firstChoiceId = create.observation.nextNodes[0].id;
     const observe = JSON.parse(
-      runHeadless(["--json", "observe", "--seed", "9", "--actions", JSON.stringify([{ type: "choosePath", nodeId: firstChoiceId }])]),
+      runHeadless(["--json", "observe", "--seed", "9", "--character", "vanguard", "--actions", JSON.stringify([{ type: "choosePath", nodeId: firstChoiceId }])]),
     );
     const output = JSON.parse(
       runHeadless([
@@ -58,6 +60,8 @@ describe("headless CLI", () => {
         "step",
         "--seed",
         "9",
+        "--character",
+        "vanguard",
         "--actions",
         JSON.stringify([{ type: "choosePath", nodeId: firstChoiceId }]),
         "--action",
@@ -75,14 +79,14 @@ describe("headless CLI", () => {
   });
 
   test("observe and replay produce consistent end state and trace", () => {
-    const create = JSON.parse(runHeadless(["--json", "create", "--seed", "9"]));
+    const create = JSON.parse(runHeadless(["--json", "create", "--seed", "9", "--character", "vanguard"]));
     const firstChoiceId = create.observation.nextNodes[0].id;
     const actions = [
       { type: "choosePath", nodeId: firstChoiceId },
       { type: "endTurn" },
     ];
     const observe = JSON.parse(
-      runHeadless(["--json", "observe", "--seed", "9", "--actions", JSON.stringify(actions)]),
+      runHeadless(["--json", "observe", "--seed", "9", "--character", "vanguard", "--actions", JSON.stringify(actions)]),
     );
     const replay = JSON.parse(
       runHeadless([
@@ -90,6 +94,8 @@ describe("headless CLI", () => {
         "replay",
         "--seed",
         "9",
+        "--character",
+        "vanguard",
         "--actions",
         JSON.stringify(actions),
       ]),
@@ -106,10 +112,10 @@ describe("headless CLI", () => {
 
   test("batch returns deterministic metrics and per-run summaries", () => {
     const first = JSON.parse(
-      runHeadless(["--json", "batch", "--policy", "random", "--seeds", "7,8,9"]),
+      runHeadless(["--json", "batch", "--policy", "random", "--character", "vanguard", "--seeds", "7,8,9"]),
     );
     const second = JSON.parse(
-      runHeadless(["--json", "batch", "--policy", "random", "--seeds", "7,8,9"]),
+      runHeadless(["--json", "batch", "--policy", "random", "--character", "vanguard", "--seeds", "7,8,9"]),
     );
 
     expect(first).toEqual(second);
@@ -133,7 +139,7 @@ describe("headless CLI", () => {
 
   test("batch also supports seed ranges", () => {
     const output = JSON.parse(
-      runHeadless(["--json", "batch", "--policy", "greedy", "--seed-start", "3", "--count", "2"]),
+      runHeadless(["--json", "batch", "--policy", "greedy", "--character", "vanguard", "--seed-start", "3", "--count", "2"]),
     );
 
     expect(output.seeds).toEqual([3, 4]);
@@ -141,25 +147,25 @@ describe("headless CLI", () => {
   });
 
   test("batch-only flags are rejected outside batch mode", () => {
-    expect(() => runHeadless(["--json", "create", "--policy", "random", "--seeds", "1,2"])).toThrow(
+    expect(() => runHeadless(["--json", "create", "--character", "vanguard", "--policy", "random", "--seeds", "1,2"])).toThrow(
       "--policy, --seeds, --seed-start, and --count are only valid in batch mode",
     );
   });
 
   test("malformed JSON arguments fail loudly", () => {
-    expect(() => runHeadless(["--json", "observe", "--seed", "9", "--actions", "{not-json}"])).toThrow(
+    expect(() => runHeadless(["--json", "observe", "--seed", "9", "--character", "vanguard", "--actions", "{not-json}"])).toThrow(
       "Invalid JSON action list: {not-json}",
     );
-    expect(() => runHeadless(["--json", "step", "--seed", "9", "--action", "{\"type\":123}"])).toThrow(
+    expect(() => runHeadless(["--json", "step", "--seed", "9", "--character", "vanguard", "--action", "{\"type\":123}"])).toThrow(
       "Invalid action shape: {\"type\":123}",
     );
   });
 
   test("unsupported batch arguments are rejected loudly", () => {
-    expect(() => runHeadless(["--json", "batch", "--policy", "bogus", "--seeds", "1,2"])).toThrow(
+    expect(() => runHeadless(["--json", "batch", "--policy", "bogus", "--character", "vanguard", "--seeds", "1,2"])).toThrow(
       "--policy must be one of random, greedy, heuristic",
     );
-    expect(() => runHeadless(["--json", "batch", "--policy", "random"])).toThrow(
+    expect(() => runHeadless(["--json", "batch", "--policy", "random", "--character", "vanguard"])).toThrow(
       "batch mode requires --seeds or --seed-start with --count",
     );
   });
@@ -169,13 +175,14 @@ describe("headless CLI", () => {
   });
 
   test("headless parse errors are localized in chinese mode", () => {
-    expect(() => runHeadless(["--json", "observe", "--lang", "zh", "--actions", "{not-json}"])).toThrow(
+    expect(() => runHeadless(["--json", "observe", "--lang", "zh", "--character", "vanguard", "--actions", "{not-json}"])).toThrow(
       "动作列表 JSON 非法：{not-json}",
     );
-    expect(() => runHeadless(["--json", "step", "--lang", "zh", "--action", "not-json"])).toThrow(
+    expect(() => runHeadless(["--json", "step", "--lang", "zh", "--character", "vanguard", "--action", "not-json"])).toThrow(
       "动作 JSON 非法：not-json",
     );
-    expect(() => runHeadless(["--json", "create", "--lang", "zh", "bogus"])).toThrow("未知的位置参数：bogus");
+    expect(() => runHeadless(["--json", "create", "--lang", "zh", "--character", "vanguard", "bogus"])).toThrow("未知的位置参数：bogus");
+    expect(() => runHeadless(["--json", "create", "--lang", "zh"])).toThrow("headless 模式需要提供 --character");
   });
 
   test("illegal step and replay actions surface the core errors", () => {
@@ -185,6 +192,8 @@ describe("headless CLI", () => {
         "step",
         "--seed",
         "9",
+        "--character",
+        "vanguard",
         "--action",
         JSON.stringify({ type: "choosePath", nodeId: "bogus" }),
       ]),
@@ -196,6 +205,8 @@ describe("headless CLI", () => {
         "replay",
         "--seed",
         "9",
+        "--character",
+        "vanguard",
         "--actions",
         JSON.stringify([{ type: "playCard", handIndex: 0 }]),
       ]),

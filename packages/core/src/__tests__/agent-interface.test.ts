@@ -43,6 +43,13 @@ const content: RunContent = {
     },
   },
   relics: {
+    starterCharm: {
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Gain 1 max HP.",
+      kind: "maxHp",
+      value: 1,
+    },
     merchantTag: {
       id: "merchantTag",
       name: "Merchant Tag",
@@ -51,9 +58,11 @@ const content: RunContent = {
       value: 1,
     },
   },
-  rewardCardPool: ["bash", "defend", "strike"],
-  shopCardPool: ["bash", "strike"],
-  starterDeck: ["strike", "defend", "bash", "overload", "strike"],
+  character: createCharacter(
+    ["strike", "defend", "bash", "overload", "strike"],
+    ["bash", "defend", "strike"],
+    ["bash", "strike"],
+  ),
   map: [
     { id: "gate", kind: "battle", encounterId: "scout", nextIds: ["camp", "market"] },
     { id: "camp", kind: "rest", nextIds: ["summit"] },
@@ -146,7 +155,7 @@ describe("legalActions", () => {
     const discountedState: RunState = {
       ...state,
       gold: 11,
-      relics: ["merchantTag"],
+      relics: ["starterCharm", "merchantTag"],
     };
 
     expect(legalActions(content, discountedState)).toEqual([
@@ -239,4 +248,19 @@ function winCurrentCombat(runContent: RunContent, state: RunState): RunState {
   }
 
   return nextState;
+}
+
+function createCharacter(starterDeck: string[], rewardPool: string[], shopPool: string[]) {
+  return {
+    id: "test",
+    name: "Test",
+    summary: "Test character.",
+    maxHp: 80,
+    startGold: 0,
+    starterDeck,
+    startingRelicId: "starterCharm",
+    rewardCardPools: { common: rewardPool, uncommon: [], rare: [] },
+    shopCardPools: { common: shopPool, uncommon: [], rare: [] },
+    relicPools: { elite: [], boss: [] },
+  };
 }

@@ -1,6 +1,16 @@
 import { LOG_LIMIT } from "./constants.js";
 import { shuffle } from "./rng.js";
-import type { EnemyIntent, EnemyState, LogEvent, MapNode, RelicKind, RunContent, RunState } from "./types.js";
+import type {
+  CardRarity,
+  CardRarityBuckets,
+  EnemyIntent,
+  EnemyState,
+  LogEvent,
+  MapNode,
+  RelicKind,
+  RunContent,
+  RunState,
+} from "./types.js";
 import { getRelic } from "./validate.js";
 
 export function applyDamageToEnemy(enemy: EnemyState, damage: number): EnemyState {
@@ -57,6 +67,67 @@ export function selectCardsFromPool(cardPool: string[], count: number, rng: numb
     cards: shuffled.items.slice(0, Math.min(count, shuffled.items.length)),
     rng: shuffled.rng,
   };
+}
+
+export function selectCardsFromBuckets(
+  buckets: CardRarityBuckets,
+  plan: CardRarity[],
+  rng: number,
+): { cards: string[]; rng: number } {
+  const selected = new Set<string>();
+  const cards: string[] = [];
+  let nextRng = rng;
+
+  for (const rarity of plan) {
+    const pick = selectCardFromBucketChain(buckets, rarity, selected, nextRng);
+    nextRng = pick.rng;
+
+    if (!pick.cardId) {
+      continue;
+    }
+
+    selected.add(pick.cardId);
+    cards.push(pick.cardId);
+  }
+
+  return { cards, rng: nextRng };
+}
+
+function selectCardFromBucketChain(
+  buckets: CardRarityBuckets,
+  preferred: CardRarity,
+  selected: Set<string>,
+  rng: number,
+): { cardId?: string; rng: number } {
+  let nextRng = rng;
+
+  for (const rarity of getBucketFallbackOrder(preferred)) {
+    const available = [...new Set(buckets[rarity])].filter((cardId) => !selected.has(cardId));
+
+    if (available.length === 0) {
+      continue;
+    }
+
+    const shuffled = shuffle(available, nextRng);
+    return {
+      cardId: shuffled.items[0],
+      rng: shuffled.rng,
+    };
+  }
+
+  return { rng: nextRng };
+}
+
+function getBucketFallbackOrder(preferred: CardRarity): CardRarity[] {
+  if (preferred === "rare") {
+    return ["rare", "uncommon", "common"];
+  }
+
+  if (preferred === "uncommon") {
+    return ["uncommon", "common", "rare"];
+  }
+
+  return ["common", "uncommon", "rare"];
 }
 
 export function buildRemovableDeckIndices(deck: string[]): number[] {

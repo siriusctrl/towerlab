@@ -27,7 +27,12 @@ describe("baseline policies", () => {
       throw new Error(`expected playCard, received ${action.type}`);
     }
 
-    expect(view.hand[action.handIndex]?.id).toBe("heavyBlow");
+    const chosenCard = view.hand[action.handIndex];
+    const strongestPlayableDamage = view.hand
+      .filter((card) => card.cost <= view.energy)
+      .reduce((highest, card) => Math.max(highest, card.damage ?? 0), 0);
+
+    expect(chosenCard?.damage ?? 0).toBe(strongestPlayableDamage);
   });
 
   it("greedy prefers the elite route from the opening map choice", () => {

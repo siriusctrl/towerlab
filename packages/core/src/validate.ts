@@ -1,20 +1,22 @@
 import type { CardDefinition, EnemyDefinition, RelicDefinition, RelicKind, RunContent } from "./types.js";
 
 export function validateContent(content: RunContent): void {
-  validateDeck(content);
+  validateCharacter(content);
   validateMap(content);
   validatePools(content);
   validateRelics(content);
 }
 
-function validateDeck(content: RunContent): void {
-  if (content.starterDeck.length === 0) {
+function validateCharacter(content: RunContent): void {
+  if (content.character.starterDeck.length === 0) {
     throw new Error("starterDeck must contain at least one card");
   }
 
-  for (const cardId of content.starterDeck) {
+  for (const cardId of content.character.starterDeck) {
     getCard(content, cardId);
   }
+
+  getRelic(content, content.character.startingRelicId);
 }
 
 function validateMap(content: RunContent): void {
@@ -54,12 +56,15 @@ function validateMap(content: RunContent): void {
 }
 
 function validatePools(content: RunContent): void {
-  for (const cardId of content.rewardCardPool) {
-    getCard(content, cardId);
+  validateCardBuckets(content.character.rewardCardPools, content);
+  validateCardBuckets(content.character.shopCardPools, content);
+
+  for (const relicId of content.character.relicPools.elite) {
+    getRelic(content, relicId);
   }
 
-  for (const cardId of content.shopCardPool) {
-    getCard(content, cardId);
+  for (const relicId of content.character.relicPools.boss) {
+    getRelic(content, relicId);
   }
 }
 
@@ -80,6 +85,15 @@ function validateRelics(content: RunContent): void {
     if (!VALID_RELIC_KINDS.has(relic.kind)) {
       throw new Error(`relic ${relic.id} has unsupported kind: ${String(relic.kind)}`);
     }
+  }
+}
+
+function validateCardBuckets(
+  buckets: RunContent["character"]["rewardCardPools"],
+  content: RunContent,
+): void {
+  for (const cardId of [...buckets.common, ...buckets.uncommon, ...buckets.rare]) {
+    getCard(content, cardId);
   }
 }
 

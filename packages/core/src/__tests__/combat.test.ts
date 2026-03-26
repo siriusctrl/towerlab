@@ -83,9 +83,9 @@ function createCombatContent(): RunContent {
       strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
       defend: { id: "defend", name: "Defend", cost: 1, description: "Gain 5 block.", block: 5 },
     },
-    relics: {},
-    rewardCardPool: [],
-    shopCardPool: [],
+    relics: {
+      starterCharm: { id: "starterCharm", name: "Starter Charm", description: "Gain 1 max HP.", kind: "maxHp", value: 1 },
+    },
     enemies: {
       guard: {
         id: "guard",
@@ -98,7 +98,7 @@ function createCombatContent(): RunContent {
         ],
       },
     },
-    starterDeck: ["strike", "strike", "strike", "defend", "defend", "defend"],
+    character: createCharacter(["strike", "strike", "strike", "defend", "defend", "defend"]),
     map: [{ id: "gate", kind: "battle", encounterId: "guard", nextIds: [] }],
   };
 }
@@ -108,9 +108,9 @@ function createBossContent(): RunContent {
     cards: {
       strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
     },
-    relics: {},
-    rewardCardPool: [],
-    shopCardPool: [],
+    relics: {
+      starterCharm: { id: "starterCharm", name: "Starter Charm", description: "Gain 1 max HP.", kind: "maxHp", value: 1 },
+    },
     enemies: {
       core: {
         id: "core",
@@ -120,7 +120,22 @@ function createBossContent(): RunContent {
         intents: [{ kind: "attack", description: "Pulse for 3", damage: 3 }],
       },
     },
-    starterDeck: ["strike", "strike", "strike", "strike", "strike"],
+    character: createCharacter(["strike", "strike", "strike", "strike", "strike"]),
     map: [{ id: "summit", kind: "boss", encounterId: "core", nextIds: [] }],
+  };
+}
+
+function createCharacter(starterDeck: string[]) {
+  return {
+    id: "test",
+    name: "Test",
+    summary: "Test character.",
+    maxHp: 80,
+    startGold: 0,
+    starterDeck,
+    startingRelicId: "starterCharm",
+    rewardCardPools: { common: [], uncommon: [], rare: [] },
+    shopCardPools: { common: [], uncommon: [], rare: [] },
+    relicPools: { elite: [], boss: [] },
   };
 }

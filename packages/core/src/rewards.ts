@@ -1,5 +1,5 @@
-import { REWARD_CARD_COUNT } from "./constants.js";
-import { appendLog, selectCardsFromPool } from "./shared.js";
+import { REWARD_CARD_COUNT_PLANS } from "./constants.js";
+import { appendLog, selectCardsFromBuckets } from "./shared.js";
 import type { MapNode, RunContent, RunState } from "./types.js";
 import { getRelic } from "./validate.js";
 
@@ -32,11 +32,15 @@ export function grantRelicReward(content: RunContent, state: RunState, currentNo
 }
 
 export function getRewardChoices(content: RunContent, state: RunState): { cards: string[]; rng: number } {
-  const cardSelection = selectCardsFromPool(content.rewardCardPool, REWARD_CARD_COUNT, state.rng);
-  const cardChoices = cardSelection.cards.filter((cardId) => content.cards[cardId]);
+  const planSelection = selectCardsFromBuckets(
+    content.character.rewardCardPools,
+    REWARD_CARD_COUNT_PLANS[state.rng % REWARD_CARD_COUNT_PLANS.length]!,
+    state.rng,
+  );
+  const cardChoices = planSelection.cards.filter((cardId) => content.cards[cardId]);
 
   return {
     cards: cardChoices,
-    rng: cardSelection.rng,
+    rng: planSelection.rng,
   };
 }

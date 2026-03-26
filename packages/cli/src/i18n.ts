@@ -16,6 +16,8 @@ import type {
 import {
   cardDescriptions,
   cardNames,
+  characterNames,
+  characterSummaries,
   enemyNames,
   intentDescriptions,
   localeText,
@@ -286,6 +288,16 @@ export function localizeNodeName(nodeId: string, locale: Locale): string {
   return nodeId;
 }
 
+export function localizeCharacterName(characterId: string, locale: Locale): string {
+  const names = characterNames[locale] as Dictionary;
+  return names[characterId] ?? characterId;
+}
+
+export function localizeCharacterSummary(characterId: string, locale: Locale): string {
+  const summaries = characterSummaries[locale] as Dictionary;
+  return summaries[characterId] ?? characterId;
+}
+
 export function formatNodeLabel(
   node: { id: string; kind: string },
   locale: Locale,
@@ -367,8 +379,11 @@ export function localizeErrorMessage(message: string, locale: Locale): string {
     [/^--count must be an integer$/, () => "--count 必须是整数"],
     [/^--count must be a positive integer$/, () => "--count 必须是正整数"],
     [/^--policy must be one of (.+)$/, (choices) => `--policy 必须是以下之一：${choices}`],
+    [/^--character must be one of (.+)$/, (choices) => `--character 必须是以下之一：${choices}`],
     [/^--lang must be one of (.+)$/, (choices) => `--lang 必须是以下之一：${choices}`],
     [/^--locale must be one of (.+)$/, (choices) => `--locale 必须是以下之一：${choices}`],
+    [/^headless mode requires --character$/, () => "headless 模式需要提供 --character"],
+    [/^unknown character: (.+)$/, (characterId) => `未知角色：${characterId}`],
     [/^unknown error$/, () => "未知错误"],
   ];
 

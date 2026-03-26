@@ -1,4 +1,3 @@
-import { DEFAULT_MAX_HP, STARTING_GOLD } from "../constants.js";
 import { enterNode } from "../node.js";
 import { normalizeSeed } from "../rng.js";
 import { appendLog } from "../shared.js";
@@ -16,15 +15,16 @@ export function createRun(content: RunContent, seed: number): RunState {
 
   const baseState: RunState = {
     seed,
+    characterId: content.character.id,
     rng: normalizeSeed(seed),
     phase: "map",
-    hp: DEFAULT_MAX_HP,
-    maxHp: DEFAULT_MAX_HP,
-    gold: STARTING_GOLD,
+    hp: content.character.maxHp,
+    maxHp: content.character.maxHp,
+    gold: content.character.startGold,
     floor: 1,
     currentNodeId: firstNode.id,
-    deck: [...content.starterDeck],
-    relics: [],
+    deck: [...content.character.starterDeck],
+    relics: [content.character.startingRelicId],
     log: [],
   };
 

@@ -1,9 +1,11 @@
-import type { MapNode, Observation, RunAction } from "@towerlab/core";
+import type { CharacterDefinition, MapNode, Observation, RunAction } from "@towerlab/core";
 import { Box, Text } from "ink";
 
 import {
   formatNodeLabel,
   formatText,
+  localizeCharacterName,
+  localizeCharacterSummary,
   localizePhaseLabel,
   text,
   type Locale,
@@ -30,12 +32,14 @@ import { getChoiceColor, getMapCellColor, isDimmedMapCell, isEmphasizedMapCell }
 export function StatusBar({
   observation,
   locale,
+  characterName,
   relicNames,
   hpBarWidth,
   compact = false,
 }: {
   observation: Observation;
   locale: Locale;
+  characterName: string;
   relicNames: string;
   hpBarWidth: number;
   compact?: boolean;
@@ -50,7 +54,7 @@ export function StatusBar({
         <Text wrap="truncate-end">
           <Text bold color="cyan">{text(locale, "snapshotTitle")}</Text>
           <Text dimColor>
-            {"  "}{text(locale, "seed")} {observation.seed} {"·"} {text(locale, "floor")} {observation.floor} {"·"} {text(locale, "hp")}{" "}
+            {"  "}{text(locale, "seed")} {observation.seed} {"·"} {characterName} {"·"} {text(locale, "floor")} {observation.floor} {"·"} {text(locale, "hp")}{" "}
             {observation.hp}/{observation.maxHp} {"·"} {text(locale, "gold")} {observation.gold} {"·"} {formatNodeLabel(observation.currentNode, locale)}
           </Text>
         </Text>
@@ -63,7 +67,7 @@ export function StatusBar({
       <Text wrap="truncate-end">
         <Text bold color="cyan">{text(locale, "snapshotTitle")}</Text>
         <Text dimColor>
-          {"  "}{text(locale, "seed")} {observation.seed} {"·"} {text(locale, "floor")} {observation.floor} {"·"}{" "}
+          {"  "}{text(locale, "seed")} {observation.seed} {"·"} {characterName} {"·"} {text(locale, "floor")} {observation.floor} {"·"}{" "}
           {localizePhaseLabel(observation.phase, locale)} {"·"} {formatNodeLabel(observation.currentNode, locale)}
         </Text>
       </Text>
@@ -424,5 +428,34 @@ export function RecentLogPanel({ entries, locale, limit }: { entries: string[]; 
         </Text>
       ) : null}
     </>
+  );
+}
+
+export function CharacterSelectScreen({
+  characters,
+  locale,
+}: {
+  characters: CharacterDefinition[];
+  locale: Locale;
+}) {
+  return (
+    <Box flexDirection="column" paddingX={1} overflow="hidden">
+      <Text bold color="cyan">{text(locale, "snapshotTitle")}</Text>
+      <Text bold>{text(locale, "chooseCharacter")}</Text>
+      {characters.map((character, index) => (
+        <Box key={character.id} marginTop={index === 0 ? 1 : 0} flexDirection="column">
+          <Text wrap="truncate-end">
+            {index + 1}. <Text bold>{localizeCharacterName(character.id, locale)}</Text>
+            <Text dimColor> {"·"} {text(locale, "hp")} {character.maxHp} {"·"} {text(locale, "gold")} {character.startGold}</Text>
+          </Text>
+          <Text dimColor wrap="truncate-end">
+            {localizeCharacterSummary(character.id, locale)}
+          </Text>
+        </Box>
+      ))}
+      <Box marginTop={1}>
+        <Text dimColor wrap="truncate-end">{text(locale, "controlsCharacterSelect")}</Text>
+      </Box>
+    </Box>
   );
 }

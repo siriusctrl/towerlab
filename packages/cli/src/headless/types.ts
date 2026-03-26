@@ -9,6 +9,7 @@ export interface HeadlessParseResult {
   action?: RunAction;
   actions: RunAction[];
   batchSeeds: number[];
+  characterId?: string;
   command: HeadlessMode;
   help: boolean;
   locale: Locale;

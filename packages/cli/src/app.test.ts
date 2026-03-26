@@ -1,6 +1,7 @@
 import React from "react";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test } from "vitest";
+import { DEFAULT_CHARACTER_ID, type CharacterId } from "@towerlab/content";
 
 import { App } from "./app/App.js";
 
@@ -76,15 +77,17 @@ async function renderFrame({
   columns,
   rows,
   locale = "en",
+  characterId = DEFAULT_CHARACTER_ID as CharacterId,
   inputs = [],
 }: {
   seed?: number;
   columns: number;
   rows: number;
   locale?: "en" | "zh";
+  characterId?: CharacterId;
   inputs?: string[];
 }): Promise<string> {
-  const instance = render(React.createElement(App, { seed, locale }));
+  const instance = render(React.createElement(App, { seed, locale, characterId }));
 
   Object.defineProperty(instance.stdout, "columns", { value: columns, configurable: true });
   Object.defineProperty(instance.stdout, "rows", { value: rows, configurable: true });

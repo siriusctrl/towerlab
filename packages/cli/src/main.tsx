@@ -1,6 +1,8 @@
 import { render } from "ink";
 
-import { App, isHeadlessMode, readSeed, renderSnapshot, runHeadless } from "./index.js";
+import { DEFAULT_CHARACTER_ID } from "@towerlab/content";
+
+import { App, isHeadlessMode, readCharacterId, readSeed, renderSnapshot, runHeadless } from "./index.js";
 import { DEFAULT_LOCALE, localizeErrorMessage, readLocale } from "./i18n.js";
 
 const args = process.argv.slice(2);
@@ -17,12 +19,13 @@ async function main() {
     }
 
     const seed = readSeed(args, locale);
+    const characterId = readCharacterId(args, locale);
 
     if (process.stdout.isTTY && process.stdin.isTTY) {
       const cleanupTerminal = enterAlternateScreen(process.stdout);
 
       try {
-        const app = render(<App seed={seed} locale={locale} />);
+        const app = render(<App seed={seed} characterId={characterId} locale={locale} />);
         await app.waitUntilExit();
       } finally {
         cleanupTerminal();
@@ -31,7 +34,7 @@ async function main() {
       return;
     }
 
-    console.log(renderSnapshot(seed, locale));
+    console.log(renderSnapshot(seed, locale, characterId ?? DEFAULT_CHARACTER_ID));
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const locale = (() => {

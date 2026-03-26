@@ -35,10 +35,20 @@ const content: RunContent = {
       intents: [{ kind: "attack", description: "Beam for 8", damage: 8 }],
     },
   },
-  relics: {},
-  rewardCardPool: [],
-  shopCardPool: [],
-  starterDeck: ["strike", "strike", "strike", "defend", "defend", "defend", "surge", "surge", "heavy", "heavy"],
+  relics: {
+    starterCharm: {
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+  },
+  character: createCharacter(
+    ["strike", "strike", "strike", "defend", "defend", "defend", "surge", "surge", "heavy", "heavy"],
+    [],
+    [],
+  ),
   map: [
     { id: "gate", kind: "battle", encounterId: "scout", nextIds: ["camp"] },
     { id: "camp", kind: "rest", nextIds: ["summit"] },
@@ -98,9 +108,15 @@ describe("run progression", () => {
       cards: {
         strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
       },
-      relics: {},
-      rewardCardPool: [],
-      shopCardPool: [],
+      relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
+      },
       enemies: {
         guard: {
           id: "guard",
@@ -131,7 +147,7 @@ describe("run progression", () => {
           intents: [{ kind: "attack", description: "Pulse", damage: 1 }],
         },
       },
-      starterDeck: ["strike", "strike", "strike", "strike", "strike"],
+      character: createCharacter(["strike", "strike", "strike", "strike", "strike"], [], []),
       map: [
         { id: "gate", kind: "battle", encounterId: "guard", nextIds: ["forge", "hall"] },
         { id: "hall", kind: "battle", encounterId: "watchman", nextIds: ["rest", "market"] },
@@ -204,9 +220,15 @@ describe("post-combat rewards", () => {
         defend: { id: "defend", name: "Defend", cost: 1, description: "Gain 5 block.", block: 5 },
         surge: { id: "surge", name: "Surge", cost: 1, description: "Deal 4 damage. Gain 4 block.", damage: 4, block: 4 },
       },
-      relics: {},
-      rewardCardPool: ["strike", "defend", "surge"],
-      shopCardPool: [],
+      relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
+      },
       enemies: {
         patrol: {
           id: "patrol",
@@ -216,7 +238,7 @@ describe("post-combat rewards", () => {
           intents: [{ kind: "attack", description: "Stab for 2", damage: 2 }],
         },
       },
-      starterDeck: ["strike", "strike", "defend"],
+      character: createCharacter(["strike", "strike", "defend"], ["strike", "defend", "surge"], []),
       map: [{ id: "gate", kind: "battle", encounterId: "patrol", nextIds: [] }],
     };
 
@@ -240,9 +262,15 @@ describe("post-combat rewards", () => {
         defend: { id: "defend", name: "Defend", cost: 1, description: "Gain 5 block.", block: 5 },
         surge: { id: "surge", name: "Surge", cost: 1, description: "Deal 4 damage. Gain 4 block.", damage: 4, block: 4 },
       },
-      relics: {},
-      rewardCardPool: ["strike", "defend", "surge"],
-      shopCardPool: [],
+      relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
+      },
       enemies: {
         patrol: {
           id: "patrol",
@@ -252,7 +280,7 @@ describe("post-combat rewards", () => {
           intents: [{ kind: "attack", description: "Stab for 2", damage: 2 }],
         },
       },
-      starterDeck: ["strike", "strike", "defend"],
+      character: createCharacter(["strike", "strike", "defend"], ["strike", "defend", "surge"], []),
       map: [{ id: "gate", kind: "battle", encounterId: "patrol", nextIds: [] }],
     };
 
@@ -267,7 +295,7 @@ describe("post-combat rewards", () => {
     const afterReward = applyAction(rewardContent, state, { type: "takeReward", rewardIndex: 0 });
 
     expect(afterReward.deck).toContain(chosenCard.id);
-    expect(afterReward.deck.length).toBe(rewardContent.starterDeck.length + 1);
+    expect(afterReward.deck.length).toBe(rewardContent.character.starterDeck.length + 1);
   });
 });
 
@@ -279,9 +307,15 @@ describe("shop behavior", () => {
         defend: { id: "defend", name: "Defend", cost: 1, description: "Gain 5 block.", block: 5 },
         surge: { id: "surge", name: "Surge", cost: 1, description: "Deal 4 damage. Gain 4 block.", damage: 4, block: 4 },
       },
-      relics: {},
-      rewardCardPool: [],
-      shopCardPool: ["strike", "defend", "surge"],
+      relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
+      },
       enemies: {
         vendor: {
           id: "vendor",
@@ -291,7 +325,7 @@ describe("shop behavior", () => {
           intents: [{ kind: "attack", description: "Nip for 1", damage: 1 }],
         },
       },
-      starterDeck: ["strike", "strike", "defend", "surge"],
+      character: createCharacter(["strike", "strike", "defend", "surge"], [], ["strike", "defend", "surge"]),
       map: [{ id: "gate", kind: "battle", encounterId: "vendor", nextIds: ["market"] }, { id: "market", kind: "shop", nextIds: [] }],
     };
 
@@ -337,6 +371,13 @@ describe("relic systems", () => {
         strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
       },
       relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
         bucklerFrame: {
           id: "bucklerFrame",
           name: "Buckler Frame",
@@ -345,8 +386,6 @@ describe("relic systems", () => {
           value: 2,
         },
       },
-      rewardCardPool: [],
-      shopCardPool: [],
       enemies: {
         scout: {
           id: "scout",
@@ -363,7 +402,7 @@ describe("relic systems", () => {
           intents: [{ kind: "attack", description: "Pulse", damage: 2 }],
         },
       },
-      starterDeck: ["strike", "strike", "strike", "strike", "strike"],
+      character: createCharacter(["strike", "strike", "strike", "strike", "strike"], [], []),
       map: [
         { id: "gate", kind: "battle", encounterId: "scout", relicReward: "bucklerFrame", nextIds: ["summit"] },
         { id: "summit", kind: "boss", encounterId: "core", nextIds: [] },
@@ -389,6 +428,13 @@ describe("relic systems", () => {
         strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
       },
       relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
         reinforcedFrame: {
           id: "reinforcedFrame",
           name: "Reinforced Frame",
@@ -397,8 +443,6 @@ describe("relic systems", () => {
           value: 12,
         },
       },
-      rewardCardPool: [],
-      shopCardPool: ["strike"],
       enemies: {
         scout: {
           id: "scout",
@@ -408,7 +452,7 @@ describe("relic systems", () => {
           intents: [{ kind: "block", description: "Guard stance", block: 0 }],
         },
       },
-      starterDeck: ["strike", "strike", "strike"],
+      character: createCharacter(["strike", "strike", "strike"], [], ["strike"]),
       map: [{ id: "gate", kind: "battle", encounterId: "scout", relicReward: "reinforcedFrame", nextIds: [] }],
     };
 
@@ -427,6 +471,13 @@ describe("relic systems", () => {
         strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
       },
       relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
         combatFocus: {
           id: "combatFocus",
           name: "Combat Focus",
@@ -435,8 +486,6 @@ describe("relic systems", () => {
           value: 1,
         },
       },
-      rewardCardPool: [],
-      shopCardPool: ["strike"],
       enemies: {
         scout: {
           id: "scout",
@@ -453,7 +502,7 @@ describe("relic systems", () => {
           intents: [{ kind: "attack", description: "Blast for 2", damage: 2 }],
         },
       },
-      starterDeck: ["strike", "strike", "strike"],
+      character: createCharacter(["strike", "strike", "strike"], [], ["strike"]),
       map: [
         { id: "gate", kind: "battle", encounterId: "scout", relicReward: "combatFocus", nextIds: ["summit"] },
         { id: "summit", kind: "boss", encounterId: "core", nextIds: [] },
@@ -475,6 +524,13 @@ describe("relic systems", () => {
         strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
       },
       relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
         medicinePack: {
           id: "medicinePack",
           name: "Medicine Pack",
@@ -483,8 +539,6 @@ describe("relic systems", () => {
           value: 3,
         },
       },
-      rewardCardPool: [],
-      shopCardPool: ["strike"],
       enemies: {
         sentinel: {
           id: "sentinel",
@@ -494,7 +548,7 @@ describe("relic systems", () => {
           intents: [{ kind: "attack", description: "Jab for 2", damage: 2 }],
         },
       },
-      starterDeck: ["strike", "strike", "strike", "strike"],
+      character: createCharacter(["strike", "strike", "strike", "strike"], [], ["strike"]),
       map: [
         { id: "gate", kind: "battle", encounterId: "sentinel", relicReward: "medicinePack", nextIds: ["camp"] },
         { id: "camp", kind: "rest", nextIds: ["market"] },
@@ -514,6 +568,13 @@ describe("relic systems", () => {
         strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
       },
       relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
         merchantTag: {
           id: "merchantTag",
           name: "Merchant Tag",
@@ -522,8 +583,6 @@ describe("relic systems", () => {
           value: 1,
         },
       },
-      rewardCardPool: [],
-      shopCardPool: ["strike"],
       enemies: {
         sentinel: {
           id: "sentinel",
@@ -533,7 +592,7 @@ describe("relic systems", () => {
           intents: [{ kind: "attack", description: "Jab for 2", damage: 2 }],
         },
       },
-      starterDeck: ["strike", "strike", "strike", "strike"],
+      character: createCharacter(["strike", "strike", "strike", "strike"], [], ["strike"]),
       map: [
         { id: "gate", kind: "battle", encounterId: "sentinel", relicReward: "merchantTag", nextIds: ["market"] },
         { id: "market", kind: "shop", nextIds: [] },
@@ -582,4 +641,19 @@ function winCurrentCombat(runContent: RunContent, state: RunState): RunState {
   }
 
   return nextState;
+}
+
+function createCharacter(starterDeck: string[], rewardPool: string[] = [], shopPool: string[] = []) {
+  return {
+    id: "test",
+    name: "Test",
+    summary: "Test character.",
+    maxHp: 80,
+    startGold: 0,
+    starterDeck,
+    startingRelicId: "starterCharm",
+    rewardCardPools: { common: rewardPool, uncommon: [], rare: [] },
+    shopCardPools: { common: shopPool, uncommon: [], rare: [] },
+    relicPools: { elite: [], boss: [] },
+  };
 }

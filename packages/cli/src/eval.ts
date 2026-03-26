@@ -1,4 +1,4 @@
-import { createSeededContent, sampleContent } from "@towerlab/content";
+import { createSeededContent, DEFAULT_CHARACTER_ID, sampleContent } from "@towerlab/content";
 import {
   applyAction,
   createRun,
@@ -23,6 +23,7 @@ export interface PolicyContext {
 export type Policy = (context: PolicyContext) => RunAction | null;
 
 export interface RunSeedOptions {
+  characterId?: string;
   content?: RunContent;
   maxSteps?: number;
   policyName?: string;
@@ -49,6 +50,7 @@ export interface RunSeedSummary {
 }
 
 export interface BatchConfig extends RunSeedOptions {
+  characterId: string;
   policy: Policy;
   policyName: string;
   seeds: number[];
@@ -89,8 +91,15 @@ function mergePathChoices(a: Record<string, number>, b: Record<string, number>):
   return merged;
 }
 
-export function runSeedWithPolicy({ policy, policyName, seed, content = sampleContent, maxSteps = DEFAULT_MAX_STEPS }: RunSeedConfig): RunSeedSummary {
-  const runContent = content === sampleContent ? createSeededContent(seed) : content;
+export function runSeedWithPolicy({
+  policy,
+  policyName,
+  seed,
+  characterId = DEFAULT_CHARACTER_ID,
+  content = sampleContent,
+  maxSteps = DEFAULT_MAX_STEPS,
+}: RunSeedConfig): RunSeedSummary {
+  const runContent = content === sampleContent ? createSeededContent(seed, characterId) : content;
   let state = createRun(runContent, seed);
   const actions: RunAction[] = [];
   const pathChoiceCounts: Record<string, number> = {};
@@ -175,9 +184,10 @@ function computePathChoiceCounts(runs: RunSeedSummary[]): Record<string, number>
   return runs.reduce((acc, run) => mergePathChoices(acc, run.pathChoiceCounts), {});
 }
 
-export function runBatchWithPolicy({ policy, policyName, seeds, content, maxSteps }: BatchConfig): BatchSummary {
+export function runBatchWithPolicy({ policy, policyName, seeds, characterId, content, maxSteps }: BatchConfig): BatchSummary {
   const runs = seeds.map((seed) =>
     runSeedWithPolicy({
+      characterId,
       content,
       maxSteps,
       policy,

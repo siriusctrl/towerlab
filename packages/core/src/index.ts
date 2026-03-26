@@ -1,5 +1,9 @@
 export type {
   CardDefinition,
+  CardRarity,
+  CardRarityBuckets,
+  CharacterDefinition,
+  CharacterRelicPools,
   CombatObservation,
   CombatState,
   EndObservation,

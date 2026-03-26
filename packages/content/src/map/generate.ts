@@ -1,8 +1,7 @@
-import type { MapNode } from "@towerlab/core";
+import type { CharacterRelicPools, MapNode } from "@towerlab/core";
 
 import {
   EARLY_KIND_POOL,
-  ELITE_RELIC_POOL,
   LATE_KIND_POOL,
   MID_KIND_POOL,
   OPENING_KINDS,
@@ -18,7 +17,7 @@ type GeneratedNode = MapNode & {
   position: number;
 };
 
-export function generateMap(seed: number): MapNode[] {
+export function generateMap(seed: number, relicPools: CharacterRelicPools): MapNode[] {
   let rng = normalizeSeed(seed);
   const patternPick = pickFrom(REGULAR_ROW_PATTERNS, rng);
   rng = patternPick.rng;
@@ -36,17 +35,19 @@ export function generateMap(seed: number): MapNode[] {
 
   patternPick.value.forEach((count, rowIndex) => {
     const rowNumber = rowIndex + 1;
-    const builtRow = buildRegularRow(rowNumber, count, rng);
+    const builtRow = buildRegularRow(rowNumber, count, relicPools, rng);
     rng = builtRow.rng;
     rows.push(builtRow.nodes);
   });
 
+  const bossRelicPick = pickFrom(relicPools.boss, rng);
+  rng = bossRelicPick.rng;
   rows.push([
     {
       id: `boss-r${rows.length}`,
       kind: "boss",
       encounterId: "watchCore",
-      relicReward: "reinforcedFrame",
+      relicReward: bossRelicPick.value,
       nextIds: [],
       row: rows.length,
       position: 1,
@@ -73,11 +74,16 @@ export function generateMap(seed: number): MapNode[] {
   return rows.flat().map(({ row, position, ...node }) => node);
 }
 
-function buildRegularRow(rowNumber: number, count: number, seed: number): { nodes: GeneratedNode[]; rng: number } {
+function buildRegularRow(
+  rowNumber: number,
+  count: number,
+  relicPools: CharacterRelicPools,
+  seed: number,
+): { nodes: GeneratedNode[]; rng: number } {
   const kindsResult = buildRowKinds(rowNumber, count, seed);
   let rng = kindsResult.rng;
   const nodes = kindsResult.kinds.map((kind, index) => {
-    const node = createRegularNode(kind, rowNumber, index + 1, rng);
+    const node = createRegularNode(kind, rowNumber, index + 1, relicPools, rng);
     rng = node.rng;
     return node.node;
   });
@@ -114,7 +120,13 @@ function buildRowKinds(rowNumber: number, count: number, seed: number): { kinds:
   };
 }
 
-function createRegularNode(kind: RegularNodeKind, row: number, position: number, seed: number): { node: GeneratedNode; rng: number } {
+function createRegularNode(
+  kind: RegularNodeKind,
+  row: number,
+  position: number,
+  relicPools: CharacterRelicPools,
+  seed: number,
+): { node: GeneratedNode; rng: number } {
   const id = `${kind}-r${row}-p${position}`;
 
   if (kind === "battle") {
@@ -133,7 +145,7 @@ function createRegularNode(kind: RegularNodeKind, row: number, position: number,
   }
 
   if (kind === "elite") {
-    const relicPick = pickFrom(ELITE_RELIC_POOL, seed);
+    const relicPick = pickFrom(relicPools.elite, seed);
     return {
       node: {
         id,

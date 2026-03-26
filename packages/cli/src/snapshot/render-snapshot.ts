@@ -1,4 +1,4 @@
-import { createSeededContent } from "@towerlab/content";
+import { createSeededContent, DEFAULT_CHARACTER_ID } from "@towerlab/content";
 import { createRun, observeRun, type Observation, type RunContent } from "@towerlab/core";
 
 import {
@@ -6,6 +6,7 @@ import {
   formatNodeLabel,
   formatText,
   formatLogEntries,
+  localizeCharacterName,
   localizeObservation,
   localizePhaseLabel,
   text,
@@ -21,8 +22,8 @@ import {
   getRecentLogView,
 } from "../view.js";
 
-export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE): string {
-  const content = createSeededContent(seed);
+export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE, characterId = DEFAULT_CHARACTER_ID): string {
+  const content = createSeededContent(seed, characterId);
   const state = createRun(content, seed);
   const observation = localizeObservation(observeRun(content, state), locale);
   const visitedNodeIds = deriveVisitedNodeIds(content.map, []);
@@ -38,6 +39,7 @@ function renderObservation(content: RunContent, observation: Observation, locale
   const lines = [
     text(locale, "snapshotTitle"),
     `${text(locale, "seed")}: ${observation.seed}`,
+    `${text(locale, "character")}: ${localizeCharacterName(content.character.id, locale)}`,
     `${text(locale, "phase")}: ${localizePhaseLabel(observation.phase, locale)}`,
     `${text(locale, "hp")}: ${observation.hp}/${observation.maxHp}  ${text(locale, "gold")}: ${observation.gold}  ${text(locale, "floor")}: ${observation.floor}`,
     `${text(locale, "node")}: ${formatNodeLabel(observation.currentNode, locale)}`,

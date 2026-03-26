@@ -10,6 +10,18 @@ export const cardNames: Dictionary = {
   "Punishing Hit": "惩戒一击",
   "Heavy Blow": "重击",
   Precision: "精准打击",
+  "Reckless Lunge": "莽撞突刺",
+  "Iron Tempo": "铁律节奏",
+  Executioner: "处决",
+  Brace: "架势",
+  "Shield Jab": "盾击",
+  Safeguard: "护持",
+  "Tower Slam": "塔盾猛击",
+  "Hold Fast": "固守",
+  Riposte: "回击",
+  Citadel: "堡垒姿态",
+  "Last Stand": "背水一战",
+  Bastion: "壁垒",
 };
 
 export const cardDescriptions: Dictionary = {
@@ -20,6 +32,18 @@ export const cardDescriptions: Dictionary = {
   "Deal 9 damage.": "造成 9 点伤害。",
   "Deal 11 damage.": "造成 11 点伤害。",
   "Deal 6 damage. Gain 2 block.": "造成 6 点伤害。获得 2 点格挡。",
+  "Deal 8 damage.": "造成 8 点伤害。",
+  "Deal 8 damage. Gain 6 block.": "造成 8 点伤害。获得 6 点格挡。",
+  "Deal 14 damage.": "造成 14 点伤害。",
+  "Gain 6 block.": "获得 6 点格挡。",
+  "Deal 5 damage. Gain 2 block.": "造成 5 点伤害。获得 2 点格挡。",
+  "Gain 8 block.": "获得 8 点格挡。",
+  "Deal 10 damage. Gain 5 block.": "造成 10 点伤害。获得 5 点格挡。",
+  "Gain 12 block.": "获得 12 点格挡。",
+  "Deal 7 damage.": "造成 7 点伤害。",
+  "Gain 9 block. Deal 5 damage.": "获得 9 点格挡。造成 5 点伤害。",
+  "Deal 8 damage. Gain 8 block.": "造成 8 点伤害。获得 8 点格挡。",
+  "Gain 14 block.": "获得 14 点格挡。",
 };
 
 export const enemyNames: Dictionary = {
@@ -50,6 +74,28 @@ export const nodeNames = {
   },
 } as const satisfies Record<Locale, Dictionary>;
 
+export const characterNames = {
+  en: {
+    vanguard: "Vanguard",
+    bulwark: "Bulwark",
+  },
+  zh: {
+    vanguard: "先锋",
+    bulwark: "壁垒",
+  },
+} as const satisfies Record<Locale, Dictionary>;
+
+export const characterSummaries = {
+  en: {
+    vanguard: "Burst damage and flexible attacks.",
+    bulwark: "Heavy defense with blunt counterattacks.",
+  },
+  zh: {
+    vanguard: "高爆发输出，兼具灵活攻防。",
+    bulwark: "偏重防御，以厚重反击取胜。",
+  },
+} as const satisfies Record<Locale, Dictionary>;
+
 export const intentDescriptions: Dictionary = {
   "Jab for 5": "刺击 5 点",
   "Brace for 6 block": "准备获得 6 点格挡",
@@ -66,19 +112,34 @@ export const intentDescriptions: Dictionary = {
 };
 
 export const relicNames: Dictionary = {
+  "Battle Standard": "战旗",
+  "Field Kit": "野战包",
   "Combat Focus": "战斗专注",
   "Buckler Frame": "盾框",
   "Reinforced Frame": "强化框架",
   "Medicine Pack": "医疗包",
   "Merchant Tag": "商人徽记",
+  "Razor Sigil": "锋刃纹章",
+  "War Engine": "战争引擎",
+  "Guard Training": "卫戍训练",
+  "Reserve Plate": "预备装甲",
+  "Ward Charm": "护卫符咒",
+  "Caravan Seal": "商旅印记",
+  "Bulwark Core": "壁垒核心",
 };
 
 export const relicDescriptions: Dictionary = {
+  "Start each combat with +1 block.": "每场战斗开始时获得 1 点格挡。",
+  "Recover +2 HP from campfire recovery.": "在营火恢复时额外回复 2 点生命。",
   "Gain 1 extra energy at the start of each combat.": "每场战斗开始时额外获得 1 点能量。",
   "Start each combat with +2 block.": "每场战斗开始时获得 2 点格挡。",
   "Gain 12 max HP.": "获得 12 点最大生命。",
   "Recover +3 HP from campfire recovery.": "在营火恢复时额外回复 3 点生命。",
   "Shop cards cost 1 less.": "商店中的卡牌价格降低 1。",
+  "Start each combat with +3 block.": "每场战斗开始时获得 3 点格挡。",
+  "Gain 8 max HP.": "获得 8 点最大生命。",
+  "Recover +4 HP from campfire recovery.": "在营火恢复时额外回复 4 点生命。",
+  "Start each combat with +4 block.": "每场战斗开始时获得 4 点格挡。",
 };
 
 export const restOptionLabels: Dictionary = {
@@ -97,12 +158,15 @@ export const localeText = {
     block: "Block",
     boss: "boss",
     buy: "Buy",
+    character: "Character",
+    chooseCharacter: "Choose a character.",
     chooseCampfire: "Choose a campfire action.",
     chooseNextNode: "Choose the next node.",
     chooseReward: "Choose one card reward, or skip.",
     combat: "Combat",
     cost: "Cost",
     controlsCombat: "Controls: 1-9 play card, e end turn, q quit",
+    controlsCharacterSelect: "Controls: 1-9 choose character, q quit",
     controlsEnd: "Controls: r restart, q quit",
     controlsMap: "Controls: 1-9 choose path, q quit",
     controlsRest: "Controls: 1-9 choose rest action, q quit",
@@ -160,6 +224,7 @@ export const localeText = {
     shopRemoveSection: "Remove ({cost} gold)",
     skipReward: "Skip reward",
     snapshotTitle: "TowerLab",
+    starterRelic: "Starting relic",
     start: "start",
     theClimbComplete: "The climb is complete.",
     towerWon: "The tower won this run.",
@@ -171,12 +236,15 @@ export const localeText = {
     block: "格挡",
     boss: "首领",
     buy: "购买",
+    character: "角色",
+    chooseCharacter: "选择一名角色。",
     chooseCampfire: "选择一项营火行动。",
     chooseNextNode: "选择下一个节点。",
     chooseReward: "选择一张奖励卡，或跳过。",
     combat: "战斗",
     cost: "费用",
     controlsCombat: "操作：1-9 打出卡牌，e 结束回合，q 退出",
+    controlsCharacterSelect: "操作：1-9 选择角色，q 退出",
     controlsEnd: "操作：r 以相同种子重新开始，q 退出",
     controlsMap: "操作：1-9 选择路径，q 退出",
     controlsRest: "操作：1-9 选择营火行动，q 退出",
@@ -234,6 +302,7 @@ export const localeText = {
     shopRemoveSection: "移除（{cost} 金币）",
     skipReward: "跳过奖励",
     snapshotTitle: "TowerLab",
+    starterRelic: "起始遗物",
     start: "起点",
     theClimbComplete: "这次攀登已经完成。",
     towerWon: "这次攀登被高塔终结了。",

@@ -16,7 +16,7 @@ import {
 import { runBatchWithPolicy } from "../eval.js";
 import { DEFAULT_LOCALE, localizeErrorMessage, localizeObservation, readLocale, type Locale } from "../i18n.js";
 import { getBaselinePolicy } from "../policies.js";
-import { getHeadlessUsage, parseHeadlessArgs, readSeed } from "./args.js";
+import { getHeadlessUsage, parseHeadlessArgs, readCharacterId, readSeed } from "./args.js";
 import type {
   HeadlessCreateResponse,
   HeadlessObserveResponse,
@@ -26,7 +26,7 @@ import type {
   HeadlessStepResponse,
 } from "./types.js";
 
-export { readSeed } from "./args.js";
+export { readCharacterId, readSeed } from "./args.js";
 
 type HeadlessBatchResponse = ReturnType<typeof runBatchWithPolicy> & {
   command: "batch";
@@ -69,6 +69,12 @@ export function runHeadless(args: string[]): string {
 }
 
 function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
+  const characterId = parsed.characterId;
+
+  if (!characterId) {
+    throw new Error(localizeErrorMessage("headless mode requires --character", parsed.locale));
+  }
+
   if (parsed.command === "batch") {
     if (!parsed.policyName) {
       throw new Error(localizeErrorMessage("batch mode requires --policy", parsed.locale));
@@ -84,6 +90,7 @@ function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
       command: "batch",
       locale: parsed.locale,
       ...runBatchWithPolicy({
+        characterId,
         policy: ({ content, state }) => policy.chooseAction(state, content),
         policyName: parsed.policyName,
         seeds: parsed.batchSeeds,
@@ -91,7 +98,7 @@ function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
     };
   }
 
-  const content = createSeededContent(parsed.seed);
+  const content = createSeededContent(parsed.seed, characterId);
 
   if (parsed.command === "create") {
     const state = createRun(content, parsed.seed);
