@@ -34,8 +34,9 @@ import {
 } from "../view.js";
 import { getChoiceColor, getMapCellColor, isDimmedMapCell, isEmphasizedMapCell } from "./utils.js";
 
-type ReferenceMode = "hidden" | "deck" | "library";
+type ReferenceMode = "hidden" | "status" | "library";
 type LibrarySection = "starter" | "common" | "rare" | "epic" | "relics";
+type StatusSection = "deck" | "relics";
 type ReferenceLine = {
   text: string;
   bold?: boolean;
@@ -44,8 +45,10 @@ type ReferenceLine = {
 };
 
 const LIBRARY_SECTIONS: LibrarySection[] = ["starter", "common", "rare", "epic", "relics"];
+const STATUS_SECTIONS: StatusSection[] = ["deck", "relics"];
 
 export const LIBRARY_SECTION_COUNT = LIBRARY_SECTIONS.length;
+export const STATUS_SECTION_COUNT = STATUS_SECTIONS.length;
 
 export function StatusBar({
   observation,
@@ -464,6 +467,7 @@ export function ReferencePanel({
   state,
   locale,
   referenceMode,
+  statusSectionIndex,
   librarySectionIndex,
   scrollOffset,
   height,
@@ -472,16 +476,17 @@ export function ReferencePanel({
   state: RunState;
   locale: Locale;
   referenceMode: Exclude<ReferenceMode, "hidden">;
+  statusSectionIndex: number;
   librarySectionIndex: number;
   scrollOffset: number;
   height: number;
 }) {
   const section =
-    referenceMode === "deck"
-      ? buildDeckSection(content, state, locale)
+    referenceMode === "status"
+      ? buildStatusSection(content, state, locale, STATUS_SECTIONS[statusSectionIndex] ?? STATUS_SECTIONS[0]!)
       : buildLibrarySection(content, locale, LIBRARY_SECTIONS[librarySectionIndex] ?? LIBRARY_SECTIONS[0]!);
   const characterName = localizeCharacterName(content.character.id, locale);
-  const headerLines = referenceMode === "library" ? 4 : 3;
+  const headerLines = 4;
   const bodyHeight = Math.max(4, height - headerLines);
   const maxScroll = Math.max(0, section.lines.length - bodyHeight);
   const clampedScroll = Math.min(scrollOffset, maxScroll);
@@ -492,21 +497,21 @@ export function ReferencePanel({
   return (
     <Box flexDirection="column" overflow="hidden">
       <Text bold color="cyan" wrap="truncate-end">
-        {referenceMode === "deck" ? text(locale, "currentDeck") : text(locale, "library")}
+        {referenceMode === "status" ? text(locale, "status") : text(locale, "library")}
       </Text>
       <Text dimColor wrap="truncate-end">
         {characterName} {"·"} {section.title}
       </Text>
-      {referenceMode === "library" ? (
-        <Text wrap="truncate-end">
-          {LIBRARY_SECTIONS.map((candidate, index) => (
-            <Text key={candidate} color={candidate === section.key ? "yellow" : "gray"} bold={candidate === section.key}>
-              {index > 0 ? "  " : ""}
-              {librarySectionLabel(locale, candidate)}
-            </Text>
-          ))}
-        </Text>
-      ) : null}
+      <Text wrap="truncate-end">
+        {(referenceMode === "status" ? STATUS_SECTIONS : LIBRARY_SECTIONS).map((candidate, index) => (
+          <Text key={candidate} color={candidate === section.key ? "yellow" : "gray"} bold={candidate === section.key}>
+            {index > 0 ? "  " : ""}
+            {referenceMode === "status"
+              ? statusSectionLabel(locale, candidate as StatusSection)
+              : librarySectionLabel(locale, candidate as LibrarySection)}
+          </Text>
+        ))}
+      </Text>
       <Text dimColor wrap="truncate-end">
         {formatText(locale, "referenceScrollStatus", { start, end, total: section.lines.length })}
       </Text>
@@ -525,11 +530,24 @@ export function ReferencePanel({
   );
 }
 
-function buildDeckSection(content: RunContent, state: RunState, locale: Locale): { key: "deck"; title: string; lines: ReferenceLine[] } {
+function buildStatusSection(
+  content: RunContent,
+  state: RunState,
+  locale: Locale,
+  section: StatusSection,
+): { key: StatusSection; title: string; lines: ReferenceLine[] } {
+  if (section === "deck") {
+    return {
+      key: section,
+      title: formatText(locale, "deckSize", { count: state.deck.length }),
+      lines: formatCardCollectionLines(state.deck, content, locale),
+    };
+  }
+
   return {
-    key: "deck",
-    title: formatText(locale, "deckSize", { count: state.deck.length }),
-    lines: formatCardCollectionLines(state.deck, content, locale),
+    key: section,
+    title: formatText(locale, "relicCount", { count: state.relics.length }),
+    lines: formatRelicCollectionLines(state.relics, content, locale),
   };
 }
 
@@ -580,6 +598,11 @@ function librarySectionLabel(locale: Locale, section: LibrarySection): string {
   return text(locale, "relicLibrarySection");
 }
 
+function statusSectionLabel(locale: Locale, section: StatusSection): string {
+  if (section === "deck") return text(locale, "deck");
+  return text(locale, "currentRelics");
+}
+
 function formatCardCollectionLines(cardIds: string[], content: RunContent, locale: Locale): ReferenceLine[] {
   const counts = new Map<string, number>();
 
@@ -602,6 +625,13 @@ function formatCardCollectionLines(cardIds: string[], content: RunContent, local
 function formatRelicLine(relic: NonNullable<RunContent["relics"][string]>, locale: Locale): ReferenceLine {
   const localized = localizeRelicDefinition(relic, locale);
   return { text: `${localized.name} - ${localized.description}` };
+}
+
+function formatRelicCollectionLines(relicIds: string[], content: RunContent, locale: Locale): ReferenceLine[] {
+  return relicIds
+    .map((relicId) => content.relics[relicId])
+    .filter((relic): relic is NonNullable<RunContent["relics"][string]> => relic !== undefined)
+    .map((relic) => formatRelicLine(relic, locale));
 }
 
 export function RecentLogPanel({ entries, locale, limit }: { entries: string[]; locale: Locale; limit: number }) {

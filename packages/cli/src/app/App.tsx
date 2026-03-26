@@ -15,6 +15,7 @@ import {
   RecentLogPanel,
   ReferenceControls,
   ReferencePanel,
+  STATUS_SECTION_COUNT,
   StatusBar,
 } from "./components.js";
 import { useTerminalDimensions } from "./use-terminal-dimensions.js";
@@ -27,7 +28,7 @@ export interface AppProps {
 }
 
 const characters = listCharacters();
-type ReferenceMode = "hidden" | "deck" | "library";
+type ReferenceMode = "hidden" | "status" | "library";
 
 export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const { exit } = useApp();
@@ -41,6 +42,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const [actions, setActions] = useState<RunAction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [referenceMode, setReferenceMode] = useState<ReferenceMode>("hidden");
+  const [statusSectionIndex, setStatusSectionIndex] = useState(0);
   const [librarySectionIndex, setLibrarySectionIndex] = useState(0);
   const [referenceScrollOffset, setReferenceScrollOffset] = useState(0);
   const stateRef = useRef(state);
@@ -86,6 +88,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setError(null);
     setShopMenu("top");
     setReferenceMode("hidden");
+    setStatusSectionIndex(0);
     setLibrarySectionIndex(0);
     setReferenceScrollOffset(0);
     setCharacterSelectMode("choose");
@@ -123,6 +126,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setError(null);
     setShopMenu("top");
     setReferenceMode("hidden");
+    setStatusSectionIndex(0);
     setLibrarySectionIndex(0);
     setReferenceScrollOffset(0);
   };
@@ -137,6 +141,9 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setReferenceMode((current) => {
       const resolved = current === nextMode ? "hidden" : nextMode;
       setReferenceScrollOffset(0);
+      if (resolved === "status" && current !== "status") {
+        setStatusSectionIndex(0);
+      }
       if (resolved === "library" && current !== "library") {
         setLibrarySectionIndex(0);
       }
@@ -210,7 +217,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     }
 
     if (input === "d") {
-      toggleReference("deck");
+      toggleReference("status");
       return;
     }
 
@@ -226,14 +233,22 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
         return;
       }
 
-      if (referenceMode === "library" && (input === "[" || key.leftArrow)) {
-        setLibrarySectionIndex((current) => (current - 1 + LIBRARY_SECTION_COUNT) % LIBRARY_SECTION_COUNT);
+      if (input === "[" || key.leftArrow) {
+        if (referenceMode === "status") {
+          setStatusSectionIndex((current) => (current - 1 + STATUS_SECTION_COUNT) % STATUS_SECTION_COUNT);
+        } else {
+          setLibrarySectionIndex((current) => (current - 1 + LIBRARY_SECTION_COUNT) % LIBRARY_SECTION_COUNT);
+        }
         setReferenceScrollOffset(0);
         return;
       }
 
-      if (referenceMode === "library" && (input === "]" || key.rightArrow)) {
-        setLibrarySectionIndex((current) => (current + 1) % LIBRARY_SECTION_COUNT);
+      if (input === "]" || key.rightArrow) {
+        if (referenceMode === "status") {
+          setStatusSectionIndex((current) => (current + 1) % STATUS_SECTION_COUNT);
+        } else {
+          setLibrarySectionIndex((current) => (current + 1) % LIBRARY_SECTION_COUNT);
+        }
         setReferenceScrollOffset(0);
         return;
       }
@@ -358,7 +373,8 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
               content={content!}
               state={state!}
               locale={locale}
-              referenceMode={referenceMode === "hidden" ? "deck" : referenceMode}
+              referenceMode={referenceMode === "hidden" ? "status" : referenceMode}
+              statusSectionIndex={statusSectionIndex}
               librarySectionIndex={librarySectionIndex}
               scrollOffset={referenceScrollOffset}
               height={referenceHeight}
@@ -393,7 +409,8 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
               content={content!}
               state={state!}
               locale={locale}
-              referenceMode={referenceMode === "hidden" ? "deck" : referenceMode}
+              referenceMode={referenceMode === "hidden" ? "status" : referenceMode}
+              statusSectionIndex={statusSectionIndex}
               librarySectionIndex={librarySectionIndex}
               scrollOffset={referenceScrollOffset}
               height={referenceHeight}

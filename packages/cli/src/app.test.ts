@@ -94,13 +94,19 @@ describe("App layout", () => {
     expect(frame).not.toContain("act1-battle");
   });
 
-  test("shows the current deck during combat without leaving the TUI", async () => {
-    const frame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["1", "1", "d"] });
+  test("shows current status with deck and relic sections during combat", async () => {
+    const deckFrame = await renderFrame({ columns: 120, rows: 28, inputs: ["1", "1", "d"] });
+    const relicFrame = await renderFrame({ columns: 120, rows: 28, inputs: ["1", "1", "d", "]"] });
 
-    expect(frame).toContain("当前牌组");
-    expect(frame).toContain("牌组数量 10");
-    expect(frame).toContain("4x 打击 [1] 造成 6 点伤害。");
-    expect(frame).toContain("2x 突进 [1] 造成 4 点伤害。获得 4 点格挡。");
+    expect(deckFrame).toContain("Status");
+    expect(deckFrame).toContain("Deck  Current Relics");
+    expect(deckFrame).toContain("Deck size 10");
+    expect(deckFrame).toContain("4x Strike [1] Deal 6 damage.");
+    expect(deckFrame).toContain("2x Surge [1] Deal 4 damage. Gain 4 block.");
+
+    expect(relicFrame).toContain("Status");
+    expect(relicFrame).toContain("Relics 1");
+    expect(relicFrame).toContain("Battle Standard - Start each combat");
   });
 
   test("renders blessing options without spacer gaps between choices", async () => {
