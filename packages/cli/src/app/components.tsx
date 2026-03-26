@@ -5,6 +5,7 @@ import {
   formatBlessingAcquisition,
   formatBlessingDescription,
   formatBlessingName,
+  formatCombatStatus,
   formatNodeLabel,
   formatText,
   localizeCardDefinition,
@@ -69,6 +70,7 @@ export function StatusBar({
   const hpBar = renderHpBar(observation.hp, observation.maxHp, hpBarWidth);
   const hpColor = getHpColor(observation.hp, observation.maxHp);
   const showRelics = relicNames !== text(locale, "none");
+  const combatStatus = observation.phase === "combat" ? formatCombatStatus(observation.status, locale) : null;
 
   if (compact) {
     return (
@@ -103,6 +105,7 @@ export function StatusBar({
           <>
             <Text>{"  "}{text(locale, "energy")} {observation.energy}/{observation.baseEnergy}</Text>
             <Text>{"  "}{text(locale, "block")} {observation.block}</Text>
+            {combatStatus ? <Text>{"  "}{combatStatus}</Text> : null}
           </>
         ) : null}
       </Text>
@@ -196,6 +199,7 @@ export function PhaseBody({
   if (observation.phase === "combat") {
     const enemyHpBar = renderHpBar(observation.enemy.hp, observation.enemy.maxHp, Math.min(15, hpBarWidth));
     const enemyHpColor = getHpColor(observation.enemy.hp, observation.enemy.maxHp);
+    const enemyStatus = formatCombatStatus(observation.enemy.status, locale);
 
     return (
       <>
@@ -213,6 +217,11 @@ export function PhaseBody({
           <Text dimColor> {"→"} </Text>
           <Text>{observation.enemy.intent.description}</Text>
         </Text>
+        {enemyStatus ? (
+          <Text dimColor wrap="truncate-end">
+            {text(locale, "status")}: {enemyStatus}
+          </Text>
+        ) : null}
         {observation.hand.length > 0 ? (
           observation.hand.map((card, index) => (
             <CardBlock

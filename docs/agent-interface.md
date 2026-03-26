@@ -37,10 +37,10 @@ Headless mode requires `--character`.
 That requirement is intentional: the current game is character-based, so seed alone is not enough to identify a run.
 
 Typical entrypoints:
-- `towerlab --json create --seed 7 --character vanguard`
-- `towerlab --json observe --seed 7 --character vanguard --actions-file actions.json`
-- `towerlab --json step --seed 7 --character vanguard --actions-file actions.json --action '{"type":"endTurn"}'`
-- `towerlab --json replay --seed 7 --character bulwark --actions-file actions.json`
+- `towerlab --json create --seed 7 --character warrior`
+- `towerlab --json observe --seed 7 --character warrior --actions-file actions.json`
+- `towerlab --json step --seed 7 --character warrior --actions-file actions.json --action '{"type":"endTurn"}'`
+- `towerlab --json replay --seed 7 --character hunter --actions-file actions.json`
 
 ## Data Contract
 

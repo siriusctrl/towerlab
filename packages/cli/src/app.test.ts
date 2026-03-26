@@ -14,20 +14,20 @@ describe("App layout", () => {
     const frame = await renderFrame({ columns: 120, rows: 28, locale: "zh", characterId: null });
 
     expect(frame).toContain("选择一名角色。");
-    expect(frame).toContain("先锋");
-    expect(frame).toContain("壁垒");
+    expect(frame).toContain("战士");
+    expect(frame).toContain("猎手");
     expect(frame).not.toContain("起始牌组");
     expect(frame).not.toContain("战旗");
   });
 
   test("opens and pages through each character library on the character-select screen", async () => {
-    const vanguardLibraryFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", characterId: null, inputs: ["l"] });
-    const bulwarkLibraryFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", characterId: null, inputs: ["l", "2"] });
+    const warriorLibraryFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", characterId: null, inputs: ["l"] });
+    const hunterLibraryFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", characterId: null, inputs: ["l", "2"] });
 
-    expect(vanguardLibraryFrame).toContain("图鉴");
-    expect(vanguardLibraryFrame).toContain("先锋 · 起始牌组");
-    expect(bulwarkLibraryFrame).toContain("图鉴");
-    expect(bulwarkLibraryFrame).toContain("壁垒 · 起始牌组");
+    expect(warriorLibraryFrame).toContain("图鉴");
+    expect(warriorLibraryFrame).toContain("战士 · 起始牌组");
+    expect(hunterLibraryFrame).toContain("图鉴");
+    expect(hunterLibraryFrame).toContain("猎手 · 起始牌组");
   });
 
   test("shows the current character library and cycles card sections by rarity", async () => {
@@ -40,25 +40,25 @@ describe("App layout", () => {
     expect(starterFrame).toContain("4x 打击 [1]");
     expect(starterFrame).toContain("造成 6 点伤害。");
     expect(rareFrame).toContain("稀有卡");
-    expect(rareFrame).toContain("重击 [2]");
-    expect(rareFrame).toContain("战吼 [0]");
+    expect(rareFrame).toContain("上勾拳 [2]");
+    expect(rareFrame).toContain("战斗狂潮 [0]");
     expect(rareFrame).toContain("消耗");
-    const warCryLine = rareFrame.split("\n").findIndex((line) => line.includes("战吼 [0]"));
-    expect(warCryLine).toBeGreaterThanOrEqual(0);
-    expect(rareFrame.split("\n")[warCryLine + 1]).toContain("消耗");
-    expect(rareFrame.split("\n")[warCryLine + 2]).toContain("抽 1 张牌。获得 1 点能量。");
+    const battleTranceLine = rareFrame.split("\n").findIndex((line) => line.includes("战斗狂潮 [0]"));
+    expect(battleTranceLine).toBeGreaterThanOrEqual(0);
+    expect(rareFrame.split("\n")[battleTranceLine + 1]).toContain("消耗");
+    expect(rareFrame.split("\n")[battleTranceLine + 2]).toContain("抽 2 张牌。");
     expect(epicFrame).toContain("史诗卡");
-    expect(epicFrame).toContain("处决 [2]");
-    expect(epicFrame).toContain("造成 14 点伤害。");
+    expect(epicFrame).toContain("无懈可击 [2]");
+    expect(epicFrame).toContain("获得 20 点格挡。");
   });
 
   test("renders keyword lines in separate rows for card descriptions", async () => {
     const rareFrame = await renderFrame({ columns: 120, rows: 28, locale: "en", inputs: ["1", "l", "]", "]"] });
 
-    const warCryEnglishLine = rareFrame.split("\n").findIndex((line) => line.includes("War Cry [0]"));
-    expect(warCryEnglishLine).toBeGreaterThanOrEqual(0);
-    expect(rareFrame.split("\n")[warCryEnglishLine + 1]).toContain("Exhaust");
-    expect(rareFrame.split("\n")[warCryEnglishLine + 2]).toContain("Draw 1 card. Gain 1 energy.");
+    const battleTranceEnglishLine = rareFrame.split("\n").findIndex((line) => line.includes("Battle Trance [0]"));
+    expect(battleTranceEnglishLine).toBeGreaterThanOrEqual(0);
+    expect(rareFrame.split("\n")[battleTranceEnglishLine + 1]).toContain("Exhaust");
+    expect(rareFrame.split("\n")[battleTranceEnglishLine + 2]).toContain("Draw 2 cards.");
   });
 
   test("renders the map in the main pane on 80x24 map terminals after the opening blessing", async () => {
@@ -121,19 +121,19 @@ describe("App layout", () => {
     expect(deckFrame).toContain("Deck size 10");
     expect(deckFrame).toContain("4x Strike [1]");
     expect(deckFrame).toContain("Deal 6 damage.");
-    expect(deckFrame).toContain("2x Surge [1]");
-    expect(deckFrame).toContain("Deal 4 damage. Gain 4 block.");
+    expect(deckFrame).toContain("Bash [2]");
+    expect(deckFrame).toContain("Deal 8 damage. Apply 2 Vulnerable.");
 
     expect(relicFrame).toContain("Status");
     expect(relicFrame).toContain("Relics 1");
-    expect(relicFrame).toContain("Battle Standard - Start each combat");
+    expect(relicFrame).toContain("Burning Blood - Recover 4 HP after each combat.");
   });
 
   test("renders blessing options without spacer gaps between choices", async () => {
     const frame = await renderFrame({ columns: 80, rows: 24, locale: "zh" });
 
     expect(frame).toMatch(/效果：获得 30 金币。\n\s*2\. 强健/u);
-    expect(frame).toMatch(/效果：获得 6 点最大生命并回复 6 点生命。\n\s*3\. 血性奔袭/u);
+    expect(frame).toMatch(/效果：获得 6 点最大生命并回复 6 点生命。\n\s*3\. 愤怒/u);
   });
 
   test("keeps opening blessings, compact map, and post-move minimap stable across multiple seeds", async () => {
@@ -149,7 +149,7 @@ describe("App layout", () => {
       expect(startFrame).toContain("2. ");
       expect(startFrame).toContain("3. ");
       expect(startFrame).toContain("获得：加入牌组");
-      expect(startFrame).toContain("效果：造成 6 点伤害。获得 1 点能量。");
+      expect(startFrame).toContain("效果：造成 4 点伤害。");
       expect(startFrame).not.toContain("：:");
       expect(startFrame).not.toContain("::");
       expect(mapFrame).toContain("路径： 1.");

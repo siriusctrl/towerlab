@@ -481,6 +481,24 @@ export function localizeCardKeyword(keyword: CardKeyword, locale: Locale): strin
   return cardKeywords[locale][keyword] ?? keyword;
 }
 
+export function formatCombatStatus(status: { weak: number; vulnerable: number; poison: number }, locale: Locale): string | null {
+  const parts: string[] = [];
+
+  if (status.weak > 0) {
+    parts.push(`${text(locale, "weak")} ${status.weak}`);
+  }
+
+  if (status.vulnerable > 0) {
+    parts.push(`${text(locale, "vulnerable")} ${status.vulnerable}`);
+  }
+
+  if (status.poison > 0) {
+    parts.push(`${text(locale, "poison")} ${status.poison}`);
+  }
+
+  return parts.length > 0 ? parts.join(locale === "zh" ? "，" : ", ") : null;
+}
+
 export function localizeRelicDefinition(relic: RelicDefinition, locale: Locale): RelicDefinition {
   if (locale === "en") {
     return relic;
@@ -568,6 +586,18 @@ function formatLogEffects(effects: LogEffect[], locale: Locale): string[] {
 
     if (effect.type === "heal") {
       return locale === "zh" ? `恢复 ${effect.amount} 点生命` : `recover ${effect.amount} HP`;
+    }
+
+    if (effect.type === "weak") {
+      return locale === "zh" ? `施加 ${effect.amount} 层虚弱` : `apply ${effect.amount} Weak`;
+    }
+
+    if (effect.type === "vulnerable") {
+      return locale === "zh" ? `施加 ${effect.amount} 层易伤` : `apply ${effect.amount} Vulnerable`;
+    }
+
+    if (effect.type === "poison") {
+      return locale === "zh" ? `施加 ${effect.amount} 层中毒` : `apply ${effect.amount} Poison`;
     }
 
     return locale === "zh" ? "消耗" : "exhaust";

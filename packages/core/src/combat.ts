@@ -2,7 +2,7 @@ import { HAND_SIZE, STARTING_ENERGY } from "./constants.js";
 import { finishNode } from "./progression.js";
 import { drawCards, shuffle } from "./rng.js";
 import { getRewardChoices, grantRelicReward } from "./rewards.js";
-import { appendLog, getCombat, getCurrentIntent, getNode, getRelicValue } from "./shared.js";
+import { appendLog, createCombatStatus, getCombat, getCurrentIntent, getNode, getRelicValue, tickStatus, computeAttackDamage } from "./shared.js";
 import type { EnemyState, MapNode, RunContent, RunState } from "./types.js";
 import { getEnemyDefinition } from "./validate.js";
 
@@ -15,7 +15,12 @@ export function startCombat(content: RunContent, state: RunState, node: MapNode)
 
   const enemyDefinition = getEnemyDefinition(content, enemyId);
   const shuffledDeck = shuffle([...state.deck], state.rng);
-  const drawn = drawCards(shuffledDeck.items, [], HAND_SIZE, shuffledDeck.rng);
+  const drawn = drawCards(
+    shuffledDeck.items,
+    [],
+    HAND_SIZE + getRelicValue(content, state, "combatStartDraw"),
+    shuffledDeck.rng,
+  );
   const playerStartingBlock = getRelicValue(content, state, "combatStartBlock");
   const enemy: EnemyState = {
     id: enemyDefinition.id,
@@ -23,6 +28,10 @@ export function startCombat(content: RunContent, state: RunState, node: MapNode)
     hp: enemyDefinition.maxHp,
     maxHp: enemyDefinition.maxHp,
     block: 0,
+    status: {
+      ...createCombatStatus(),
+      poison: getRelicValue(content, state, "combatStartPoison"),
+    },
     goldReward: enemyDefinition.goldReward,
     intents: enemyDefinition.intents,
     intentIndex: 0,
@@ -40,6 +49,7 @@ export function startCombat(content: RunContent, state: RunState, node: MapNode)
         discardPile: drawn.discardPile,
         energy: STARTING_ENERGY + getRelicValue(content, state, "combatEnergy"),
         block: playerStartingBlock,
+        status: createCombatStatus(),
         turn: 1,
       },
       reward: undefined,
@@ -58,6 +68,7 @@ export function finishCombat(content: RunContent, state: RunState): RunState {
     {
       ...state,
       gold: state.gold + reward,
+      hp: Math.min(state.maxHp, state.hp + getRelicValue(content, state, "postCombatHeal")),
       combat: undefined,
     },
     { type: "enemyDefeated", enemyId: combat.enemy.id, gold: reward },
@@ -89,9 +100,10 @@ export function resolveEnemyTurn(state: RunState): RunState {
   let enemy = combat.enemy;
   let hp = state.hp;
   let block = combat.block;
+  let playerStatus = combat.status;
 
   if (intent.kind === "attack" || intent.kind === "attackBlock") {
-    const attackDamage = intent.damage ?? 0;
+    const attackDamage = computeAttackDamage(intent.damage ?? 0, enemy.status, playerStatus);
     const absorbed = Math.min(block, attackDamage);
     block -= absorbed;
     hp -= attackDamage - absorbed;
@@ -111,6 +123,19 @@ export function resolveEnemyTurn(state: RunState): RunState {
     };
   }
 
+  playerStatus = {
+    weak: playerStatus.weak + (intent.weak ?? 0),
+    vulnerable: playerStatus.vulnerable + (intent.vulnerable ?? 0),
+    poison: playerStatus.poison + (intent.poison ?? 0),
+  };
+
+  const enemyPoisonDamage = enemy.status.poison;
+  enemy = {
+    ...enemy,
+    hp: Math.max(0, enemy.hp - enemyPoisonDamage),
+    status: tickStatus(enemy.status),
+  };
+
   const nextEnemy: EnemyState = {
     ...enemy,
     intentIndex: (enemy.intentIndex + 1) % enemy.intents.length,
@@ -124,6 +149,7 @@ export function resolveEnemyTurn(state: RunState): RunState {
         ...combat,
         enemy: nextEnemy,
         block,
+        status: playerStatus,
       },
     },
     { type: "enemyUsedIntent", enemyId: combat.enemy.id, intent },

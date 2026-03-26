@@ -70,12 +70,12 @@ describe("i18n log localization", () => {
   test("shows card blessing names directly and includes card effects", () => {
     const blessing = sampleContent.acts[0]!.blessings[2]!;
 
-    expect(formatBlessingName(sampleContent, blessing, "en")).toBe("Blood Rush");
+    expect(formatBlessingName(sampleContent, blessing, "en")).toBe("Anger");
     expect(formatBlessingAcquisition(blessing, "en")).toBe("Add to deck");
-    expect(formatBlessingDescription(sampleContent, blessing, "en")).toBe("Deal 6 damage. Gain 1 energy.");
-    expect(formatBlessingName(sampleContent, blessing, "zh")).toBe("血性奔袭");
+    expect(formatBlessingDescription(sampleContent, blessing, "en")).toBe("Deal 4 damage.");
+    expect(formatBlessingName(sampleContent, blessing, "zh")).toBe("愤怒");
     expect(formatBlessingAcquisition(blessing, "zh")).toBe("加入牌组");
-    expect(formatBlessingDescription(sampleContent, blessing, "zh")).toBe("造成 6 点伤害。获得 1 点能量。");
+    expect(formatBlessingDescription(sampleContent, blessing, "zh")).toBe("造成 4 点伤害。");
   });
 
   test("formats draw/energy/heal/exhaust card effects in both locales", () => {

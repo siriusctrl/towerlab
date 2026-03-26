@@ -3,6 +3,7 @@ import { shuffle } from "./rng.js";
 import type {
   CardRarity,
   CardRarityBuckets,
+  CombatStatus,
   EnemyIntent,
   EnemyState,
   LogEvent,
@@ -14,6 +15,10 @@ import type {
 } from "./types.js";
 import { getRelic } from "./validate.js";
 
+export function createCombatStatus(): CombatStatus {
+  return { weak: 0, vulnerable: 0, poison: 0 };
+}
+
 export function applyDamageToEnemy(enemy: EnemyState, damage: number): EnemyState {
   const absorbed = Math.min(enemy.block, damage);
   const nextHp = enemy.hp - (damage - absorbed);
@@ -23,6 +28,36 @@ export function applyDamageToEnemy(enemy: EnemyState, damage: number): EnemyStat
     hp: Math.max(nextHp, 0),
     block: enemy.block - absorbed,
   };
+}
+
+export function applyStatus(status: CombatStatus, effect: Partial<CombatStatus>): CombatStatus {
+  return {
+    weak: status.weak + (effect.weak ?? 0),
+    vulnerable: status.vulnerable + (effect.vulnerable ?? 0),
+    poison: status.poison + (effect.poison ?? 0),
+  };
+}
+
+export function tickStatus(status: CombatStatus): CombatStatus {
+  return {
+    weak: Math.max(0, status.weak - 1),
+    vulnerable: Math.max(0, status.vulnerable - 1),
+    poison: Math.max(0, status.poison - 1),
+  };
+}
+
+export function computeAttackDamage(baseDamage: number, attackerStatus: CombatStatus, targetStatus: CombatStatus): number {
+  let damage = baseDamage;
+
+  if (attackerStatus.weak > 0) {
+    damage = Math.floor(damage * 0.75);
+  }
+
+  if (targetStatus.vulnerable > 0) {
+    damage = Math.floor(damage * 1.5);
+  }
+
+  return Math.max(0, damage);
 }
 
 export function getCurrentIntent(enemy: EnemyState): EnemyIntent {

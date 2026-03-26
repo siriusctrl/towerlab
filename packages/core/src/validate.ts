@@ -107,8 +107,11 @@ function validatePools(content: RunContent): void {
 
 const VALID_RELIC_KINDS: ReadonlySet<RelicKind> = new Set([
   "combatEnergy",
+  "combatStartDraw",
   "combatStartBlock",
+  "combatStartPoison",
   "maxHp",
+  "postCombatHeal",
   "restHealBonus",
   "shopDiscount",
 ]);

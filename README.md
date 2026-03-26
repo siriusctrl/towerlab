@@ -61,11 +61,11 @@ corepack pnpm test
 
 corepack pnpm cli -- --seed 7
 corepack pnpm cli -- --seed 7 --lang zh
-corepack pnpm cli -- --seed 7 --character vanguard
+corepack pnpm cli -- --seed 7 --character warrior
 
-corepack pnpm cli -- --json create --seed 7 --character vanguard --pretty
-corepack pnpm cli -- --json observe --seed 7 --character vanguard --actions '[]' --pretty
-corepack pnpm cli -- --json batch --policy heuristic --seeds 7,8,9 --character vanguard --pretty
+corepack pnpm cli -- --json create --seed 7 --character warrior --pretty
+corepack pnpm cli -- --json observe --seed 7 --character warrior --actions '[]' --pretty
+corepack pnpm cli -- --json batch --policy heuristic --seeds 7,8,9 --character warrior --pretty
 ```
 
 ## Interactive CLI
@@ -111,10 +111,10 @@ Supported commands:
 - `batch`
 
 Examples:
-- `towerlab --json create --seed 7 --character vanguard`
-- `towerlab --json observe --seed 7 --character bulwark --actions-file actions.json`
-- `towerlab --json replay --seed 7 --character vanguard --actions-file actions.json`
-- `towerlab --json batch --policy random --seeds 7,8,9 --character bulwark`
+- `towerlab --json create --seed 7 --character warrior`
+- `towerlab --json observe --seed 7 --character hunter --actions-file actions.json`
+- `towerlab --json replay --seed 7 --character warrior --actions-file actions.json`
+- `towerlab --json batch --policy random --seeds 7,8,9 --character hunter`
 
 The JSON surface returns raw state plus player-facing observation data, legal actions, the full map, and structured log events.
 Use this interface for agents and scripts instead of scraping TTY output.
@@ -135,6 +135,9 @@ The current structured card vocabulary includes:
 - `draw`
 - `energy`
 - `heal`
+- `weak`
+- `vulnerable`
+- `poison`
 - `keywords`
 
 The structured keywords currently in use are:

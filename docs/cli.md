@@ -13,10 +13,10 @@ The same executable supports both.
 ```bash
 corepack pnpm cli -- --seed 7
 corepack pnpm cli -- --seed 7 --lang zh
-corepack pnpm cli -- --seed 7 --character vanguard
+corepack pnpm cli -- --seed 7 --character warrior
 
-corepack pnpm cli -- --json create --seed 7 --character vanguard --pretty
-corepack pnpm cli -- --json batch --policy heuristic --seeds 7,8,9 --character bulwark --pretty
+corepack pnpm cli -- --json create --seed 7 --character warrior --pretty
+corepack pnpm cli -- --json batch --policy heuristic --seeds 7,8,9 --character hunter --pretty
 ```
 
 Language can be selected with `--lang en|zh`.
@@ -143,7 +143,7 @@ Examples:
 
 ```bash
 node packages/cli/dist/cli/src/main.js --seed 7 --lang zh
-node packages/cli/dist/cli/src/main.js --seed 7 --lang zh --character bulwark
+node packages/cli/dist/cli/src/main.js --seed 7 --lang zh --character hunter
 ```
 
 Snapshot behavior:
@@ -172,11 +172,11 @@ Headless mode requires `--character` for every command except `--help`.
 Examples:
 
 ```bash
-towerlab --json create --seed 7 --character vanguard
-towerlab --json observe --seed 7 --character vanguard --actions-file actions.json
-towerlab --json step --seed 7 --character vanguard --actions-file actions.json --action '{"type":"endTurn"}'
-towerlab --json replay --seed 7 --character vanguard --actions-file actions.json
-towerlab --json batch --policy heuristic --seed-start 1 --count 10 --character bulwark
+towerlab --json create --seed 7 --character warrior
+towerlab --json observe --seed 7 --character warrior --actions-file actions.json
+towerlab --json step --seed 7 --character warrior --actions-file actions.json --action '{"type":"endTurn"}'
+towerlab --json replay --seed 7 --character warrior --actions-file actions.json
+towerlab --json batch --policy heuristic --seed-start 1 --count 10 --character hunter
 ```
 
 Useful flags:

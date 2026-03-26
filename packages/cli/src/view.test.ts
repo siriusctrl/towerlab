@@ -368,7 +368,7 @@ describe("cli view helpers", () => {
   });
 
   test("keeps owned corner connectors highlighted on the seed 7 left-elite path", () => {
-    const content = createSeededContent(7, "vanguard");
+    const content = createSeededContent(7, "warrior");
     const map = content.acts[0]!.map;
     const nodeById = new Map(map.map((node) => [node.id, node]));
     const currentNode = nodeById.get("act1-elite-r3-p2")!;
@@ -378,7 +378,7 @@ describe("cli view helpers", () => {
       phase: "combat",
       act: 1,
       totalActs: content.acts.length,
-      characterId: "vanguard",
+      characterId: "warrior",
       hp: 60,
       maxHp: 80,
       gold: 50,

@@ -20,7 +20,7 @@ export const enemies: Record<string, EnemyDefinition> = {
     intents: [
       { kind: "attack", description: "Slash for 6", damage: 6 },
       { kind: "attackBlock", description: "Press for 6 and gain 3 block", damage: 6, block: 3 },
-      { kind: "attack", description: "Rush for 8", damage: 8 },
+      { kind: "attack", description: "Rush for 8 and apply 1 Vulnerable", damage: 8, vulnerable: 1 },
     ],
   },
   skirmisher: {
@@ -175,7 +175,7 @@ export const enemies: Record<string, EnemyDefinition> = {
     intents: [
       { kind: "attack", description: "Spark knife for 8", damage: 8 },
       { kind: "attackBlock", description: "Slip for 6 and gain 4 block", damage: 6, block: 4 },
-      { kind: "attack", description: "Flash cut for 10", damage: 10 },
+      { kind: "attack", description: "Flash cut for 10 and apply 1 Vulnerable", damage: 10, vulnerable: 1 },
     ],
   },
   mirrorDrone: {
@@ -264,7 +264,7 @@ export const enemies: Record<string, EnemyDefinition> = {
     goldReward: 29,
     intents: [
       { kind: "block", description: "Ward 10 block", block: 10 },
-      { kind: "attack", description: "Blast for 12", damage: 12 },
+      { kind: "attack", description: "Blast for 12 and apply 1 Vulnerable", damage: 12, vulnerable: 1 },
       { kind: "attackBlock", description: "Rift for 10 and gain 6 block", damage: 10, block: 6 },
     ],
   },
@@ -296,7 +296,7 @@ export const enemies: Record<string, EnemyDefinition> = {
     maxHp: 42,
     goldReward: 31,
     intents: [
-      { kind: "attack", description: "Hex bolt for 11", damage: 11 },
+      { kind: "attack", description: "Hex bolt for 11 and apply 1 Weak", damage: 11, weak: 1 },
       { kind: "block", description: "Bone ward 9 block", block: 9 },
       { kind: "attackBlock", description: "Bind for 10 and gain 4 block", damage: 10, block: 4 },
     ],
@@ -307,7 +307,7 @@ export const enemies: Record<string, EnemyDefinition> = {
     maxHp: 44,
     goldReward: 32,
     intents: [
-      { kind: "attack", description: "Night strike for 12", damage: 12 },
+      { kind: "attack", description: "Night strike for 12 and apply 1 Vulnerable", damage: 12, vulnerable: 1 },
       { kind: "attackBlock", description: "Stalk for 10 and gain 5 block", damage: 10, block: 5 },
       { kind: "heal", description: "Feed 6 HP", heal: 6 },
     ],

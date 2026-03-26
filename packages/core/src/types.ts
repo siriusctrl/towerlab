@@ -5,6 +5,12 @@ export type CardRarity = "common" | "rare" | "epic";
 export type BlessingKind = "heal" | "gold" | "maxHp" | "card";
 export type CardKeyword = "exhaust" | "retain";
 
+export interface CombatStatus {
+  weak: number;
+  vulnerable: number;
+  poison: number;
+}
+
 export interface CardRarityBuckets {
   common: string[];
   rare: string[];
@@ -62,6 +68,10 @@ export interface CardDefinition {
   draw?: number;
   energy?: number;
   heal?: number;
+  weak?: number;
+  vulnerable?: number;
+  poison?: number;
+  poisonMultiplier?: number;
   exhaust?: boolean;
   retain?: boolean;
 }
@@ -72,6 +82,9 @@ export interface EnemyIntent {
   damage?: number;
   block?: number;
   heal?: number;
+  weak?: number;
+  vulnerable?: number;
+  poison?: number;
 }
 
 export type LogEffect =
@@ -80,6 +93,9 @@ export type LogEffect =
   | { type: "draw"; amount: number }
   | { type: "energy"; amount: number }
   | { type: "heal"; amount: number }
+  | { type: "weak"; amount: number }
+  | { type: "vulnerable"; amount: number }
+  | { type: "poison"; amount: number }
   | { type: "exhaust" };
 
 export type LogEvent =
@@ -123,8 +139,11 @@ export interface EnemyDefinition {
 
 export type RelicKind =
   | "combatEnergy"
+  | "combatStartDraw"
   | "combatStartBlock"
+  | "combatStartPoison"
   | "maxHp"
+  | "postCombatHeal"
   | "restHealBonus"
   | "shopDiscount";
 
@@ -150,6 +169,7 @@ export interface EnemyState {
   hp: number;
   maxHp: number;
   block: number;
+  status: CombatStatus;
   goldReward: number;
   intents: EnemyIntent[];
   intentIndex: number;
@@ -162,6 +182,7 @@ export interface CombatState {
   discardPile: string[];
   energy: number;
   block: number;
+  status: CombatStatus;
   turn: number;
 }
 
@@ -205,6 +226,7 @@ export interface ObservedEnemy {
   hp: number;
   maxHp: number;
   block: number;
+  status: CombatStatus;
   intent: EnemyIntent;
 }
 
@@ -234,6 +256,7 @@ export interface CombatObservation extends ObservationBase {
   energy: number;
   baseEnergy: number;
   block: number;
+  status: CombatStatus;
   hand: CardDefinition[];
   drawPileCount: number;
   discardPileCount: number;

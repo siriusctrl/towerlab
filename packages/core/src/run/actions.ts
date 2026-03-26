@@ -5,13 +5,16 @@ import { finishNode } from "../progression.js";
 import { drawCards } from "../rng.js";
 import {
   applyDamageToEnemy,
+  applyStatus,
   appendLog,
   assertNever,
   buildRemovableDeckIndices,
+  computeAttackDamage,
   getAct,
   getCombat,
   getNode,
   getRelicValue,
+  tickStatus,
 } from "../shared.js";
 import type { BlessingDefinition, LogEffect, RestOptionId, RunAction, RunContent, RunState } from "../types.js";
 import { getCard } from "../validate.js";
@@ -124,8 +127,9 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
   const effects: LogEffect[] = [];
 
   if (card.damage && card.damage > 0) {
-    enemy = applyDamageToEnemy(enemy, card.damage);
-    effects.push({ type: "damage", amount: card.damage });
+    const dealtDamage = computeAttackDamage(card.damage, combat.status, enemy.status);
+    enemy = applyDamageToEnemy(enemy, dealtDamage);
+    effects.push({ type: "damage", amount: dealtDamage });
   }
 
   if (card.block && card.block > 0) {
@@ -157,6 +161,31 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
     if (healed > 0) {
       effects.push({ type: "heal", amount: healed });
     }
+  }
+
+  if ((card.weak ?? 0) > 0) {
+    const weak = card.weak ?? 0;
+    enemy = { ...enemy, status: applyStatus(enemy.status, { weak }) };
+    effects.push({ type: "weak", amount: weak });
+  }
+
+  if ((card.vulnerable ?? 0) > 0) {
+    const vulnerable = card.vulnerable ?? 0;
+    enemy = { ...enemy, status: applyStatus(enemy.status, { vulnerable }) };
+    effects.push({ type: "vulnerable", amount: vulnerable });
+  }
+
+  if ((card.poison ?? 0) > 0) {
+    const poison = card.poison ?? 0;
+    enemy = { ...enemy, status: applyStatus(enemy.status, { poison }) };
+    effects.push({ type: "poison", amount: poison });
+  }
+
+  if ((card.poisonMultiplier ?? 1) > 1 && enemy.status.poison > 0) {
+    const nextPoison = enemy.status.poison * card.poisonMultiplier!;
+    const addedPoison = nextPoison - enemy.status.poison;
+    enemy = { ...enemy, status: { ...enemy.status, poison: nextPoison } };
+    effects.push({ type: "poison", amount: addedPoison });
   }
 
   if (card.exhaust) {
@@ -196,20 +225,39 @@ function endTurn(content: RunContent, state: RunState): RunState {
   const combat = getCombat(state);
   const retainedHand = combat.hand.filter((cardId) => getCard(content, cardId).retain);
   const discardedHand = combat.hand.filter((cardId) => !getCard(content, cardId).retain);
+  const poisonDamage = combat.status.poison;
+  const nextHp = Math.max(0, state.hp - poisonDamage);
   let nextState: RunState = {
     ...state,
+    hp: nextHp,
     combat: {
       ...combat,
       discardPile: [...combat.discardPile, ...discardedHand],
       hand: retainedHand,
       energy: 0,
+      status: tickStatus(combat.status),
     },
   };
+
+  if (nextHp <= 0) {
+    return appendLog(
+      {
+        ...nextState,
+        phase: "defeat",
+        combat: undefined,
+      },
+      { type: "playerDefeated" },
+    );
+  }
 
   nextState = resolveEnemyTurn(nextState);
 
   if (nextState.phase === "defeat") {
     return nextState;
+  }
+
+  if (nextState.combat?.enemy.hp === 0) {
+    return finishCombat(content, nextState);
   }
 
   return startPlayerTurn(content, nextState);

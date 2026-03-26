@@ -30,6 +30,7 @@ export function observeRun(content: RunContent, state: RunState): Observation {
       energy: combat.energy,
       baseEnergy: STARTING_ENERGY + getRelicValue(content, state, "combatEnergy"),
       block: combat.block,
+      status: combat.status,
       hand: combat.hand.map((cardId) => getCard(content, cardId)),
       drawPileCount: combat.drawPile.length,
       discardPileCount: combat.discardPile.length,
@@ -39,6 +40,7 @@ export function observeRun(content: RunContent, state: RunState): Observation {
         hp: combat.enemy.hp,
         maxHp: combat.enemy.maxHp,
         block: combat.enemy.block,
+        status: combat.enemy.status,
         intent: currentIntent,
       },
     };

@@ -1,13 +1,13 @@
 import type { CharacterDefinition } from "@towerlab/core";
 
-import { bulwark } from "./bulwark.js";
-import { vanguard } from "./vanguard.js";
+import { hunter } from "./hunter.js";
+import { warrior } from "./warrior.js";
 
-export const DEFAULT_CHARACTER_ID = "vanguard";
+export const DEFAULT_CHARACTER_ID = "warrior";
 
 export const characterRegistry: Record<string, CharacterDefinition> = {
-  [vanguard.id]: vanguard,
-  [bulwark.id]: bulwark,
+  [warrior.id]: warrior,
+  [hunter.id]: hunter,
 };
 
 export type CharacterId = keyof typeof characterRegistry;

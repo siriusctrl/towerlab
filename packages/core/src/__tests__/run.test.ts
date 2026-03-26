@@ -305,6 +305,60 @@ describe("card effects", () => {
     expect(after.discardPileCount).toBe(1);
     expect(state.combat?.discardPile).toEqual(["strike"]);
   });
+
+  it("applies weak, vulnerable, and poison through structured combat fields", () => {
+    const statusContent: RunContent = {
+      cards: {
+        venom: { id: "venom", name: "Venom", cost: 1, description: "Deal 6 damage. Apply 3 Poison.", damage: 6, poison: 3 },
+        strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 8 damage.", damage: 8 },
+      },
+      enemies: {
+        drone: {
+          id: "drone",
+          name: "Drone",
+          maxHp: 40,
+          goldReward: 10,
+          intents: [{ kind: "attack", description: "Peck for 1", damage: 1 }],
+        },
+      },
+      relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
+      },
+      character: createCharacter(["venom", "strike", "strike", "strike", "strike"]),
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
+    };
+
+    let state = enterOpeningCombat(statusContent, createRun(statusContent, 106));
+    state = {
+      ...state,
+      combat: {
+        ...state.combat!,
+        hand: ["venom", "strike"],
+        drawPile: [],
+        discardPile: [],
+        status: { weak: 1, vulnerable: 0, poison: 0 },
+        enemy: {
+          ...state.combat!.enemy,
+          status: { weak: 0, vulnerable: 1, poison: 0 },
+        },
+      },
+    };
+
+    state = applyAction(statusContent, state, { type: "playCard", handIndex: 0 });
+    expect(state.combat?.enemy.hp).toBe(34);
+    expect(state.combat?.enemy.status.poison).toBe(3);
+
+    state = applyAction(statusContent, state, { type: "endTurn" });
+    expect(state.combat?.enemy.hp).toBe(31);
+    expect(state.combat?.enemy.status.poison).toBe(2);
+    expect(state.combat?.status.weak).toBe(0);
+  });
 });
 
 describe("run progression", () => {
@@ -756,6 +810,82 @@ describe("relic systems", () => {
     expect(combat.baseEnergy).toBe(4);
   });
 
+  it("draws extra opening cards from combat-start draw relics", () => {
+    const drawRelicContent: RunContent = {
+      cards: {
+        strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
+      },
+      relics: {
+        snakeRing: {
+          id: "snakeRing",
+          name: "Snake Ring",
+          description: "Draw 2 extra cards at the start of each combat.",
+          kind: "combatStartDraw",
+          value: 2,
+        },
+      },
+      enemies: {
+        sentinel: {
+          id: "sentinel",
+          name: "Sentinel",
+          maxHp: 20,
+          goldReward: 12,
+          intents: [{ kind: "attack", description: "Jab for 2", damage: 2 }],
+        },
+      },
+      character: createCharacter(["strike", "strike", "strike", "strike", "strike", "strike", "strike"], [], [], "snakeRing"),
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "sentinel", nextIds: [] }])],
+    };
+
+    const combat = observeCombat(drawRelicContent, enterOpeningCombat(drawRelicContent, createRun(drawRelicContent, 107)));
+
+    expect(combat.hand).toHaveLength(7);
+  });
+
+  it("heals after combat and can poison the enemy from relics", () => {
+    const relicContent: RunContent = {
+      cards: {
+        strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
+      },
+      relics: {
+        burningBlood: {
+          id: "burningBlood",
+          name: "Burning Blood",
+          description: "Recover 4 HP after each combat.",
+          kind: "postCombatHeal",
+          value: 4,
+        },
+        toxicVial: {
+          id: "toxicVial",
+          name: "Toxic Vial",
+          description: "Apply 2 Poison to the enemy at the start of each combat.",
+          kind: "combatStartPoison",
+          value: 2,
+        },
+      },
+      enemies: {
+        sentinel: {
+          id: "sentinel",
+          name: "Sentinel",
+          maxHp: 6,
+          goldReward: 12,
+          intents: [{ kind: "attack", description: "Jab for 2", damage: 2 }],
+        },
+      },
+      character: createCharacter(["strike", "strike", "strike", "strike"], [], [], "burningBlood"),
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "sentinel", nextIds: [] }])],
+    };
+
+    let state = createRun(relicContent, 108);
+    state = { ...state, hp: 60, relics: ["burningBlood", "toxicVial"] };
+    state = enterOpeningCombat(relicContent, state);
+
+    expect(state.combat?.enemy.status.poison).toBe(2);
+
+    state = winCurrentCombat(relicContent, state);
+    expect(state.hp).toBe(65);
+  });
+
   it("applies rest healing bonus and shop discount through relics", () => {
     const restContent: RunContent = {
       cards: {
@@ -908,7 +1038,12 @@ function createAct(map: MapNode[]) {
   };
 }
 
-function createCharacter(starterDeck: string[], rewardPool: string[] = [], shopPool: string[] = []) {
+function createCharacter(
+  starterDeck: string[],
+  rewardPool: string[] = [],
+  shopPool: string[] = [],
+  startingRelicId = "starterCharm",
+) {
   const blessingCard = rewardPool[0] ?? shopPool[0] ?? starterDeck[0]!;
 
   return {
@@ -918,7 +1053,7 @@ function createCharacter(starterDeck: string[], rewardPool: string[] = [], shopP
     maxHp: 80,
     startGold: 0,
     starterDeck,
-    startingRelicId: "starterCharm",
+    startingRelicId,
     blessingCards: [blessingCard, blessingCard, blessingCard],
     rewardCardPools: { common: rewardPool, rare: [], epic: [] },
     shopCardPools: { common: shopPool, rare: [], epic: [] },

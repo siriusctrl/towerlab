@@ -26,9 +26,9 @@ After the agent interface exists, the next step is to make large-scale evaluatio
 The concrete working contract is tracked in [`docs/evaluation.md`](../evaluation.md).
 
 The implemented CLI shape is deterministic JSON batch mode with named policies and explicit character context, for example:
-- `towerlab --json batch --policy random --seeds 7,8,9 --character vanguard`
-- `towerlab --json batch --policy greedy --seed-start 1 --count 20 --character bulwark`
-- `towerlab --json batch --policy heuristic --seed-start 100 --count 50 --character vanguard`
+- `towerlab --json batch --policy random --seeds 7,8,9 --character warrior`
+- `towerlab --json batch --policy greedy --seed-start 1 --count 20 --character hunter`
+- `towerlab --json batch --policy heuristic --seed-start 100 --count 50 --character warrior`
 
 The batch output stays machine-readable and compact:
 - aggregate metrics for wins, losses, ending gold, ending HP, and path choices

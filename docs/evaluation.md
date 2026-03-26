@@ -8,9 +8,9 @@ The working CLI entrypoint is deterministic JSON batch mode.
 Batch runs are character-specific and therefore require `--character`.
 
 Examples:
-- `towerlab --json batch --policy random --seeds 7,8,9 --character vanguard`
-- `towerlab --json batch --policy greedy --seed-start 1 --count 20 --character bulwark`
-- `towerlab --json batch --policy heuristic --seed-start 100 --count 50 --character vanguard`
+- `towerlab --json batch --policy random --seeds 7,8,9 --character warrior`
+- `towerlab --json batch --policy greedy --seed-start 1 --count 20 --character hunter`
+- `towerlab --json batch --policy heuristic --seed-start 100 --count 50 --character warrior`
 
 The current game model being evaluated is:
 - a character-based run

@@ -6,6 +6,7 @@ import {
   formatBlessingAcquisition,
   formatBlessingDescription,
   formatBlessingName,
+  formatCombatStatus,
   formatNodeLabel,
   formatText,
   formatLogEntries,
@@ -65,6 +66,17 @@ function renderObservation(content: RunContent, observation: Observation, locale
       `${observation.enemy.name} ${text(locale, "hp")} ${observation.enemy.hp}/${observation.enemy.maxHp} ${text(locale, "block")} ${observation.enemy.block} → ${observation.enemy.intent.description}`,
       `${text(locale, "energy")} ${observation.energy}/${observation.baseEnergy}  ${text(locale, "block")} ${observation.block}`,
     );
+
+    const playerStatus = formatCombatStatus(observation.status, locale);
+    const enemyStatus = formatCombatStatus(observation.enemy.status, locale);
+
+    if (playerStatus) {
+      lines.push(`${text(locale, "status")}: ${playerStatus}`);
+    }
+
+    if (enemyStatus) {
+      lines.push(`${text(locale, "enemy")} ${text(locale, "status")}: ${enemyStatus}`);
+    }
 
     for (const [index, card] of observation.hand.entries()) {
       lines.push(...formatSnapshotCardLines(card, locale, `${index + 1}. `, "   "));

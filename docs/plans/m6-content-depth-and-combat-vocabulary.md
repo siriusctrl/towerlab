@@ -48,7 +48,7 @@ This milestone remains active because the full content-depth target is still ahe
 
 ### 1. Character card-pool depth
 
-- broaden `Vanguard` and `Bulwark` card pools substantially
+- broaden the `Warrior` and `Hunter` card pools substantially
 - keep `common / rare / epic` as the rarity model
 - ensure each character has multiple recognizable deck directions rather than one flat pile
 - use blessing cards to point at real archetype directions rather than only raw-rate upgrades
@@ -69,13 +69,16 @@ Already landed:
 - `draw`
 - `energy`
 - `heal`
+- `weak`
+- `vulnerable`
+- `poison`
 - `keywords: ["exhaust"]`
 - `keywords: ["retain"]`
 
 Planned next candidates, in order of pressure:
 - `ethereal`
 - lightweight discard interactions
-- a minimal debuff layer such as `weak` or `vulnerable` only if the content pressure justifies the state cost
+- heavier persistent or conditional effects only if the content pressure justifies the state cost
 
 Rules for expansion:
 - every mechanic must be represented as structured state or structured card data
