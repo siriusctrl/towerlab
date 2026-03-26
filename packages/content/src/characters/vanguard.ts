@@ -22,13 +22,13 @@ export const vanguard: CharacterDefinition = {
   blessingCards: ["recklessLunge", "ironTempo", "executioner"],
   rewardCardPools: {
     common: ["strike", "defend", "surge", "quickGuard", "punishingHit", "recklessLunge"],
-    uncommon: ["precision", "heavyBlow", "ironTempo"],
-    rare: ["executioner"],
+    rare: ["precision", "heavyBlow", "ironTempo"],
+    epic: ["executioner"],
   },
   shopCardPools: {
     common: ["surge", "quickGuard", "punishingHit", "recklessLunge"],
-    uncommon: ["precision", "heavyBlow", "ironTempo"],
-    rare: ["executioner"],
+    rare: ["precision", "heavyBlow", "ironTempo"],
+    epic: ["executioner"],
   },
   relicPools: {
     elite: ["combatFocus", "medicinePack", "merchantTag", "razorsigil"],

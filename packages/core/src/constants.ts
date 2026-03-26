@@ -10,11 +10,11 @@ export const LOG_LIMIT = 8;
 export const SHOP_CARD_PRICE = 12;
 export const SHOP_CARD_REMOVE_PRICE = 12;
 export const REWARD_CARD_COUNT_PLANS: CardRarity[][] = [
-  ["common", "common", "uncommon"],
-  ["common", "uncommon", "uncommon"],
   ["common", "common", "rare"],
+  ["common", "rare", "rare"],
+  ["common", "common", "epic"],
 ];
-export const SHOP_CARD_RARITY_PLAN: CardRarity[] = ["common", "uncommon", "rare"];
+export const SHOP_CARD_RARITY_PLAN: CardRarity[] = ["common", "rare", "epic"];
 
 export const REST_OPTIONS: RestOption[] = [
   {

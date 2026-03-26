@@ -129,7 +129,7 @@ function validateCardBuckets(
   buckets: RunContent["character"]["rewardCardPools"],
   content: RunContent,
 ): void {
-  for (const cardId of [...buckets.common, ...buckets.uncommon, ...buckets.rare]) {
+  for (const cardId of [...buckets.common, ...buckets.rare, ...buckets.epic]) {
     getCard(content, cardId);
   }
 }

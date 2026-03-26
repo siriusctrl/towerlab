@@ -1,13 +1,13 @@
 export type NodeKind = "battle" | "elite" | "rest" | "shop" | "boss" | "start";
 export type RunPhase = "blessing" | "combat" | "map" | "rest" | "reward" | "shop" | "victory" | "defeat";
 export type RestOptionId = "recover" | "fortify";
-export type CardRarity = "common" | "uncommon" | "rare";
+export type CardRarity = "common" | "rare" | "epic";
 export type BlessingKind = "heal" | "gold" | "maxHp" | "card";
 
 export interface CardRarityBuckets {
   common: string[];
-  uncommon: string[];
   rare: string[];
+  epic: string[];
 }
 
 export interface CharacterRelicPools {

@@ -1,7 +1,7 @@
 import { createSeededContent, listCharacters, type CharacterId } from "@towerlab/content";
 import { applyAction, createRun, observeRun, type RunAction, type RunContent, type RunState } from "@towerlab/core";
 import { Box, Text, useApp, useInput, useStdout } from "ink";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { DEFAULT_LOCALE, formatLogEntries, localizeCharacterName, localizeObservation, text, type Locale } from "../i18n.js";
 import { readShopAction, type ShopMenuMode } from "../shop.js";
@@ -33,6 +33,8 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const { exit } = useApp();
   const { stdout } = useStdout();
   const { columns, rows } = useTerminalDimensions(stdout);
+  const [characterSelectMode, setCharacterSelectMode] = useState<"choose" | "library">("choose");
+  const [characterSelectIndex, setCharacterSelectIndex] = useState(0);
   const [selectedCharacterId, setSelectedCharacterId] = useState<CharacterId | undefined>(characterId);
   const [content, setContent] = useState<RunContent | null>(() => characterId ? createSeededContent(seed, characterId) : null);
   const [state, setState] = useState<RunState | null>(() => (characterId ? createRun(createSeededContent(seed, characterId), seed) : null));
@@ -45,6 +47,10 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const contentRef = useRef(content);
   const actionsRef = useRef(actions);
   const [shopMenu, setShopMenu] = useState<ShopMenuMode>("top");
+  const characterLibraryContents = useMemo(
+    () => characters.map((character) => createSeededContent(seed, character.id as CharacterId)),
+    [seed],
+  );
   const view = content && state ? localizeObservation(observeRun(content, state), locale) : null;
   const currentMap = content && view ? content.acts[view.act - 1]?.map ?? [] : [];
   const recentLogEntries = content && view ? formatLogEntries(content, view.log, locale) : [];
@@ -67,7 +73,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const referenceHeight = Math.max(8, rows - (compactMapPhase ? 6 : 9));
   const mainPaneWidth = Math.max(32, columns - (showInspectorSidebar ? inspectorWidth + 4 : 2));
 
-  const startCharacterRun = (nextCharacterId: CharacterId) => {
+  const startCharacterRun = (nextCharacterId: CharacterId, nextIndex: number) => {
     const nextContent = createSeededContent(seed, nextCharacterId);
     const nextState = createRun(nextContent, seed);
     contentRef.current = nextContent;
@@ -82,6 +88,8 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setReferenceMode("hidden");
     setLibrarySectionIndex(0);
     setReferenceScrollOffset(0);
+    setCharacterSelectMode("choose");
+    setCharacterSelectIndex(nextIndex);
   };
 
   const runAction = (action: RunAction) => {
@@ -143,9 +151,60 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     }
 
     if (!view) {
+      if (input === "l") {
+        setCharacterSelectMode((current) => {
+          if (current === "choose") {
+            setLibrarySectionIndex(0);
+            setReferenceScrollOffset(0);
+            return "library";
+          }
+          return "choose";
+        });
+        return;
+      }
+
+      if (characterSelectMode === "library") {
+        if (key.escape) {
+          setCharacterSelectMode("choose");
+          setReferenceScrollOffset(0);
+          return;
+        }
+
+        if (input === "[" || key.leftArrow) {
+          setLibrarySectionIndex((current) => (current - 1 + LIBRARY_SECTION_COUNT) % LIBRARY_SECTION_COUNT);
+          setReferenceScrollOffset(0);
+          return;
+        }
+
+        if (input === "]" || key.rightArrow) {
+          setLibrarySectionIndex((current) => (current + 1) % LIBRARY_SECTION_COUNT);
+          setReferenceScrollOffset(0);
+          return;
+        }
+
+        if (input === "j" || key.downArrow) {
+          setReferenceScrollOffset((current) => current + 1);
+          return;
+        }
+
+        if (input === "k" || key.upArrow) {
+          setReferenceScrollOffset((current) => Math.max(0, current - 1));
+          return;
+        }
+
+        const choiceIndex = readChoiceIndex(input, characters.length);
+        if (choiceIndex !== null) {
+          setCharacterSelectIndex(choiceIndex);
+          setReferenceScrollOffset(0);
+          return;
+        }
+
+        return;
+      }
+
       const choiceIndex = readChoiceIndex(input, characters.length);
       if (choiceIndex !== null) {
-        startCharacterRun(characters[choiceIndex].id as CharacterId);
+        startCharacterRun(characters[choiceIndex].id as CharacterId, choiceIndex);
       }
       return;
     }
@@ -264,7 +323,18 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const ruleWidth = Math.max(0, columns);
 
   if (!view) {
-    return <CharacterSelectScreen characters={characters} locale={locale} />;
+    return (
+        <CharacterSelectScreen
+          characters={characters}
+          contents={characterLibraryContents}
+          locale={locale}
+          libraryHeight={Math.max(8, rows - 9)}
+          showLibrary={characterSelectMode === "library"}
+          selectedCharacterIndex={characterSelectIndex}
+          librarySectionIndex={librarySectionIndex}
+        referenceScrollOffset={referenceScrollOffset}
+      />
+    );
   }
 
   return (

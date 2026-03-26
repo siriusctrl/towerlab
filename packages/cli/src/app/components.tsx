@@ -35,7 +35,7 @@ import {
 import { getChoiceColor, getMapCellColor, isDimmedMapCell, isEmphasizedMapCell } from "./utils.js";
 
 type ReferenceMode = "hidden" | "deck" | "library";
-type LibrarySection = "starter" | "common" | "uncommon" | "rare" | "relics";
+type LibrarySection = "starter" | "common" | "rare" | "epic" | "relics";
 type ReferenceLine = {
   text: string;
   bold?: boolean;
@@ -43,7 +43,7 @@ type ReferenceLine = {
   color?: string;
 };
 
-const LIBRARY_SECTIONS: LibrarySection[] = ["starter", "common", "uncommon", "rare", "relics"];
+const LIBRARY_SECTIONS: LibrarySection[] = ["starter", "common", "rare", "epic", "relics"];
 
 export const LIBRARY_SECTION_COUNT = LIBRARY_SECTIONS.length;
 
@@ -542,7 +542,7 @@ function buildLibrarySection(content: RunContent, locale: Locale, section: Libra
     };
   }
 
-  if (section === "common" || section === "uncommon" || section === "rare") {
+  if (section === "common" || section === "rare" || section === "epic") {
     return {
       key: section,
       title: librarySectionLabel(locale, section),
@@ -575,8 +575,8 @@ function buildLibrarySection(content: RunContent, locale: Locale, section: Libra
 function librarySectionLabel(locale: Locale, section: LibrarySection): string {
   if (section === "starter") return text(locale, "starterDeckSection");
   if (section === "common") return text(locale, "commonCardsSection");
-  if (section === "uncommon") return text(locale, "uncommonCardsSection");
   if (section === "rare") return text(locale, "rareCardsSection");
+  if (section === "epic") return text(locale, "epicCardsSection");
   return text(locale, "relicLibrarySection");
 }
 
@@ -629,11 +629,25 @@ export function RecentLogPanel({ entries, locale, limit }: { entries: string[]; 
 
 export function CharacterSelectScreen({
   characters,
+  contents,
   locale,
+  libraryHeight,
+  showLibrary,
+  selectedCharacterIndex,
+  librarySectionIndex,
+  referenceScrollOffset,
 }: {
   characters: CharacterDefinition[];
+  contents: RunContent[];
   locale: Locale;
+  libraryHeight: number;
+  showLibrary: boolean;
+  selectedCharacterIndex: number;
+  librarySectionIndex: number;
+  referenceScrollOffset: number;
 }) {
+  const selectedContent = contents[selectedCharacterIndex] ?? contents[0];
+
   return (
     <Box flexDirection="column" paddingX={1} overflow="hidden">
       <Text bold color="cyan">{text(locale, "snapshotTitle")}</Text>
@@ -649,9 +663,74 @@ export function CharacterSelectScreen({
           </Text>
         </Box>
       ))}
+      {showLibrary && selectedContent ? (
+        <CharacterSelectLibraryPanel
+          content={selectedContent}
+          locale={locale}
+          librarySectionIndex={librarySectionIndex}
+          scrollOffset={referenceScrollOffset}
+          height={libraryHeight}
+        />
+      ) : null}
       <Box marginTop={1}>
-        <Text dimColor wrap="truncate-end">{text(locale, "controlsCharacterSelect")}</Text>
+        <Text dimColor wrap="truncate-end">
+          {showLibrary ? text(locale, "controlsCharacterSelectLibraryOpen") : text(locale, "controlsCharacterSelect")}
+        </Text>
       </Box>
+    </Box>
+  );
+}
+
+function CharacterSelectLibraryPanel({
+  content,
+  locale,
+  librarySectionIndex,
+  scrollOffset,
+  height,
+}: {
+  content: RunContent;
+  locale: Locale;
+  librarySectionIndex: number;
+  scrollOffset: number;
+  height: number;
+}) {
+  const section = buildLibrarySection(content, locale, LIBRARY_SECTIONS[librarySectionIndex] ?? LIBRARY_SECTIONS[0]!);
+  const characterName = localizeCharacterName(content.character.id, locale);
+  const bodyHeight = Math.max(4, height - 4);
+  const maxScroll = Math.max(0, section.lines.length - bodyHeight);
+  const clampedScroll = Math.min(scrollOffset, maxScroll);
+  const visibleLines = section.lines.slice(clampedScroll, clampedScroll + bodyHeight);
+  const start = section.lines.length === 0 ? 0 : clampedScroll + 1;
+  const end = clampedScroll + visibleLines.length;
+
+  return (
+    <Box marginTop={1} flexDirection="column" overflow="hidden">
+      <Text bold color="magenta">{text(locale, "library")}</Text>
+      <Text dimColor wrap="truncate-end">
+        {characterName} · {section.title}
+      </Text>
+      <Text wrap="truncate-end">
+        {LIBRARY_SECTIONS.map((candidate, index) => (
+          <Text key={candidate} color={candidate === section.key ? "yellow" : "gray"} bold={candidate === section.key}>
+            {index > 0 ? "  " : ""}
+            {librarySectionLabel(locale, candidate)}
+          </Text>
+        ))}
+      </Text>
+      <Text dimColor wrap="truncate-end">
+        {formatText(locale, "referenceScrollStatus", { start, end, total: section.lines.length })}
+      </Text>
+      {visibleLines.length > 0 ? (
+        visibleLines.map((line, index) => (
+          <Text key={`${section.key}-${clampedScroll + index}-${line.text}`} color={line.color} bold={line.bold} dimColor={line.dim} wrap="truncate-end">
+            {line.text}
+          </Text>
+        ))
+      ) : (
+        <Text dimColor wrap="truncate-end">
+          {text(locale, "emptyReferenceSection")}
+        </Text>
+      )}
     </Box>
   );
 }

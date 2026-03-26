@@ -130,15 +130,15 @@ function selectCardFromBucketChain(
 }
 
 function getBucketFallbackOrder(preferred: CardRarity): CardRarity[] {
+  if (preferred === "epic") {
+    return ["epic", "rare", "common"];
+  }
+
   if (preferred === "rare") {
-    return ["rare", "uncommon", "common"];
+    return ["rare", "common", "epic"];
   }
 
-  if (preferred === "uncommon") {
-    return ["uncommon", "common", "rare"];
-  }
-
-  return ["common", "uncommon", "rare"];
+  return ["common", "rare", "epic"];
 }
 
 export function buildRemovableDeckIndices(deck: string[]): number[] {

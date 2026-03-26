@@ -687,8 +687,8 @@ function createCharacter(starterDeck: string[], rewardPool: string[] = [], shopP
     starterDeck,
     startingRelicId: "starterCharm",
     blessingCards: [blessingCard, blessingCard, blessingCard],
-    rewardCardPools: { common: rewardPool, uncommon: [], rare: [] },
-    shopCardPools: { common: shopPool, uncommon: [], rare: [] },
+    rewardCardPools: { common: rewardPool, rare: [], epic: [] },
+    shopCardPools: { common: shopPool, rare: [], epic: [] },
     relicPools: { elite: [], boss: [] },
   };
 }

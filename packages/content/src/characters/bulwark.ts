@@ -22,13 +22,13 @@ export const bulwark: CharacterDefinition = {
   blessingCards: ["towerSlam", "citadel", "bastion"],
   rewardCardPools: {
     common: ["brace", "shieldJab", "safeguard", "riposte"],
-    uncommon: ["towerSlam", "holdFast", "citadel", "lastStand"],
-    rare: ["bastion"],
+    rare: ["towerSlam", "holdFast", "citadel", "lastStand"],
+    epic: ["bastion"],
   },
   shopCardPools: {
     common: ["brace", "shieldJab", "safeguard", "riposte"],
-    uncommon: ["towerSlam", "holdFast", "citadel", "lastStand"],
-    rare: ["bastion"],
+    rare: ["towerSlam", "holdFast", "citadel", "lastStand"],
+    epic: ["bastion"],
   },
   relicPools: {
     elite: ["bucklerFrame", "wardCharm", "caravanSeal", "reservePlate"],

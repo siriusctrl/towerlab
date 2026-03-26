@@ -10,6 +10,40 @@ afterEach(() => {
 });
 
 describe("App layout", () => {
+  test("opens a single-character select-page library with l", async () => {
+    const frame = await renderFrame({ columns: 120, rows: 28, locale: "zh", characterId: null });
+
+    expect(frame).toContain("选择一名角色。");
+    expect(frame).toContain("先锋");
+    expect(frame).toContain("壁垒");
+    expect(frame).not.toContain("起始牌组");
+    expect(frame).not.toContain("战旗");
+  });
+
+  test("opens and pages through each character library on the character-select screen", async () => {
+    const vanguardLibraryFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", characterId: null, inputs: ["l"] });
+    const bulwarkLibraryFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", characterId: null, inputs: ["l", "2"] });
+
+    expect(vanguardLibraryFrame).toContain("图鉴");
+    expect(vanguardLibraryFrame).toContain("先锋 · 起始牌组");
+    expect(bulwarkLibraryFrame).toContain("图鉴");
+    expect(bulwarkLibraryFrame).toContain("壁垒 · 起始牌组");
+  });
+
+  test("shows the current character library and cycles card sections by rarity", async () => {
+    const starterFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["1", "l"] });
+    const rareFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["1", "l", "]", "]"] });
+    const epicFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["1", "l", "]", "]", "]"] });
+
+    expect(starterFrame).toContain("图鉴");
+    expect(starterFrame).toContain("起始牌组");
+    expect(starterFrame).toContain("4x 打击 [1] 造成 6 点伤害。");
+    expect(rareFrame).toContain("稀有卡");
+    expect(rareFrame).toContain("重击 [2] 造成 11 点伤害。");
+    expect(epicFrame).toContain("史诗卡");
+    expect(epicFrame).toContain("处决 [2] 造成 14 点伤害。");
+  });
+
   test("renders the map in the main pane on 80x24 map terminals after the opening blessing", async () => {
     const frame = await renderFrame({ columns: 80, rows: 24, locale: "zh", inputs: ["1"] });
 
@@ -60,17 +94,6 @@ describe("App layout", () => {
     expect(frame).not.toContain("act1-battle");
   });
 
-  test("shows the current character library and cycles card sections by rarity", async () => {
-    const starterFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["l"] });
-    const rareFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["l", "]", "]", "]"] });
-
-    expect(starterFrame).toContain("图鉴");
-    expect(starterFrame).toContain("起始牌组");
-    expect(starterFrame).toContain("4x 打击 [1] 造成 6 点伤害。");
-    expect(rareFrame).toContain("稀有卡");
-    expect(rareFrame).toContain("处决 [2] 造成 14 点伤害。");
-  });
-
   test("shows the current deck during combat without leaving the TUI", async () => {
     const frame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["1", "1", "d"] });
 
@@ -119,17 +142,18 @@ async function renderFrame({
   columns,
   rows,
   locale = "en",
-  characterId = DEFAULT_CHARACTER_ID as CharacterId,
+  characterId = DEFAULT_CHARACTER_ID as CharacterId | null,
   inputs = [],
 }: {
   seed?: number;
   columns: number;
   rows: number;
   locale?: "en" | "zh";
-  characterId?: CharacterId;
+  characterId?: CharacterId | null;
   inputs?: string[];
 }): Promise<string> {
-  const instance = render(React.createElement(App, { seed, locale, characterId }));
+  const props = characterId === null ? { seed, locale } : { seed, locale, characterId };
+  const instance = render(React.createElement(App, props));
 
   Object.defineProperty(instance.stdout, "columns", { value: columns, configurable: true });
   Object.defineProperty(instance.stdout, "rows", { value: rows, configurable: true });
