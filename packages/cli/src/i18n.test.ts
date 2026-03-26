@@ -2,7 +2,7 @@ import { sampleContent } from "@towerlab/content";
 import type { LogEvent } from "@towerlab/core";
 import { describe, expect, test } from "vitest";
 
-import { formatLogEntries } from "./i18n.js";
+import { formatBlessingAcquisition, formatBlessingDescription, formatBlessingName, formatLogEntries } from "./i18n.js";
 
 describe("i18n log localization", () => {
   test("formats every current core log event template in zh", () => {
@@ -65,5 +65,16 @@ describe("i18n log localization", () => {
       "道路的尽头是胜利。",
       "你的攀登到此结束。",
     ]);
+  });
+
+  test("shows card blessing names directly and includes card effects", () => {
+    const blessing = sampleContent.acts[0]!.blessings[2]!;
+
+    expect(formatBlessingName(sampleContent, blessing, "en")).toBe("Reckless Lunge");
+    expect(formatBlessingAcquisition(blessing, "en")).toBe("Add to deck");
+    expect(formatBlessingDescription(sampleContent, blessing, "en")).toBe("Deal 8 damage.");
+    expect(formatBlessingName(sampleContent, blessing, "zh")).toBe("莽撞突刺");
+    expect(formatBlessingAcquisition(blessing, "zh")).toBe("加入牌组");
+    expect(formatBlessingDescription(sampleContent, blessing, "zh")).toBe("造成 8 点伤害。");
   });
 });

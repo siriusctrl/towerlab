@@ -292,6 +292,31 @@ describe("cli view helpers", () => {
     expect(rowText).not.toContain("[futureChoice2:$]");
   });
 
+  test("limits choice-specific highlighting to two future steps", () => {
+    const map: MapNode[] = [
+      { id: "a", kind: "start", nextIds: ["b", "c"] },
+      { id: "b", kind: "battle", nextIds: ["d"] },
+      { id: "c", kind: "elite", nextIds: ["e"] },
+      { id: "d", kind: "shop", nextIds: ["f"] },
+      { id: "e", kind: "rest", nextIds: ["g"] },
+      { id: "f", kind: "battle", nextIds: ["h"] },
+      { id: "g", kind: "elite", nextIds: ["h"] },
+      { id: "h", kind: "boss", nextIds: [] },
+    ];
+
+    const rows = createMapFloorRows(map, createMapObservation(map), "en", deriveVisitedNodeIds(map, []), 80, "icon");
+    const rowText = rows.map((row) => row.map((cell) => `[${cell.status}:${cell.text}]`).join("")).join("\n");
+
+    expect(rowText).toContain("[nextChoice1:F]");
+    expect(rowText).toContain("[nextChoice2:E]");
+    expect(rowText).toContain("[futureChoice1:$]");
+    expect(rowText).toContain("[futureChoice2:R]");
+    expect(rowText).toContain("[future:F]");
+    expect(rowText).toContain("[future:E]");
+    expect(rowText).not.toContain("[futureChoice1:F]");
+    expect(rowText).not.toContain("[futureChoice2:E]");
+  });
+
   test("recolors the next combat choices after moving onto a path", () => {
     const firstChoice = getNextNodes(sampleMap, sampleMap[0]!)[0]!;
     const nextChoiceCount = getNextNodes(sampleMap, firstChoice).length;

@@ -2,6 +2,7 @@ import type { CharacterDefinition, MapNode, Observation, RunAction, RunContent }
 import { Box, Text } from "ink";
 
 import {
+  formatBlessingAcquisition,
   formatBlessingDescription,
   formatBlessingName,
   formatNodeLabel,
@@ -207,15 +208,32 @@ export function PhaseBody({
   }
 
   if (observation.phase === "blessing") {
+    const labelSuffix = locale === "zh" ? "：" : ": ";
+
     return (
       <>
         <Text bold color="yellow">{text(locale, "blessing")}</Text>
         <Text wrap="truncate-end">{text(locale, "chooseBlessing")}</Text>
-        {observation.blessings.map((blessing, index) => (
-          <Text key={blessing.id} wrap="truncate-end">
-            {index + 1}. {formatBlessingName(content, blessing, locale)} - {formatBlessingDescription(content, blessing, locale)}
-          </Text>
-        ))}
+        {observation.blessings.map((blessing, index) => {
+          const acquisition = formatBlessingAcquisition(blessing, locale);
+          const description = formatBlessingDescription(content, blessing, locale);
+
+          return (
+            <Box key={blessing.id} flexDirection="column" marginBottom={1}>
+              <Text bold wrap="truncate-end">
+                {index + 1}. {formatBlessingName(content, blessing, locale)}
+              </Text>
+              {acquisition ? (
+                <Text dimColor wrap="truncate-end">
+                  {"   "}{text(locale, "blessingGainLabel")}{labelSuffix}{acquisition}
+                </Text>
+              ) : null}
+              <Text dimColor wrap="truncate-end">
+                {"   "}{text(locale, "blessingEffectLabel")}{labelSuffix}{description}
+              </Text>
+            </Box>
+          );
+        })}
       </>
     );
   }

@@ -14,6 +14,8 @@ const NODE_BADGES: Record<string, string> = {
   boss: "B",
 };
 
+const CHOICE_HIGHLIGHT_DEPTH = 2;
+
 type ChoiceOwners = Set<number>;
 
 type EdgeDescriptor = {
@@ -259,13 +261,17 @@ function computeChoiceOwners(map: MapNode[], nextNodeIds: string[]): Map<string,
   const owners = new Map<string, ChoiceOwners>();
 
   nextNodeIds.slice(0, 3).forEach((choiceNodeId, choiceIndex) => {
-    const queue = [choiceNodeId];
+    const queue = [{ nodeId: choiceNodeId, depth: 1 }];
     const seen = new Set<string>();
 
     while (queue.length > 0) {
-      const nodeId = queue.shift()!;
+      const { nodeId, depth } = queue.shift()!;
       if (seen.has(nodeId)) continue;
       seen.add(nodeId);
+
+      if (depth > CHOICE_HIGHLIGHT_DEPTH) {
+        continue;
+      }
 
       if (!owners.has(nodeId)) {
         owners.set(nodeId, new Set<number>());
@@ -274,7 +280,9 @@ function computeChoiceOwners(map: MapNode[], nextNodeIds: string[]): Map<string,
 
       const node = nodeById.get(nodeId);
       if (!node) continue;
-      queue.push(...node.nextIds);
+      for (const nextId of node.nextIds) {
+        queue.push({ nodeId: nextId, depth: depth + 1 });
+      }
     }
   });
 
@@ -289,20 +297,21 @@ function computeEdgeChoiceOwners(map: MapNode[], currentNodeId: string, nextNode
     const choiceNumber = choiceIndex + 1;
     addOwner(owners, edgeKey(currentNodeId, choiceNodeId), choiceNumber);
 
-    const queue = [choiceNodeId];
+    const queue = [{ nodeId: choiceNodeId, depth: 1 }];
     const seen = new Set<string>();
 
     while (queue.length > 0) {
-      const nodeId = queue.shift()!;
+      const { nodeId, depth } = queue.shift()!;
       if (seen.has(nodeId)) continue;
       seen.add(nodeId);
 
       const node = nodeById.get(nodeId);
       if (!node) continue;
+      if (depth >= CHOICE_HIGHLIGHT_DEPTH) continue;
 
       for (const nextId of node.nextIds) {
         addOwner(owners, edgeKey(nodeId, nextId), choiceNumber);
-        queue.push(nextId);
+        queue.push({ nodeId: nextId, depth: depth + 1 });
       }
     }
   });

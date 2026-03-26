@@ -3,6 +3,7 @@ import { createRun, observeRun, type Observation, type RunContent } from "@tower
 
 import {
   DEFAULT_LOCALE,
+  formatBlessingAcquisition,
   formatBlessingDescription,
   formatBlessingName,
   formatNodeLabel,
@@ -67,10 +68,16 @@ function renderObservation(content: RunContent, observation: Observation, locale
       lines.push(`${index + 1}. ${card.name} [${card.cost}] ${card.description}`);
     }
   } else if (observation.phase === "blessing") {
+    const labelSuffix = locale === "zh" ? "：" : ": ";
     lines.push(`${text(locale, "blessing")}:`);
 
     for (const [index, blessing] of observation.blessings.entries()) {
-      lines.push(`${index + 1}. ${formatBlessingName(content, blessing, locale)} - ${formatBlessingDescription(content, blessing, locale)}`);
+      const acquisition = formatBlessingAcquisition(blessing, locale);
+      lines.push(`${index + 1}. ${formatBlessingName(content, blessing, locale)}`);
+      if (acquisition) {
+        lines.push(`   ${text(locale, "blessingGainLabel")}${labelSuffix}${acquisition}`);
+      }
+      lines.push(`   ${text(locale, "blessingEffectLabel")}${labelSuffix}${formatBlessingDescription(content, blessing, locale)}`);
     }
   } else if (observation.phase === "map") {
     lines.push(`${text(locale, "paths")}`);

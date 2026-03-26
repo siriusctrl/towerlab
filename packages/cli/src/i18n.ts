@@ -334,7 +334,7 @@ export function formatBlessingName(content: RunContent, blessing: BlessingDefini
   }
 
   const cardName = blessing.cardId ? readCardName(content, blessing.cardId) : text(locale, "reward");
-  return formatText(locale, "blessingCardName", { card: localizeCardName(cardName, locale) });
+  return localizeCardName(cardName, locale);
 }
 
 export function formatBlessingDescription(content: RunContent, blessing: BlessingDefinition, locale: Locale): string {
@@ -350,8 +350,16 @@ export function formatBlessingDescription(content: RunContent, blessing: Blessin
     return formatText(locale, "blessingMaxHpDescription", { amount: blessing.value ?? 0 });
   }
 
-  const cardName = blessing.cardId ? readCardName(content, blessing.cardId) : text(locale, "reward");
-  return formatText(locale, "blessingCardDescription", { card: localizeCardName(cardName, locale) });
+  const cardDescription = blessing.cardId ? readCardDescription(content, blessing.cardId) : null;
+  return cardDescription ? localizeCardDescription(cardDescription, locale) : "";
+}
+
+export function formatBlessingAcquisition(blessing: BlessingDefinition, locale: Locale): string | null {
+  if (blessing.kind !== "card") {
+    return null;
+  }
+
+  return text(locale, "blessingGainToDeck");
 }
 
 const nodeKindBadges: Record<Locale, Record<string, string>> = {
@@ -545,6 +553,10 @@ function formatLogEffects(effects: LogEffect[], locale: Locale): string[] {
 
 function readCardName(content: RunContent, cardId: string): string {
   return content.cards[cardId]?.name ?? cardId;
+}
+
+function readCardDescription(content: RunContent, cardId: string): string | null {
+  return content.cards[cardId]?.description ?? null;
 }
 
 function readEnemyName(content: RunContent, enemyId: string): string {

@@ -72,6 +72,8 @@ describe("App layout", () => {
       expect(startFrame).toContain("1. ");
       expect(startFrame).toContain("2. ");
       expect(startFrame).toContain("3. ");
+      expect(startFrame).toContain("获得：加入牌组");
+      expect(startFrame).toContain("效果：造成 8 点伤害。");
       expect(startFrame).not.toContain("：:");
       expect(startFrame).not.toContain("::");
       expect(mapFrame).toContain("路径： 1.");

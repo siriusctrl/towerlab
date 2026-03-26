@@ -34,6 +34,9 @@ describe("headless CLI", () => {
     expect(snapshot).toContain("祝福:");
     expect(snapshot).toContain("1. 先古财富");
     expect(snapshot).toContain("2. 伟躯");
+    expect(snapshot).toContain("3. 莽撞突刺");
+    expect(snapshot).toContain("获得：加入牌组");
+    expect(snapshot).toContain("效果：造成 8 点伤害。");
     expect(snapshot).toContain("- 来到入口。请选择第一条路径。");
     expect(snapshot).toContain("最近事件:");
   });
