@@ -1,4 +1,4 @@
-import type { CharacterDefinition, MapNode, Observation, RunAction, RunContent, RunState } from "@towerlab/core";
+import type { CardDefinition, CharacterDefinition, MapNode, Observation, RunAction, RunContent, RunState } from "@towerlab/core";
 import { Box, Text } from "ink";
 
 import {
@@ -8,6 +8,7 @@ import {
   formatNodeLabel,
   formatText,
   localizeCardDefinition,
+  localizeCardKeyword,
   localizeCharacterName,
   localizeCharacterSummary,
   localizePhaseLabel,
@@ -214,9 +215,14 @@ export function PhaseBody({
         </Text>
         {observation.hand.length > 0 ? (
           observation.hand.map((card, index) => (
-            <Text key={`${index}-${card.id}`} color={card.cost > observation.energy ? "gray" : undefined} wrap="truncate-end">
-              {index + 1}. {card.name} <Text dimColor>[{card.cost}]</Text> {card.description}
-            </Text>
+            <CardBlock
+              key={`${index}-${card.id}`}
+              card={card}
+              locale={locale}
+              namePrefix={`${index + 1}. `}
+              indent="   "
+              dimmed={card.cost > observation.energy}
+            />
           ))
         ) : (
           <Text dimColor>{text(locale, "emptyHand")}</Text>
@@ -235,12 +241,18 @@ export function PhaseBody({
         {observation.blessings.map((blessing, index) => {
           const acquisition = formatBlessingAcquisition(blessing, locale);
           const description = formatBlessingDescription(content, blessing, locale);
+          const blessingCard = blessing.cardId ? localizeCardDefinition(content.cards[blessing.cardId]!, locale) : null;
 
           return (
             <Box key={blessing.id} flexDirection="column">
               <Text bold wrap="truncate-end">
                 {index + 1}. {formatBlessingName(content, blessing, locale)}
               </Text>
+              {blessingCard?.keywords?.map((keyword) => (
+                <Text key={`${blessing.id}-${keyword}`} color="yellow" bold wrap="truncate-end">
+                  {"   "}{localizeCardKeyword(keyword, locale)}
+                </Text>
+              ))}
               {acquisition ? (
                 <Text dimColor wrap="truncate-end">
                   {"   "}{text(locale, "blessingGainLabel")}{labelSuffix}{acquisition}
@@ -310,9 +322,7 @@ export function PhaseBody({
         </Text>
         <Text wrap="truncate-end">{text(locale, "chooseReward")}</Text>
         {observation.cardChoices.map((card, index) => (
-          <Text key={card.id} wrap="truncate-end">
-            {index + 1}. {card.name} [{card.cost}] {card.description}
-          </Text>
+          <CardBlock key={card.id} card={card} locale={locale} namePrefix={`${index + 1}. `} indent="   " />
         ))}
         <Text>s. {text(locale, "skipReward")}</Text>
       </>
@@ -614,12 +624,56 @@ function formatCardCollectionLines(cardIds: string[], content: RunContent, local
     counts.set(cardId, (counts.get(cardId) ?? 0) + 1);
   }
 
-  return [...counts.entries()].map(([cardId, count]) => {
-    const card = localizeCardDefinition(content.cards[cardId]!, locale);
-    return {
-      text: `${count > 1 ? `${count}x ` : ""}${card.name} [${card.cost}] ${card.description}`,
-    };
-  });
+  return [...counts.entries()].flatMap(([cardId, count]) =>
+    buildCardReferenceLines(localizeCardDefinition(content.cards[cardId]!, locale), locale, `${count > 1 ? `${count}x ` : ""}`, "  "),
+  );
+}
+
+function CardBlock({
+  card,
+  locale,
+  namePrefix,
+  indent,
+  dimmed = false,
+}: {
+  card: CardDefinition;
+  locale: Locale;
+  namePrefix: string;
+  indent: string;
+  dimmed?: boolean;
+}) {
+  return (
+    <Box flexDirection="column">
+      <Text color={dimmed ? "gray" : undefined} bold wrap="truncate-end">
+        {namePrefix}{card.name} <Text dimColor>[{card.cost}]</Text>
+      </Text>
+      {card.keywords?.map((keyword) => (
+        <Text key={`${card.id}-${keyword}`} color="yellow" bold wrap="truncate-end">
+          {indent}{localizeCardKeyword(keyword, locale)}
+        </Text>
+      ))}
+      <Text color={dimmed ? "gray" : undefined} wrap="truncate-end">
+        {indent}{card.description}
+      </Text>
+    </Box>
+  );
+}
+
+function buildCardReferenceLines(card: CardDefinition, locale: Locale, namePrefix: string, indent: string): ReferenceLine[] {
+  const lines: ReferenceLine[] = [
+    { text: `${namePrefix}${card.name} [${card.cost}]`, bold: true },
+  ];
+
+  for (const keyword of card.keywords ?? []) {
+    lines.push({
+      text: `${indent}${localizeCardKeyword(keyword, locale)}`,
+      bold: true,
+      color: "yellow",
+    });
+  }
+
+  lines.push({ text: `${indent}${card.description}` });
+  return lines;
 }
 
 function formatRelicLine(relic: NonNullable<RunContent["relics"][string]>, locale: Locale): ReferenceLine {

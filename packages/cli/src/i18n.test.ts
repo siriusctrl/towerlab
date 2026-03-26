@@ -70,11 +70,34 @@ describe("i18n log localization", () => {
   test("shows card blessing names directly and includes card effects", () => {
     const blessing = sampleContent.acts[0]!.blessings[2]!;
 
-    expect(formatBlessingName(sampleContent, blessing, "en")).toBe("Reckless Lunge");
+    expect(formatBlessingName(sampleContent, blessing, "en")).toBe("Blood Pact");
     expect(formatBlessingAcquisition(blessing, "en")).toBe("Add to deck");
-    expect(formatBlessingDescription(sampleContent, blessing, "en")).toBe("Deal 8 damage.");
-    expect(formatBlessingName(sampleContent, blessing, "zh")).toBe("莽撞突刺");
+    expect(formatBlessingDescription(sampleContent, blessing, "en")).toBe("Deal 7 damage. Recover 2 HP.");
+    expect(formatBlessingName(sampleContent, blessing, "zh")).toBe("血契");
     expect(formatBlessingAcquisition(blessing, "zh")).toBe("加入牌组");
-    expect(formatBlessingDescription(sampleContent, blessing, "zh")).toBe("造成 8 点伤害。");
+    expect(formatBlessingDescription(sampleContent, blessing, "zh")).toBe("造成 7 点伤害。恢复 2 点生命。");
+  });
+
+  test("formats draw/energy/heal/exhaust card effects in both locales", () => {
+    const events: LogEvent[] = [
+      { type: "playedCard", cardId: "draw-tester", effects: [{ type: "draw", amount: 2 }] },
+      { type: "playedCard", cardId: "energy-tester", effects: [{ type: "energy", amount: 1 }] },
+      { type: "playedCard", cardId: "heal-tester", effects: [{ type: "heal", amount: 5 }] },
+      { type: "playedCard", cardId: "exhaust-tester", effects: [{ type: "exhaust" }] },
+    ];
+
+    expect(formatLogEntries(sampleContent, events, "en")).toEqual([
+      "Played draw-tester: draw 2.",
+      "Played energy-tester: gain 1 energy.",
+      "Played heal-tester: recover 5 HP.",
+      "Played exhaust-tester: exhaust.",
+    ]);
+
+    expect(formatLogEntries(sampleContent, events, "zh")).toEqual([
+      "打出draw-tester：抽 2 张牌。",
+      "打出energy-tester：获得 1 点能量。",
+      "打出heal-tester：恢复 5 点生命。",
+      "打出exhaust-tester：消耗。",
+    ]);
   });
 });

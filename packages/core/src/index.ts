@@ -3,6 +3,7 @@ export type {
   BlessingKind,
   BlessingObservation,
   CardDefinition,
+  CardKeyword,
   CardRarity,
   CardRarityBuckets,
   CharacterDefinition,

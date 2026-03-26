@@ -37,11 +37,28 @@ describe("App layout", () => {
 
     expect(starterFrame).toContain("图鉴");
     expect(starterFrame).toContain("起始牌组");
-    expect(starterFrame).toContain("4x 打击 [1] 造成 6 点伤害。");
+    expect(starterFrame).toContain("4x 打击 [1]");
+    expect(starterFrame).toContain("造成 6 点伤害。");
     expect(rareFrame).toContain("稀有卡");
-    expect(rareFrame).toContain("重击 [2] 造成 11 点伤害。");
+    expect(rareFrame).toContain("重击 [2]");
+    expect(rareFrame).toContain("战吼 [0]");
+    expect(rareFrame).toContain("消耗");
+    const warCryLine = rareFrame.split("\n").findIndex((line) => line.includes("战吼 [0]"));
+    expect(warCryLine).toBeGreaterThanOrEqual(0);
+    expect(rareFrame.split("\n")[warCryLine + 1]).toContain("消耗");
+    expect(rareFrame.split("\n")[warCryLine + 2]).toContain("抽 1 张牌。获得 1 点能量。");
     expect(epicFrame).toContain("史诗卡");
-    expect(epicFrame).toContain("处决 [2] 造成 14 点伤害。");
+    expect(epicFrame).toContain("处决 [2]");
+    expect(epicFrame).toContain("造成 14 点伤害。");
+  });
+
+  test("renders keyword lines in separate rows for card descriptions", async () => {
+    const rareFrame = await renderFrame({ columns: 120, rows: 28, locale: "en", inputs: ["1", "l", "]", "]"] });
+
+    const warCryEnglishLine = rareFrame.split("\n").findIndex((line) => line.includes("War Cry [0]"));
+    expect(warCryEnglishLine).toBeGreaterThanOrEqual(0);
+    expect(rareFrame.split("\n")[warCryEnglishLine + 1]).toContain("Exhaust");
+    expect(rareFrame.split("\n")[warCryEnglishLine + 2]).toContain("Draw 1 card. Gain 1 energy.");
   });
 
   test("renders the map in the main pane on 80x24 map terminals after the opening blessing", async () => {
@@ -101,8 +118,10 @@ describe("App layout", () => {
     expect(deckFrame).toContain("Status");
     expect(deckFrame).toContain("Deck  Current Relics");
     expect(deckFrame).toContain("Deck size 10");
-    expect(deckFrame).toContain("4x Strike [1] Deal 6 damage.");
-    expect(deckFrame).toContain("2x Surge [1] Deal 4 damage. Gain 4 block.");
+    expect(deckFrame).toContain("4x Strike [1]");
+    expect(deckFrame).toContain("Deal 6 damage.");
+    expect(deckFrame).toContain("2x Surge [1]");
+    expect(deckFrame).toContain("Deal 4 damage. Gain 4 block.");
 
     expect(relicFrame).toContain("Status");
     expect(relicFrame).toContain("Relics 1");
@@ -113,7 +132,7 @@ describe("App layout", () => {
     const frame = await renderFrame({ columns: 80, rows: 24, locale: "zh" });
 
     expect(frame).toMatch(/效果：获得 30 金币。\n\s*2\. 伟躯/u);
-    expect(frame).toMatch(/效果：获得 6 点最大生命并回复 6 点生命。\n\s*3\. 莽撞突刺/u);
+    expect(frame).toMatch(/效果：获得 6 点最大生命并回复 6 点生命。\n\s*3\. 血契/u);
   });
 
   test("keeps opening blessings, compact map, and post-move minimap stable across multiple seeds", async () => {
@@ -129,7 +148,7 @@ describe("App layout", () => {
       expect(startFrame).toContain("2. ");
       expect(startFrame).toContain("3. ");
       expect(startFrame).toContain("获得：加入牌组");
-      expect(startFrame).toContain("效果：造成 8 点伤害。");
+      expect(startFrame).toContain("效果：造成 7 点伤害。恢复 2 点生命。");
       expect(startFrame).not.toContain("：:");
       expect(startFrame).not.toContain("::");
       expect(mapFrame).toContain("路径： 1.");

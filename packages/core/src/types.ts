@@ -3,6 +3,7 @@ export type RunPhase = "blessing" | "combat" | "map" | "rest" | "reward" | "shop
 export type RestOptionId = "recover" | "fortify";
 export type CardRarity = "common" | "rare" | "epic";
 export type BlessingKind = "heal" | "gold" | "maxHp" | "card";
+export type CardKeyword = "exhaust";
 
 export interface CardRarityBuckets {
   common: string[];
@@ -55,8 +56,13 @@ export interface CardDefinition {
   name: string;
   cost: number;
   description: string;
+  keywords?: CardKeyword[];
   damage?: number;
   block?: number;
+  draw?: number;
+  energy?: number;
+  heal?: number;
+  exhaust?: boolean;
 }
 
 export interface EnemyIntent {
@@ -69,7 +75,11 @@ export interface EnemyIntent {
 
 export type LogEffect =
   | { type: "damage"; amount: number }
-  | { type: "block"; amount: number };
+  | { type: "block"; amount: number }
+  | { type: "draw"; amount: number }
+  | { type: "energy"; amount: number }
+  | { type: "heal"; amount: number }
+  | { type: "exhaust" };
 
 export type LogEvent =
   | { type: "actStarted"; act: number }

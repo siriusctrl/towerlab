@@ -77,6 +77,177 @@ describe("createRun", () => {
   });
 });
 
+describe("card effects", () => {
+  it("draws cards when a played card has draw", () => {
+    const drawContent: RunContent = {
+      cards: {
+        drawShift: { id: "drawShift", name: "Draw Shift", cost: 0, description: "Draw 1 card.", draw: 1 },
+      },
+      enemies: {
+        drone: {
+          id: "drone",
+          name: "Drone",
+          maxHp: 50,
+          goldReward: 10,
+          intents: [{ kind: "attack", description: "Peck for 1", damage: 1 }],
+        },
+      },
+      relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
+      },
+      character: createCharacter(["drawShift", "drawShift", "drawShift", "drawShift", "drawShift"]),
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
+    };
+
+    let state = enterOpeningCombat(drawContent, createRun(drawContent, 101));
+    const combat = observeCombat(drawContent, state);
+    const drawnIndex = combat.hand.findIndex((card) => card.id === "drawShift");
+
+    expect(drawnIndex).toBeGreaterThanOrEqual(0);
+
+    state = applyAction(drawContent, state, { type: "playCard", handIndex: drawnIndex });
+    const after = observeCombat(drawContent, state);
+    const logEvent = state.log[state.log.length - 1];
+
+    expect(after.hand).toHaveLength(5);
+    expect(after.drawPileCount).toBe(0);
+    expect(after.discardPileCount).toBe(0);
+    expect(logEvent).toMatchObject({ type: "playedCard", cardId: "drawShift", effects: [{ type: "draw", amount: 1 }] });
+  });
+
+  it("gains extra energy when a played card has energy", () => {
+    const energyContent: RunContent = {
+      cards: {
+        charge: { id: "charge", name: "Charge", cost: 0, description: "Gain 2 energy.", energy: 2 },
+      },
+      enemies: {
+        drone: {
+          id: "drone",
+          name: "Drone",
+          maxHp: 50,
+          goldReward: 10,
+          intents: [{ kind: "attack", description: "Peck for 1", damage: 1 }],
+        },
+      },
+      relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
+      },
+      character: createCharacter(["charge", "charge", "charge", "charge", "charge"]),
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
+    };
+
+    let state = enterOpeningCombat(energyContent, createRun(energyContent, 102));
+    const combat = observeCombat(energyContent, state);
+    const chargeIndex = combat.hand.findIndex((card) => card.id === "charge");
+
+    expect(chargeIndex).toBeGreaterThanOrEqual(0);
+    expect(combat.energy).toBe(3);
+
+    state = applyAction(energyContent, state, { type: "playCard", handIndex: chargeIndex });
+    const after = observeCombat(energyContent, state);
+    const logEvent = state.log[state.log.length - 1];
+
+    expect(after.energy).toBe(5);
+    expect(logEvent).toMatchObject({ type: "playedCard", cardId: "charge", effects: [{ type: "energy", amount: 2 }] });
+  });
+
+  it("restores hp when a played card has heal", () => {
+    const healContent: RunContent = {
+      cards: {
+        medicate: { id: "medicate", name: "Medicate", cost: 0, description: "Recover 5 HP.", heal: 5 },
+      },
+      enemies: {
+        drone: {
+          id: "drone",
+          name: "Drone",
+          maxHp: 50,
+          goldReward: 10,
+          intents: [{ kind: "attack", description: "Peck for 1", damage: 1 }],
+        },
+      },
+      relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
+      },
+      character: createCharacter(["medicate", "medicate", "medicate", "medicate", "medicate"]),
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
+    };
+
+    let state = enterOpeningCombat(healContent, createRun(healContent, 103));
+    state = { ...state, hp: 70 };
+    const combat = observeCombat(healContent, state);
+    const medicateIndex = combat.hand.findIndex((card) => card.id === "medicate");
+
+    expect(medicateIndex).toBeGreaterThanOrEqual(0);
+
+    state = applyAction(healContent, state, { type: "playCard", handIndex: medicateIndex });
+    const logEvent = state.log[state.log.length - 1];
+
+    expect(state.hp).toBe(75);
+    expect(logEvent).toMatchObject({ type: "playedCard", cardId: "medicate", effects: [{ type: "heal", amount: 5 }] });
+  });
+
+  it("does not discard exhausted cards into the discard pile", () => {
+    const exhaustContent: RunContent = {
+      cards: {
+        burn: { id: "burn", name: "Burn", cost: 0, description: "Exhaust this card.", exhaust: true },
+      },
+      enemies: {
+        drone: {
+          id: "drone",
+          name: "Drone",
+          maxHp: 50,
+          goldReward: 10,
+          intents: [{ kind: "attack", description: "Peck for 1", damage: 1 }],
+        },
+      },
+      relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
+      },
+      character: createCharacter(["burn", "burn", "burn", "burn", "burn"]),
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
+    };
+
+    let state = enterOpeningCombat(exhaustContent, createRun(exhaustContent, 104));
+    const combat = observeCombat(exhaustContent, state);
+    const burnIndex = combat.hand.findIndex((card) => card.id === "burn");
+
+    expect(burnIndex).toBeGreaterThanOrEqual(0);
+
+    state = applyAction(exhaustContent, state, { type: "playCard", handIndex: burnIndex });
+    const after = observeCombat(exhaustContent, state);
+    const logEvent = state.log[state.log.length - 1];
+
+    expect(after.hand).toHaveLength(4);
+    expect(after.discardPileCount).toBe(0);
+    expect(state.combat?.discardPile).not.toContain("burn");
+    expect(logEvent).toMatchObject({ type: "playedCard", cardId: "burn", effects: [{ type: "exhaust" }] });
+  });
+});
+
 describe("run progression", () => {
   it("moves from combat to map to rest", () => {
     let state = createRun(content, 7);
@@ -299,6 +470,7 @@ describe("post-combat rewards", () => {
     expect(afterReward.deck).toContain(chosenCard.id);
     expect(afterReward.deck.length).toBe(rewardContent.character.starterDeck.length + 1);
   });
+
 });
 
 describe("shop behavior", () => {
@@ -367,6 +539,7 @@ describe("shop behavior", () => {
     const left = applyAction(shopContent, removed, { type: "leaveShop" });
     expect(left.phase).toBe("victory");
   });
+
 });
 
 describe("relic systems", () => {

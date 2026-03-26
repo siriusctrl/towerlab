@@ -1,6 +1,7 @@
 import type {
   BlessingDefinition,
   CardDefinition,
+  CardKeyword,
   CombatObservation,
   EnemyIntent,
   LogEffect,
@@ -16,6 +17,7 @@ import type {
 
 import {
   cardDescriptions,
+  cardKeywords,
   cardNames,
   characterNames,
   characterSummaries,
@@ -474,6 +476,10 @@ export function localizeCardDefinition(card: CardDefinition, locale: Locale): Ca
   };
 }
 
+export function localizeCardKeyword(keyword: CardKeyword, locale: Locale): string {
+  return cardKeywords[locale][keyword] ?? keyword;
+}
+
 export function localizeRelicDefinition(relic: RelicDefinition, locale: Locale): RelicDefinition {
   if (locale === "en") {
     return relic;
@@ -547,7 +553,23 @@ function formatLogEffects(effects: LogEffect[], locale: Locale): string[] {
       return locale === "zh" ? `造成 ${effect.amount} 点伤害` : `deal ${effect.amount}`;
     }
 
-    return locale === "zh" ? `获得 ${effect.amount} 点格挡` : `gain ${effect.amount} block`;
+    if (effect.type === "block") {
+      return locale === "zh" ? `获得 ${effect.amount} 点格挡` : `gain ${effect.amount} block`;
+    }
+
+    if (effect.type === "draw") {
+      return locale === "zh" ? `抽 ${effect.amount} 张牌` : `draw ${effect.amount}`;
+    }
+
+    if (effect.type === "energy") {
+      return locale === "zh" ? `获得 ${effect.amount} 点能量` : `gain ${effect.amount} energy`;
+    }
+
+    if (effect.type === "heal") {
+      return locale === "zh" ? `恢复 ${effect.amount} 点生命` : `recover ${effect.amount} HP`;
+    }
+
+    return locale === "zh" ? "消耗" : "exhaust";
   });
 }
 

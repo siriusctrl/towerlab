@@ -2,6 +2,7 @@ import { REST_FORTIFY, REST_HEAL, SHOP_CARD_PRICE, SHOP_CARD_REMOVE_PRICE } from
 import { finishCombat, resolveEnemyTurn, startPlayerTurn } from "../combat.js";
 import { enterNode } from "../node.js";
 import { finishNode } from "../progression.js";
+import { drawCards } from "../rng.js";
 import {
   applyDamageToEnemy,
   appendLog,
@@ -114,6 +115,12 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
 
   let enemy = combat.enemy;
   let block = combat.block;
+  let hp = state.hp;
+  let energy = combat.energy - card.cost;
+  let drawPile = combat.drawPile;
+  let discardPile = card.exhaust ? combat.discardPile : [...combat.discardPile, cardId];
+  let hand = combat.hand.filter((_, index) => index !== handIndex);
+  let nextRng = state.rng;
   const effects: LogEffect[] = [];
 
   if (card.damage && card.damage > 0) {
@@ -126,15 +133,48 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
     effects.push({ type: "block", amount: card.block });
   }
 
+  if (card.draw && card.draw > 0) {
+    const drawnCards = drawCards(drawPile, discardPile, card.draw, nextRng);
+    drawPile = drawnCards.drawPile;
+    discardPile = drawnCards.discardPile;
+    hand = [...hand, ...drawnCards.drawn];
+    nextRng = drawnCards.rng;
+
+    if (drawnCards.drawn.length > 0) {
+      effects.push({ type: "draw", amount: drawnCards.drawn.length });
+    }
+  }
+
+  if (card.energy && card.energy > 0) {
+    energy += card.energy;
+    effects.push({ type: "energy", amount: card.energy });
+  }
+
+  if (card.heal && card.heal > 0) {
+    const healed = Math.min(card.heal, state.maxHp - state.hp);
+    hp = Math.min(state.maxHp, state.hp + card.heal);
+
+    if (healed > 0) {
+      effects.push({ type: "heal", amount: healed });
+    }
+  }
+
+  if (card.exhaust) {
+    effects.push({ type: "exhaust" });
+  }
+
   const nextState = appendLog(
     {
       ...state,
+      hp,
+      rng: nextRng,
       combat: {
         ...combat,
         enemy,
-        hand: combat.hand.filter((_, index) => index !== handIndex),
-        discardPile: [...combat.discardPile, cardId],
-        energy: combat.energy - card.cost,
+        drawPile,
+        hand,
+        discardPile,
+        energy,
         block,
       },
     },
