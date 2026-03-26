@@ -12,6 +12,8 @@ The project has two equally important goals:
 
 The current playable slice is small, but no longer toy-sized:
 - two playable characters with different starter decks, relics, and card pools
+- cards now support a small structured combat vocabulary beyond raw damage/block
+- card views render emphasized keyword lines separately from effect text
 - three acts, each starting with a blessing choice before route navigation
 - deterministic combat, rewards, shop, relics, and branching map routing
 - TUI status and library panels for inspecting current run state and character content
@@ -126,6 +128,17 @@ The current card rarity model is:
 
 Characters own their own starter decks, starter relics, reward pools, shop pools, and relic pools.
 Enemies stay shared across characters and vary by act.
+
+The current structured card vocabulary includes:
+- `damage`
+- `block`
+- `draw`
+- `energy`
+- `heal`
+- `keywords`
+
+The first structured keyword currently in use is:
+- `exhaust`
 
 ## Why TypeScript
 

@@ -25,6 +25,7 @@ Static game content plus seeded content assembly.
 Responsibilities:
 - character definitions
 - card definitions
+- structured card keywords and effect metadata
 - relic definitions
 - enemy definitions
 - per-character starter decks, blessing pools, reward pools, and shop pools
@@ -40,6 +41,7 @@ Responsibilities:
 - collect keyboard input
 - host character selection and TUI-only shell state
 - render status and library inspection panels
+- render cards with emphasized keyword lines without becoming the rules source
 - create a run from seed plus character context
 - print deterministic snapshots when the CLI is not attached to a TTY
 - expose deterministic headless JSON mode for agents and batch tooling
@@ -55,8 +57,8 @@ Responsibilities:
 ## Boundary notes
 
 - `core` owns the rules and the structured log/event protocol.
-- `content` owns character content, card/relic pools, and seeded act/map inputs.
-- `cli` owns presentation, localization, keybindings, and convenience policy tooling.
+- `content` owns character content, card/relic pools, keyword metadata, and seeded act/map inputs.
+- `cli` owns presentation, localization, keybindings, keyword emphasis, and convenience policy tooling.
 - renderer output is never the source of truth; headless and replay surfaces must stay aligned with core state.
 
 ## Explicit non-goals for v0

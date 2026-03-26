@@ -93,6 +93,16 @@ Library panel sections:
 
 The current rarity model is `common / rare / epic`.
 
+Cards are rendered in a three-part shape rather than a single prose line:
+- name and cost
+- zero or more keyword lines
+- effect text
+
+Current keyword behavior:
+- keywords are rendered as a separate emphasized line
+- the renderer currently uses this for `Exhaust`
+- keyword semantics come from structured card data, not from parsing card description strings
+
 ## Route Tree
 
 The TUI and non-TTY snapshot both show the tower as a top-down branching tree with explicit connector lines.

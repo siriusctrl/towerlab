@@ -54,6 +54,11 @@ Important properties of the current contract:
 - `map` is returned explicitly so agents do not have to infer the tower from local next-node context
 - `state.log` and `observation.log` are structured `LogEvent[]` arrays
 - runs are multi-act and include character context, current act, and total act count
+- observed card objects may include structured fields such as `damage`, `block`, `draw`, `energy`, `heal`, and `keywords`
+
+Agent rule:
+- treat card metadata as structured data
+- do not parse localized card description prose to recover mechanics
 
 ## Trace And Replay
 

@@ -24,6 +24,7 @@ Use it the way harness engineering plans are meant to be used:
 | M3 | done | Agent interface + replay | [`m3-agent-interface-replay.md`](./m3-agent-interface-replay.md) |
 | M4 | done | Batch eval + baseline bots | [`m4-batch-eval-baselines.md`](./m4-batch-eval-baselines.md) |
 | M5 | done | Character runs + multi-act structure | [`m5-character-runs-and-multi-act-structure.md`](./m5-character-runs-and-multi-act-structure.md) |
+| M6 | active | Content depth + combat vocabulary | [`m6-content-depth-and-combat-vocabulary.md`](./m6-content-depth-and-combat-vocabulary.md) |
 
 ## Working agreement
 
@@ -35,5 +36,5 @@ When a contributor starts or finishes milestone work:
 
 ## Current recommendation
 
-There is no active post-M5 milestone yet.
-If work continues, land the next content-depth or benchmark-oriented scope as a new milestone doc rather than leaving it as chat-only intent.
+The current active milestone is M6.
+Keep post-M5 content expansion, relic growth, and lightweight combat-vocabulary work inside that milestone doc rather than scattering the plan across chat.
