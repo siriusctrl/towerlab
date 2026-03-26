@@ -51,7 +51,7 @@ export function startCombat(content: RunContent, state: RunState, node: MapNode)
 
 export function finishCombat(content: RunContent, state: RunState): RunState {
   const combat = getCombat(state);
-  const currentNode = getNode(content, state.currentNodeId);
+  const currentNode = getNode(content, state.act, state.currentNodeId);
   const reward = combat.enemy.goldReward;
 
   let nextState: RunState = appendLog(
@@ -67,7 +67,7 @@ export function finishCombat(content: RunContent, state: RunState): RunState {
   const rewardSelection = getRewardChoices(content, nextState);
 
   if (rewardSelection.cards.length === 0) {
-    return finishNode(nextState, currentNode);
+    return finishNode(content, nextState, currentNode);
   }
 
   return appendLog(

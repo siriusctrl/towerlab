@@ -5,10 +5,11 @@ import type { RunContent, RunState } from "../types.js";
 import { validateContent } from "../validate.js";
 
 export function createRun(content: RunContent, seed: number): RunState {
-  const firstNode = content.map[0];
+  const firstAct = content.acts[0];
+  const firstNode = firstAct?.map[0];
 
   if (!firstNode) {
-    throw new Error("map must contain at least one node");
+    throw new Error("content must contain at least one act with a start node");
   }
 
   validateContent(content);
@@ -16,8 +17,9 @@ export function createRun(content: RunContent, seed: number): RunState {
   const baseState: RunState = {
     seed,
     characterId: content.character.id,
+    act: 1,
     rng: normalizeSeed(seed),
-    phase: "map",
+    phase: "blessing",
     hp: content.character.maxHp,
     maxHp: content.character.maxHp,
     gold: content.character.startGold,
@@ -28,9 +30,9 @@ export function createRun(content: RunContent, seed: number): RunState {
     log: [],
   };
 
-  if (firstNode.kind === "start") {
-    return appendLog(baseState, { type: "atEntrance" });
+  if (firstNode.kind !== "start") {
+    return enterNode(content, appendLog(baseState, { type: "enteredNode", nodeId: firstNode.id, kind: firstNode.kind }), firstNode);
   }
 
-  return enterNode(content, appendLog(baseState, { type: "enteredNode", nodeId: firstNode.id, kind: firstNode.kind }), firstNode);
+  return appendLog(appendLog(baseState, { type: "actStarted", act: 1 }), { type: "atEntrance" });
 }

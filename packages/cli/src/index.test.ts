@@ -10,29 +10,35 @@ describe("headless CLI", () => {
     expect(output.seed).toBe(9);
     expect(output.state.seed).toBe(9);
     expect(output.state.characterId).toBe("vanguard");
-    expect(output.state.phase).toBe("map");
+    expect(output.state.phase).toBe("blessing");
     expect(Array.isArray(output.legalActions)).toBe(true);
+    expect(output.legalActions[0]).toEqual(expect.objectContaining({ type: "chooseBlessing", blessingId: expect.any(String) }));
   });
 
   test("create supports chinese localization", () => {
     const output = JSON.parse(runHeadless(["--json", "create", "--seed", "7", "--character", "vanguard", "--lang", "zh"]));
 
     expect(output.locale).toBe("zh");
-    expect(output.map[0]).toEqual(expect.objectContaining({ id: "start-r0", kind: "start" }));
-    expect(output.map.at(-1)).toEqual(expect.objectContaining({ kind: "boss" }));
+    expect(output.acts[0].map[0]).toEqual(expect.objectContaining({ id: "act1-start-r0", kind: "start" }));
+    expect(output.acts[0].map.at(-1)).toEqual(expect.objectContaining({ kind: "boss" }));
     expect(output.observation.nextNodes).toHaveLength(3);
-    expect(output.observation.log[0]).toEqual({ type: "atEntrance" });
+    expect(output.observation.log[0]).toEqual({ type: "actStarted", act: 1 });
+    expect(output.observation.log[1]).toEqual({ type: "atEntrance" });
 
     const snapshot = renderSnapshot(7, "zh", "vanguard");
     expect(snapshot).toContain("种子: 7");
     expect(snapshot).toContain("角色: 先锋");
-    expect(snapshot).toContain("阶段: 地图");
+    expect(snapshot).toContain("阶段: 祝福");
+    expect(snapshot).toContain("层: 1/3");
     expect(snapshot).toContain("节点: 岔路口 (起点)");
+    expect(snapshot).toContain("祝福:");
+    expect(snapshot).toContain("1. 先古财富");
+    expect(snapshot).toContain("2. 伟躯");
     expect(snapshot).toContain("- 来到入口。请选择第一条路径。");
     expect(snapshot).toContain("最近事件:");
   });
 
-  test("non-tty snapshot shows floor map with each node once and next choices", () => {
+  test("non-tty snapshot shows floor map with each node once and opening blessings", () => {
     const snapshot = renderSnapshot(7, "zh", "vanguard");
 
     expect(snapshot).toContain("地图:");
@@ -42,17 +48,25 @@ describe("headless CLI", () => {
     expect(snapshot).toContain("B 首领");
     // Current node badge
     expect(snapshot).toContain("S");
-    // Path choices section still present
-    expect(snapshot).toContain("路径：");
-    expect(snapshot).toContain("1. 房间");
-    expect(snapshot).toContain("2. 房间");
+    expect(snapshot).toContain("祝福:");
+    expect(snapshot).not.toContain("路径：");
   });
 
   test("step applies a single action after replaying prior actions", () => {
     const create = JSON.parse(runHeadless(["--json", "create", "--seed", "9", "--character", "vanguard"]));
+    const firstBlessingId = create.legalActions[0].blessingId;
     const firstChoiceId = create.observation.nextNodes[0].id;
     const observe = JSON.parse(
-      runHeadless(["--json", "observe", "--seed", "9", "--character", "vanguard", "--actions", JSON.stringify([{ type: "choosePath", nodeId: firstChoiceId }])]),
+      runHeadless([
+        "--json",
+        "observe",
+        "--seed",
+        "9",
+        "--character",
+        "vanguard",
+        "--actions",
+        JSON.stringify([{ type: "chooseBlessing", blessingId: firstBlessingId }, { type: "choosePath", nodeId: firstChoiceId }]),
+      ]),
     );
     const output = JSON.parse(
       runHeadless([
@@ -63,7 +77,7 @@ describe("headless CLI", () => {
         "--character",
         "vanguard",
         "--actions",
-        JSON.stringify([{ type: "choosePath", nodeId: firstChoiceId }]),
+        JSON.stringify([{ type: "chooseBlessing", blessingId: firstBlessingId }, { type: "choosePath", nodeId: firstChoiceId }]),
         "--action",
         JSON.stringify({ type: "endTurn" }),
       ]),
@@ -71,17 +85,23 @@ describe("headless CLI", () => {
 
     expect(output.command).toBe("step");
     expect(output.seed).toBe(9);
-    expect(output.previousActions).toEqual([{ type: "choosePath", nodeId: firstChoiceId }]);
+    expect(output.previousActions).toEqual([{ type: "chooseBlessing", blessingId: firstBlessingId }, { type: "choosePath", nodeId: firstChoiceId }]);
     expect(output.action.type).toBe("endTurn");
-    expect(output.actions).toEqual([{ type: "choosePath", nodeId: firstChoiceId }, { type: "endTurn" }]);
+    expect(output.actions).toEqual([
+      { type: "chooseBlessing", blessingId: firstBlessingId },
+      { type: "choosePath", nodeId: firstChoiceId },
+      { type: "endTurn" },
+    ]);
     expect(output.state.phase).toBe("combat");
     expect(output.observation).not.toEqual(observe.observation);
   });
 
   test("observe and replay produce consistent end state and trace", () => {
     const create = JSON.parse(runHeadless(["--json", "create", "--seed", "9", "--character", "vanguard"]));
+    const firstBlessingId = create.legalActions[0].blessingId;
     const firstChoiceId = create.observation.nextNodes[0].id;
     const actions = [
+      { type: "chooseBlessing", blessingId: firstBlessingId },
       { type: "choosePath", nodeId: firstChoiceId },
       { type: "endTurn" },
     ];
@@ -186,6 +206,9 @@ describe("headless CLI", () => {
   });
 
   test("illegal step and replay actions surface the core errors", () => {
+    const create = JSON.parse(runHeadless(["--json", "create", "--seed", "9", "--character", "vanguard"]));
+    const firstBlessingId = create.legalActions[0].blessingId;
+
     expect(() =>
       runHeadless([
         "--json",
@@ -194,10 +217,12 @@ describe("headless CLI", () => {
         "9",
         "--character",
         "vanguard",
+        "--actions",
+        JSON.stringify([{ type: "chooseBlessing", blessingId: firstBlessingId }]),
         "--action",
         JSON.stringify({ type: "choosePath", nodeId: "bogus" }),
       ]),
-    ).toThrow("node bogus is not reachable from start-r0");
+    ).toThrow("node bogus is not reachable from act1-start-r0");
 
     expect(() =>
       runHeadless([

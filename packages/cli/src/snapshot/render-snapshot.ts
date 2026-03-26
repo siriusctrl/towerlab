@@ -3,6 +3,8 @@ import { createRun, observeRun, type Observation, type RunContent } from "@tower
 
 import {
   DEFAULT_LOCALE,
+  formatBlessingDescription,
+  formatBlessingName,
   formatNodeLabel,
   formatText,
   formatLogEntries,
@@ -26,13 +28,15 @@ export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE, ch
   const content = createSeededContent(seed, characterId);
   const state = createRun(content, seed);
   const observation = localizeObservation(observeRun(content, state), locale);
-  const visitedNodeIds = deriveVisitedNodeIds(content.map, []);
+  const currentMap = content.acts[observation.act - 1]?.map ?? [];
+  const visitedNodeIds = deriveVisitedNodeIds(currentMap, []);
 
   return renderObservation(content, observation, locale, visitedNodeIds);
 }
 
 function renderObservation(content: RunContent, observation: Observation, locale: Locale, visitedNodeIds: string[] = []): string {
-  const mapSection = formatMapLines(createMapFloorRows(content.map, observation, locale, visitedNodeIds, 60));
+  const currentMap = content.acts[observation.act - 1]?.map ?? [];
+  const mapSection = formatMapLines(createMapFloorRows(currentMap, observation, locale, visitedNodeIds, 60));
   const recentLog = getRecentLogView(formatLogEntries(content, observation.log, locale));
   const mapLegendLines = getMapLegendLines(locale);
 
@@ -41,6 +45,7 @@ function renderObservation(content: RunContent, observation: Observation, locale
     `${text(locale, "seed")}: ${observation.seed}`,
     `${text(locale, "character")}: ${localizeCharacterName(content.character.id, locale)}`,
     `${text(locale, "phase")}: ${localizePhaseLabel(observation.phase, locale)}`,
+    `${text(locale, "act")}: ${observation.act}/${observation.totalActs}`,
     `${text(locale, "hp")}: ${observation.hp}/${observation.maxHp}  ${text(locale, "gold")}: ${observation.gold}  ${text(locale, "floor")}: ${observation.floor}`,
     `${text(locale, "node")}: ${formatNodeLabel(observation.currentNode, locale)}`,
     `${text(locale, "relics")}: ${observation.relics.map((relic) => relic.name).join(", ") || text(locale, "none")}`,
@@ -60,6 +65,12 @@ function renderObservation(content: RunContent, observation: Observation, locale
 
     for (const [index, card] of observation.hand.entries()) {
       lines.push(`${index + 1}. ${card.name} [${card.cost}] ${card.description}`);
+    }
+  } else if (observation.phase === "blessing") {
+    lines.push(`${text(locale, "blessing")}:`);
+
+    for (const [index, blessing] of observation.blessings.entries()) {
+      lines.push(`${index + 1}. ${formatBlessingName(content, blessing, locale)} - ${formatBlessingDescription(content, blessing, locale)}`);
     }
   } else if (observation.phase === "map") {
     lines.push(`${text(locale, "paths")}`);

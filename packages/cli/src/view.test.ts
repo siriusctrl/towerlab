@@ -6,10 +6,12 @@ import { createMapFloorRows, deriveVisitedNodeIds, formatMapLines, getEarlierEve
 
 describe("cli view helpers", () => {
   test("floor map shows each node exactly once with correct statuses at start", () => {
-    const currentNode = sampleContent.map[0]!;
+    const currentNode = sampleMap[0]!;
     const observation: Observation = {
       seed: 7,
       phase: "map",
+      act: 1,
+      totalActs: sampleContent.acts.length,
       hp: 80,
       maxHp: 80,
       gold: 0,
@@ -17,10 +19,10 @@ describe("cli view helpers", () => {
       currentNode,
       relics: [],
       log: [],
-      nextNodes: getNextNodes(sampleContent.map, currentNode),
+      nextNodes: getNextNodes(sampleMap, currentNode),
     };
 
-    const lines = formatMapLines(createMapFloorRows(sampleContent.map, observation, "en", deriveVisitedNodeIds(sampleContent.map, []), 60, "icon"));
+    const lines = formatMapLines(createMapFloorRows(sampleMap, observation, "en", deriveVisitedNodeIds(sampleMap, []), 60, "icon"));
     const allText = lines.join("\n");
 
     // Nodes are rendered as one-character icons only, status via color.
@@ -28,7 +30,7 @@ describe("cli view helpers", () => {
 
     // Every node icon should appear exactly once in the rendered rows.
     const iconCount = (allText.match(/[SFER$B]/g) ?? []).length;
-    expect(iconCount).toBe(sampleContent.map.length);
+    expect(iconCount).toBe(sampleMap.length);
 
     // Status prefixes should not be part of node text.
     expect(allText).not.toContain("@");
@@ -43,10 +45,12 @@ describe("cli view helpers", () => {
   });
 
   test("floor map marks current, past, future, and closed after choosing a path", () => {
-    const firstChoice = getNextNodes(sampleContent.map, sampleContent.map[0]!)[0]!;
+    const firstChoice = getNextNodes(sampleMap, sampleMap[0]!)[0]!;
     const observation: Observation = {
       seed: 7,
       phase: "combat",
+      act: 1,
+      totalActs: sampleContent.acts.length,
       hp: 80,
       maxHp: 80,
       gold: 18,
@@ -71,10 +75,10 @@ describe("cli view helpers", () => {
 
     const lines = formatMapLines(
       createMapFloorRows(
-        sampleContent.map,
+        sampleMap,
         observation,
         "en",
-        deriveVisitedNodeIds(sampleContent.map, [{ type: "choosePath", nodeId: firstChoice.id }]),
+        deriveVisitedNodeIds(sampleMap, [{ type: "choosePath", nodeId: firstChoice.id }]),
         60,
         "icon",
       ),
@@ -91,9 +95,9 @@ describe("cli view helpers", () => {
   });
 
   test("uses the available width on wide terminals", () => {
-    const observation = createMapObservation(sampleContent.map);
-    const compactLines = renderMap(sampleContent.map, observation, 28);
-    const wideLines = renderMap(sampleContent.map, observation, 80);
+    const observation = createMapObservation(sampleMap);
+    const compactLines = renderMap(sampleMap, observation, 28);
+    const wideLines = renderMap(sampleMap, observation, 80);
     const compactWidth = Math.max(...compactLines.map((line) => line.length), 0);
     const wideWidth = Math.max(...wideLines.map((line) => line.length), 0);
 
@@ -241,9 +245,9 @@ describe("cli view helpers", () => {
   });
 
   test("assigns choice-specific statuses only to uniquely owned future paths", () => {
-    const rows = createMapFloorRows(sampleContent.map, createMapObservation(sampleContent.map), "en", deriveVisitedNodeIds(sampleContent.map, []), 80, "icon");
+    const rows = createMapFloorRows(sampleMap, createMapObservation(sampleMap), "en", deriveVisitedNodeIds(sampleMap, []), 80, "icon");
     const statuses = rows.flatMap((row) => row.map((cell) => cell.status));
-    const openingChoiceCount = getNextNodes(sampleContent.map, sampleContent.map[0]!).length;
+    const openingChoiceCount = getNextNodes(sampleMap, sampleMap[0]!).length;
 
     expect(statuses).toContain("nextChoice1");
     expect(statuses).toContain("nextChoice2");
@@ -259,9 +263,9 @@ describe("cli view helpers", () => {
   });
 
   test("colors the root outgoing edges for the current choices", () => {
-    const rows = createMapFloorRows(sampleContent.map, createMapObservation(sampleContent.map), "en", deriveVisitedNodeIds(sampleContent.map, []), 100, "icon");
+    const rows = createMapFloorRows(sampleMap, createMapObservation(sampleMap), "en", deriveVisitedNodeIds(sampleMap, []), 100, "icon");
     const firstConnectorRows = rows.slice(1, 3).map((row) => row.map((cell) => `[${cell.status}:${cell.text}]`).join("")).join("\n");
-    const openingChoiceCount = getNextNodes(sampleContent.map, sampleContent.map[0]!).length;
+    const openingChoiceCount = getNextNodes(sampleMap, sampleMap[0]!).length;
 
     expect(firstConnectorRows).toMatch(/connectorChoice1|nextChoice1/);
     expect(firstConnectorRows).toMatch(/connectorChoice2|nextChoice2/);
@@ -289,10 +293,13 @@ describe("cli view helpers", () => {
   });
 
   test("recolors the next combat choices after moving onto a path", () => {
-    const firstChoice = getNextNodes(sampleContent.map, sampleContent.map[0]!)[0]!;
+    const firstChoice = getNextNodes(sampleMap, sampleMap[0]!)[0]!;
+    const nextChoiceCount = getNextNodes(sampleMap, firstChoice).length;
     const observation: Observation = {
       seed: 7,
       phase: "combat",
+      act: 1,
+      totalActs: sampleContent.acts.length,
       hp: 80,
       maxHp: 80,
       gold: 18,
@@ -316,19 +323,21 @@ describe("cli view helpers", () => {
     };
 
     const rows = createMapFloorRows(
-      sampleContent.map,
+      sampleMap,
       observation,
       "en",
-      deriveVisitedNodeIds(sampleContent.map, [{ type: "choosePath", nodeId: firstChoice.id }]),
+      deriveVisitedNodeIds(sampleMap, [{ type: "choosePath", nodeId: firstChoice.id }]),
       80,
       "icon",
     );
     const statuses = rows.flatMap((row) => row.map((cell) => cell.status));
 
     expect(statuses).toContain("nextChoice1");
-    expect(statuses).toContain("nextChoice2");
     expect(statuses).toContain("connectorChoice1");
-    expect(statuses).toContain("connectorChoice2");
+    if (nextChoiceCount >= 2) {
+      expect(statuses).toContain("nextChoice2");
+      expect(statuses).toContain("connectorChoice2");
+    }
   });
 
   test("recent log view truncates older entries and reports hidden count", () => {
@@ -349,6 +358,8 @@ function createMapObservation(map: MapNode[]): Observation {
   return {
     seed: 7,
     phase: "map",
+    act: 1,
+    totalActs: sampleContent.acts.length,
     hp: 80,
     maxHp: 80,
     gold: 0,
@@ -364,3 +375,5 @@ function getNextNodes(map: MapNode[], currentNode: MapNode): MapNode[] {
   const nodeById = new Map(map.map((node) => [node.id, node]));
   return currentNode.nextIds.map((nodeId) => nodeById.get(nodeId)).filter((node): node is MapNode => node !== undefined);
 }
+
+const sampleMap = sampleContent.acts[0]!.map;

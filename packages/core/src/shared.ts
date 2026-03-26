@@ -8,6 +8,7 @@ import type {
   LogEvent,
   MapNode,
   RelicKind,
+  TowerAct,
   RunContent,
   RunState,
 } from "./types.js";
@@ -42,8 +43,18 @@ export function getCombat(state: RunState): NonNullable<RunState["combat"]> {
   return state.combat;
 }
 
-export function getNode(content: RunContent, nodeId: string): MapNode {
-  const node = content.map.find((entry) => entry.id === nodeId);
+export function getAct(content: RunContent, act: number): TowerAct {
+  const currentAct = content.acts[act - 1];
+
+  if (!currentAct) {
+    throw new Error(`unknown act: ${act}`);
+  }
+
+  return currentAct;
+}
+
+export function getNode(content: RunContent, act: number, nodeId: string): MapNode {
+  const node = getAct(content, act).map.find((entry) => entry.id === nodeId);
 
   if (!node) {
     throw new Error(`unknown node: ${nodeId}`);

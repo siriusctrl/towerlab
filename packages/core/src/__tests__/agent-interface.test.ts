@@ -7,6 +7,7 @@ import {
   observeRun,
   replayRun,
   traceRun,
+  type MapNode,
   type RunAction,
   type RunContent,
   type RunState,
@@ -63,17 +64,23 @@ const content: RunContent = {
     ["bash", "defend", "strike"],
     ["bash", "strike"],
   ),
-  map: [
+  acts: [createAct([
     { id: "gate", kind: "battle", encounterId: "scout", nextIds: ["camp", "market"] },
     { id: "camp", kind: "rest", nextIds: ["summit"] },
     { id: "market", kind: "shop", nextIds: ["summit"] },
     { id: "summit", kind: "boss", encounterId: "core", nextIds: [] },
-  ],
+  ])],
 };
 
 describe("legalActions", () => {
-  it("enumerates playable combat actions plus endTurn", () => {
+  it("enumerates opening blessing actions before entering the act", () => {
     const state = createRun(content, 5);
+
+    expect(legalActions(content, state)).toEqual([{ type: "chooseBlessing", blessingId: "act-1-heal" }]);
+  });
+
+  it("enumerates playable combat actions plus endTurn", () => {
+    const state = enterOpeningCombat(content, createRun(content, 5));
     const view = observeRun(content, state);
     const actions = legalActions(content, state);
 
@@ -216,6 +223,10 @@ function completeRunActions(seed: number): RunAction[] {
 function chooseAction(runContent: RunContent, state: RunState): RunAction {
   const actions = legalActions(runContent, state);
 
+  if (state.phase === "blessing") {
+    return actions[0]!;
+  }
+
   if (state.phase === "combat") {
     return actions.find((action) => action.type === "playCard") ?? { type: "endTurn" };
   }
@@ -242,12 +253,36 @@ function chooseAction(runContent: RunContent, state: RunState): RunAction {
 function winCurrentCombat(runContent: RunContent, state: RunState): RunState {
   let nextState = state;
 
+  if (nextState.phase === "blessing") {
+    nextState = applyAction(runContent, nextState, { type: "chooseBlessing", blessingId: runContent.acts[0]!.blessings[0]!.id });
+  }
+
+  if (nextState.phase === "map") {
+    nextState = applyAction(runContent, nextState, { type: "choosePath", nodeId: "gate" });
+  }
+
   while (nextState.phase === "combat") {
     const action = chooseAction(runContent, nextState);
     nextState = applyAction(runContent, nextState, action);
   }
 
   return nextState;
+}
+
+function enterOpeningCombat(runContent: RunContent, state: RunState): RunState {
+  return applyAction(
+    runContent,
+    applyAction(runContent, state, { type: "chooseBlessing", blessingId: runContent.acts[0]!.blessings[0]!.id }),
+    { type: "choosePath", nodeId: "gate" },
+  );
+}
+
+function createAct(map: MapNode[]) {
+  return {
+    id: "act-1",
+    map: [{ id: "start", kind: "start", nextIds: [map[0]!.id] }, ...map],
+    blessings: [{ id: "act-1-heal", kind: "heal" as const, value: 1 }],
+  };
 }
 
 function createCharacter(starterDeck: string[], rewardPool: string[], shopPool: string[]) {
@@ -259,6 +294,7 @@ function createCharacter(starterDeck: string[], rewardPool: string[], shopPool: 
     startGold: 0,
     starterDeck,
     startingRelicId: "starterCharm",
+    blessingCards: [starterDeck[0]!, starterDeck[0]!, starterDeck[0]!],
     rewardCardPools: { common: rewardPool, uncommon: [], rare: [] },
     shopCardPools: { common: shopPool, uncommon: [], rare: [] },
     relicPools: { elite: [], boss: [] },

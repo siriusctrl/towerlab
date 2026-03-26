@@ -19,6 +19,7 @@ export const vanguard: CharacterDefinition = {
     "surge",
   ],
   startingRelicId: "battleStandard",
+  blessingCards: ["recklessLunge", "ironTempo", "executioner"],
   rewardCardPools: {
     common: ["strike", "defend", "surge", "quickGuard", "punishingHit", "recklessLunge"],
     uncommon: ["precision", "heavyBlow", "ironTempo"],

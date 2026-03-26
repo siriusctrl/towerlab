@@ -20,36 +20,48 @@ function validateCharacter(content: RunContent): void {
 }
 
 function validateMap(content: RunContent): void {
-  const seenNodeIds = new Set<string>();
+  for (const act of content.acts) {
+    const firstNode = act.map[0];
 
-  for (const node of content.map) {
-    if (seenNodeIds.has(node.id)) {
-      throw new Error(`duplicate node id: ${node.id}`);
+    if (!firstNode) {
+      throw new Error(`act ${act.id} must contain at least one node`);
     }
 
-    seenNodeIds.add(node.id);
+    if (firstNode.kind !== "start") {
+      throw new Error(`act ${act.id} must begin with a start node`);
+    }
 
-    if (node.kind === "rest" || node.kind === "shop" || node.kind === "start") {
-      if (node.encounterId) {
-        throw new Error(`${node.kind} node ${node.id} must not define an encounterId`);
+    const seenNodeIds = new Set<string>();
+
+    for (const node of act.map) {
+      if (seenNodeIds.has(node.id)) {
+        throw new Error(`duplicate node id: ${node.id}`);
       }
-    } else {
-      if (!node.encounterId) {
-        throw new Error(`${node.kind} node ${node.id} must define an encounterId`);
+
+      seenNodeIds.add(node.id);
+
+      if (node.kind === "rest" || node.kind === "shop" || node.kind === "start") {
+        if (node.encounterId) {
+          throw new Error(`${node.kind} node ${node.id} must not define an encounterId`);
+        }
+      } else {
+        if (!node.encounterId) {
+          throw new Error(`${node.kind} node ${node.id} must define an encounterId`);
+        }
+
+        getEnemyDefinition(content, node.encounterId);
       }
 
-      getEnemyDefinition(content, node.encounterId);
+      if (node.relicReward) {
+        getRelic(content, node.relicReward);
+      }
     }
 
-    if (node.relicReward) {
-      getRelic(content, node.relicReward);
-    }
-  }
-
-  for (const node of content.map) {
-    for (const nextId of node.nextIds) {
-      if (!seenNodeIds.has(nextId)) {
-        throw new Error(`node ${node.id} references unknown next node ${nextId}`);
+    for (const node of act.map) {
+      for (const nextId of node.nextIds) {
+        if (!seenNodeIds.has(nextId)) {
+          throw new Error(`node ${node.id} references unknown next node ${nextId}`);
+        }
       }
     }
   }
@@ -65,6 +77,31 @@ function validatePools(content: RunContent): void {
 
   for (const relicId of content.character.relicPools.boss) {
     getRelic(content, relicId);
+  }
+
+  for (const cardId of content.character.blessingCards) {
+    getCard(content, cardId);
+  }
+
+  for (const act of content.acts) {
+    if (act.blessings.length === 0) {
+      throw new Error(`act ${act.id} must define at least one blessing`);
+    }
+
+    for (const blessing of act.blessings) {
+      if (blessing.kind === "card") {
+        if (!blessing.cardId) {
+          throw new Error(`blessing ${blessing.id} must define cardId`);
+        }
+
+        getCard(content, blessing.cardId);
+        continue;
+      }
+
+      if (!blessing.value || blessing.value <= 0) {
+        throw new Error(`blessing ${blessing.id} must define a positive value`);
+      }
+    }
   }
 }
 

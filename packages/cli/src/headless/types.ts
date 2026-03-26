@@ -1,4 +1,4 @@
-import type { MapNode, Observation, RunAction, RunState } from "@towerlab/core";
+import type { Observation, RunAction, RunState, TowerAct } from "@towerlab/core";
 
 import type { Locale } from "../i18n.js";
 import type { BaselinePolicyName } from "../policies.js";
@@ -28,7 +28,7 @@ export interface HeadlessSnapshot {
   seed: number;
   actions: RunAction[];
   locale: Locale;
-  map: MapNode[];
+  acts: TowerAct[];
   state: RunState;
   observation: Observation;
   legalActions: RunAction[];

@@ -14,6 +14,14 @@ export function parseAction(raw: string): RunAction {
   }
 
   switch (decoded.type) {
+    case "chooseBlessing": {
+      if (typeof decoded.blessingId !== "string") {
+        throw new Error(`Invalid chooseBlessing action: ${raw}`);
+      }
+
+      return { type: "chooseBlessing", blessingId: decoded.blessingId };
+    }
+
     case "choosePath": {
       if (typeof decoded.nodeId !== "string") {
         throw new Error(`Invalid choosePath action: ${raw}`);

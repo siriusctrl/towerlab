@@ -10,66 +10,79 @@ afterEach(() => {
 });
 
 describe("App layout", () => {
-  test("renders the map in the main pane on 80x24 map terminals", async () => {
-    const frame = await renderFrame({ columns: 80, rows: 24, locale: "zh" });
+  test("renders the map in the main pane on 80x24 map terminals after the opening blessing", async () => {
+    const frame = await renderFrame({ columns: 80, rows: 24, locale: "zh", inputs: ["1"] });
 
-    expect(frame).toContain("路径： 1. 房间 1-1 (战斗)");
-    expect(frame).toContain("2. 房间 1-2 (精英)");
-    expect(frame).toContain("3. 房间 1-3 (战斗)");
+    expect(frame).toContain("路径： 1. 房间 1-1");
+    expect(frame).toContain("2. 房间 1-2");
+    expect(frame).toContain("3. 房间 1-3");
     expect(frame).not.toContain("│ Map");
     expect(frame).not.toContain("Recent Activity");
   });
 
-  test("keeps the map in the main pane even on wide map terminals", async () => {
-    const frame = await renderFrame({ columns: 100, rows: 24 });
+  test("keeps the map in the main pane even on wide map terminals after the opening blessing", async () => {
+    const frame = await renderFrame({ columns: 100, rows: 24, inputs: ["1"] });
 
     expect(frame).toContain("Crossroads (start)");
-    expect(frame).toContain("Paths: 1. Room 1-1 (battle)");
-    expect(frame).toContain("2. Room 1-2 (elite)");
-    expect(frame).toContain("3. Room 1-3 (battle)");
+    expect(frame).toContain("Paths: 1. Room 1-1");
+    expect(frame).toContain("2. Room 1-2");
+    expect(frame).toContain("3. Room 1-3");
     expect(frame).not.toContain("│ Map");
     expect(frame).not.toContain("Recent Activity");
   });
 
   test("does not enable the sidebar on 100x20 combat terminals", async () => {
-    const frame = await renderFrame({ columns: 100, rows: 20, inputs: ["1"] });
+    const frame = await renderFrame({ columns: 100, rows: 20, inputs: ["1", "1"] });
 
     expect(frame).toContain("Combat");
-    expect(frame).toMatch(/Sentry|Crusher|Forge Keeper/);
+    expect(frame).toMatch(/Raider|Sentry|Skirmisher|Ember Adept|Crusher|Banner Captain|Forge Keeper|Iron Colossus/);
     expect(frame).not.toContain("Recent Activity");
     expect(frame).not.toContain("│ Map");
   });
 
   test("shows minimap and recent activity content in combat sidebars", async () => {
-    const frame = await renderFrame({ columns: 100, rows: 24, inputs: ["1"] });
+    const frame = await renderFrame({ columns: 100, rows: 24, inputs: ["1", "1"] });
 
-    expect(frame).toContain("S start");
-    expect(frame).toContain("- At the entrance. Choose the first path.");
-    expect(frame).toContain("- Moved to");
+    expect(frame).toContain("┌");
+    expect(frame).toContain("B");
+    expect(frame).toContain("- Choose the next path.");
+    expect(frame).toMatch(/- .*appears\./);
+    expect(frame).not.toContain("act1-battle");
   });
 
-  test("keeps the compact legend readable in zh combat sidebars", async () => {
-    const frame = await renderFrame({ columns: 100, rows: 24, locale: "zh", inputs: ["1"] });
+  test("keeps the zh combat sidebar readable and localized", async () => {
+    const frame = await renderFrame({ columns: 100, rows: 24, locale: "zh", inputs: ["1", "1"] });
 
-    expect(frame).toContain("S 起点  F 战斗  E 精英  R 营地  $ 商店  B 首领");
+    expect(frame).toContain("┌");
+    expect(frame).toContain("B");
+    expect(frame).toContain("请选择下一条路径");
+    expect(frame).toMatch(/袭掠者出现|哨卫出现|游击者出现|余烬术士出现|军旗队长出现|粉碎者出现/);
+    expect(frame).not.toContain("act1-battle");
   });
 
-  test("keeps compact map and post-move minimap stable across multiple seeds", async () => {
+  test("keeps opening blessings, compact map, and post-move minimap stable across multiple seeds", async () => {
     const seeds = [17, 29, 43, 58, 71];
 
     for (const seed of seeds) {
       const startFrame = await renderFrame({ seed, columns: 100, rows: 24, locale: "zh" });
-      const movedFrame = await renderFrame({ seed, columns: 100, rows: 24, locale: "zh", inputs: ["1"] });
+      const mapFrame = await renderFrame({ seed, columns: 100, rows: 24, locale: "zh", inputs: ["1"] });
+      const movedFrame = await renderFrame({ seed, columns: 100, rows: 24, locale: "zh", inputs: ["1", "1"] });
 
-      expect(startFrame).toContain("路径： 1.");
-      expect(startFrame).toContain("2.");
-      expect(startFrame).toContain("3.");
+      expect(startFrame).toContain("祝福");
+      expect(startFrame).toContain("1. ");
+      expect(startFrame).toContain("2. ");
+      expect(startFrame).toContain("3. ");
       expect(startFrame).not.toContain("：:");
       expect(startFrame).not.toContain("::");
-      expect(movedFrame).toContain("S 起点  F 战斗  E 精英  R 营地  $ 商店  B 首领");
-      expect(movedFrame).toContain("前往");
+      expect(mapFrame).toContain("路径： 1.");
+      expect(mapFrame).toContain("2.");
+      expect(mapFrame).toContain("3.");
+      expect(movedFrame).toContain("┌");
+      expect(movedFrame).toContain("B");
+      expect(movedFrame).toContain("请选择下一条路径");
+      expect(movedFrame).not.toContain("act1-battle");
     }
-  });
+  }, 15000);
 });
 
 async function renderFrame({
@@ -97,11 +110,12 @@ async function renderFrame({
   for (const input of inputs) {
     instance.stdin.write(input);
     await waitForInk();
+    await waitForInk();
   }
 
   return instance.lastFrame() ?? "";
 }
 
 async function waitForInk(): Promise<void> {
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await new Promise((resolve) => setTimeout(resolve, 30));
 }

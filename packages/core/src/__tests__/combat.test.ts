@@ -5,6 +5,7 @@ import {
   createRun,
   observeRun,
   type CombatObservation,
+  type MapNode,
   type RunContent,
   type RunState,
 } from "../index.js";
@@ -12,7 +13,7 @@ import {
 describe("combat transitions", () => {
   it("plays cards, spends energy, and advances enemy intents on end turn", () => {
     const content = createCombatContent();
-    let state = createRun(content, 3);
+    let state = enterOpeningCombat(content, createRun(content, 3));
     const opening = observeCombat(content, state);
     const defendIndex = opening.hand.findIndex((card) => card.id === "defend");
 
@@ -35,7 +36,7 @@ describe("combat transitions", () => {
 
   it("ends the run in defeat when enemy damage drops the player to zero", () => {
     const content = createCombatContent();
-    const opening = createRun(content, 1);
+    const opening = enterOpeningCombat(content, createRun(content, 1));
     const doomed: RunState = {
       ...opening,
       hp: 4,
@@ -48,7 +49,7 @@ describe("combat transitions", () => {
 
   it("wins a boss encounter and marks the run as victory", () => {
     const content = createBossContent();
-    let state = createRun(content, 11);
+    let state = enterOpeningCombat(content, createRun(content, 11));
 
     while (state.phase === "combat") {
       const view = observeCombat(content, state);
@@ -77,6 +78,21 @@ function observeCombat(content: RunContent, state: RunState): CombatObservation 
   return view;
 }
 
+function enterOpeningCombat(content: RunContent, state: RunState): RunState {
+  let nextState = state;
+
+  if (nextState.phase === "blessing") {
+    nextState = applyAction(content, nextState, { type: "chooseBlessing", blessingId: content.acts[0]!.blessings[0]!.id });
+  }
+
+  if (nextState.phase === "map") {
+    const currentNode = content.acts[0]!.map.find((node) => node.id === nextState.currentNodeId)!;
+    nextState = applyAction(content, nextState, { type: "choosePath", nodeId: currentNode.nextIds[0]! });
+  }
+
+  return nextState;
+}
+
 function createCombatContent(): RunContent {
   return {
     cards: {
@@ -99,7 +115,7 @@ function createCombatContent(): RunContent {
       },
     },
     character: createCharacter(["strike", "strike", "strike", "defend", "defend", "defend"]),
-    map: [{ id: "gate", kind: "battle", encounterId: "guard", nextIds: [] }],
+    acts: [createAct([{ id: "gate", kind: "battle", encounterId: "guard", nextIds: [] }])],
   };
 }
 
@@ -121,7 +137,15 @@ function createBossContent(): RunContent {
       },
     },
     character: createCharacter(["strike", "strike", "strike", "strike", "strike"]),
-    map: [{ id: "summit", kind: "boss", encounterId: "core", nextIds: [] }],
+    acts: [createAct([{ id: "summit", kind: "boss", encounterId: "core", nextIds: [] }])],
+  };
+}
+
+function createAct(map: MapNode[]) {
+  return {
+    id: "act-1",
+    map: [{ id: "start", kind: "start", nextIds: [map[0]!.id] }, ...map],
+    blessings: [{ id: "act-1-heal", kind: "heal" as const, value: 1 }],
   };
 }
 
@@ -134,6 +158,7 @@ function createCharacter(starterDeck: string[]) {
     startGold: 0,
     starterDeck,
     startingRelicId: "starterCharm",
+    blessingCards: [starterDeck[0]!, starterDeck[0]!, starterDeck[0]!],
     rewardCardPools: { common: [], uncommon: [], rare: [] },
     shopCardPools: { common: [], uncommon: [], rare: [] },
     relicPools: { elite: [], boss: [] },

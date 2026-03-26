@@ -109,7 +109,7 @@ describe("eval helper", () => {
 
     expect(result.outcome).toBe("error");
     expect(result.error).toBe("max steps reached (1)");
-    expect(result.actions).toEqual([expect.objectContaining({ type: "choosePath", nodeId: expect.any(String) })]);
+    expect(result.actions).toEqual([expect.objectContaining({ type: "chooseBlessing", blessingId: expect.any(String) })]);
     expect(result.steps).toBe(1);
   });
 });

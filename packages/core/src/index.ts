@@ -1,4 +1,7 @@
 export type {
+  BlessingDefinition,
+  BlessingKind,
+  BlessingObservation,
   CardDefinition,
   CardRarity,
   CardRarityBuckets,
@@ -31,6 +34,7 @@ export type {
   RunTrace,
   ShopObservation,
   ShopState,
+  TowerAct,
   TraceStep,
 } from "./types.js";
 

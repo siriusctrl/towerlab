@@ -1,1 +1,1 @@
-export { generateMap } from "./generate.js";
+export { generateActs } from "./generate.js";

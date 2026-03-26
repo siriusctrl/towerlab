@@ -32,6 +32,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const actionsRef = useRef(actions);
   const [shopMenu, setShopMenu] = useState<ShopMenuMode>("top");
   const view = content && state ? localizeObservation(observeRun(content, state), locale) : null;
+  const currentMap = content && view ? content.acts[view.act - 1]?.map ?? [] : [];
   const recentLogEntries = content && view ? formatLogEntries(content, view.log, locale) : [];
   const relicNames = view && view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
   const characterName = selectedCharacterId ? localizeCharacterName(selectedCharacterId, locale) : "";
@@ -123,6 +124,14 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
       return;
     }
 
+    if (view.phase === "blessing") {
+      const choiceIndex = readChoiceIndex(input, view.blessings.length);
+      if (choiceIndex !== null) {
+        runAction({ type: "chooseBlessing", blessingId: view.blessings[choiceIndex].id });
+      }
+      return;
+    }
+
     if (view.phase === "map") {
       const choiceIndex = readChoiceIndex(input, view.nextNodes.length);
       if (choiceIndex !== null) {
@@ -191,9 +200,9 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
       <Box flexDirection="row" flexGrow={1} overflow="hidden">
         <Box flexDirection="column" flexGrow={1} paddingLeft={1} overflow="hidden">
           {!showSidebar && view.phase === "map" ? (
-            <MapTreeView map={content!.map} observation={view} actions={actions} locale={locale} width={columns - 2} showLegend={!hideMainMapLegend} />
+            <MapTreeView map={currentMap} observation={view} actions={actions} locale={locale} width={columns - 2} showLegend={!hideMainMapLegend} />
           ) : null}
-          <PhaseBody observation={view} locale={locale} shopMenu={shopMenu} hpBarWidth={hpBarWidth} compactMapPhase={compactMapPhase} />
+          <PhaseBody content={content!} observation={view} locale={locale} shopMenu={shopMenu} hpBarWidth={hpBarWidth} compactMapPhase={compactMapPhase} />
           {showInlineLog ? (
             <Box marginTop={1} flexDirection="column" overflow="hidden">
               <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
@@ -215,7 +224,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
             paddingLeft={1}
             overflow="hidden"
           >
-            <MapTreeView map={content!.map} observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
+            <MapTreeView map={currentMap} observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
             <Box marginTop={1} flexDirection="column" overflow="hidden">
               <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
             </Box>

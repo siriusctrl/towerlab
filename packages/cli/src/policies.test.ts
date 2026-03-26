@@ -19,7 +19,7 @@ describe("baseline policies", () => {
 
   it("greedy prefers the highest-damage playable combat card", () => {
     const battleNode = getOpeningChoiceByKind("battle");
-    const state = applyAction(sampleContent, createRun(sampleContent, 7), { type: "choosePath", nodeId: battleNode.id });
+    const state = applyAction(sampleContent, firstMapState(7), { type: "choosePath", nodeId: battleNode.id });
     const action = choosePolicyAction("greedy", state);
     const view = observeCombat(state);
 
@@ -36,7 +36,7 @@ describe("baseline policies", () => {
   });
 
   it("greedy prefers the elite route from the opening map choice", () => {
-    const state = createRun(sampleContent, 7);
+    const state = firstMapState(7);
     const action = choosePolicyAction("greedy", state);
 
     if (action.type !== "choosePath") {
@@ -44,6 +44,17 @@ describe("baseline policies", () => {
     }
 
     expect(getNode(action.nodeId).kind).toBe("elite");
+  });
+
+  it("heuristic chooses a blessing before entering the act", () => {
+    const state = createRun(sampleContent, 7);
+    const action = choosePolicyAction("heuristic", state);
+
+    if (action.type !== "chooseBlessing") {
+      throw new Error(`expected chooseBlessing, received ${action.type}`);
+    }
+
+    expect(state.phase).toBe("blessing");
   });
 
   it("heuristic prefers the shop route when gold is available", () => {
@@ -70,7 +81,7 @@ describe("baseline policies", () => {
 });
 
 function firstMapState(seed: number): RunState {
-  const state = createRun(sampleContent, seed);
+  const state = advanceOpeningBlessing(createRun(sampleContent, seed));
 
   if (state.phase !== "map") {
     throw new Error(`expected map phase, received ${state.phase}`);
@@ -133,7 +144,7 @@ function observeCombat(state: RunState) {
 }
 
 function getNode(nodeId: string) {
-  const node = sampleContent.map.find((candidate) => candidate.id === nodeId);
+  const node = sampleMap.find((candidate) => candidate.id === nodeId);
   if (!node) {
     throw new Error(`missing node ${nodeId}`);
   }
@@ -141,7 +152,7 @@ function getNode(nodeId: string) {
 }
 
 function getOpeningChoiceByKind(kind: string) {
-  const state = createRun(sampleContent, 7);
+  const state = firstMapState(7);
   const observation = observeRun(sampleContent, state);
 
   if (observation.phase !== "map") {
@@ -157,7 +168,7 @@ function getOpeningChoiceByKind(kind: string) {
 }
 
 function getBattleChoiceWithShopFollowUp() {
-  const openingBattles = createRun(sampleContent, 7);
+  const openingBattles = firstMapState(7);
   const observation = observeRun(sampleContent, openingBattles);
 
   if (observation.phase !== "map") {
@@ -175,6 +186,22 @@ function getBattleChoiceWithShopFollowUp() {
   return node;
 }
 
+function advanceOpeningBlessing(state: RunState): RunState {
+  if (state.phase !== "blessing") {
+    return state;
+  }
+
+  const blessingAction = legalActions(sampleContent, state).find(
+    (action): action is Extract<RunAction, { type: "chooseBlessing" }> => action.type === "chooseBlessing",
+  );
+
+  if (!blessingAction) {
+    throw new Error("missing opening blessing action");
+  }
+
+  return applyAction(sampleContent, state, blessingAction);
+}
+
 function getImmediateNextByKind(nodeId: string, kind: string) {
   const node = getNode(nodeId);
   const nextNode = node.nextIds.map((nextId) => getNode(nextId)).find((candidate) => candidate.kind === kind);
@@ -185,3 +212,5 @@ function getImmediateNextByKind(nodeId: string, kind: string) {
 
   return nextNode;
 }
+
+const sampleMap = sampleContent.acts[0]!.map;

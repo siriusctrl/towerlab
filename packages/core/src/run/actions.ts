@@ -7,15 +7,18 @@ import {
   appendLog,
   assertNever,
   buildRemovableDeckIndices,
+  getAct,
   getCombat,
   getNode,
   getRelicValue,
 } from "../shared.js";
-import type { LogEffect, RestOptionId, RunAction, RunContent, RunState } from "../types.js";
+import type { BlessingDefinition, LogEffect, RestOptionId, RunAction, RunContent, RunState } from "../types.js";
 import { getCard } from "../validate.js";
 
 export function applyAction(content: RunContent, state: RunState, action: RunAction): RunState {
   switch (action.type) {
+    case "chooseBlessing":
+      return chooseBlessing(content, state, action.blessingId);
     case "choosePath":
       return choosePath(content, state, action.nodeId);
     case "playCard":
@@ -44,13 +47,13 @@ function choosePath(content: RunContent, state: RunState, nodeId: string): RunSt
     throw new Error("path choices are only available on the map");
   }
 
-  const currentNode = getNode(content, state.currentNodeId);
+  const currentNode = getNode(content, state.act, state.currentNodeId);
 
   if (!currentNode.nextIds.includes(nodeId)) {
     throw new Error(`node ${nodeId} is not reachable from ${currentNode.id}`);
   }
 
-  const nextNode = getNode(content, nodeId);
+  const nextNode = getNode(content, state.act, nodeId);
   const nextState = appendLog(
     {
       ...state,
@@ -63,6 +66,32 @@ function choosePath(content: RunContent, state: RunState, nodeId: string): RunSt
   );
 
   return enterNode(content, nextState, nextNode);
+}
+
+function chooseBlessing(content: RunContent, state: RunState, blessingId: string): RunState {
+  if (state.phase !== "blessing") {
+    throw new Error("blessings are only available at the start of an act");
+  }
+
+  const blessing = getAct(content, state.act).blessings.find((candidate) => candidate.id === blessingId);
+
+  if (!blessing) {
+    throw new Error(`unknown blessing: ${blessingId}`);
+  }
+
+  let nextState = appendLog(state, { type: "blessingChosen", blessingId });
+
+  nextState = applyBlessing(content, nextState, blessing);
+
+  return appendLog(
+    {
+      ...nextState,
+      phase: "map",
+      reward: undefined,
+      shop: undefined,
+    },
+    { type: "chooseNextPath" },
+  );
 }
 
 function playCard(content: RunContent, state: RunState, handIndex: number): RunState {
@@ -149,7 +178,7 @@ function chooseRest(content: RunContent, state: RunState, optionId: RestOptionId
     throw new Error("rest options are only available at rest nodes");
   }
 
-  const currentNode = getNode(content, state.currentNodeId);
+  const currentNode = getNode(content, state.act, state.currentNodeId);
   let nextState = state;
 
   if (optionId === "recover") {
@@ -176,7 +205,7 @@ function chooseRest(content: RunContent, state: RunState, optionId: RestOptionId
     return assertNever(optionId);
   }
 
-  return finishNode(nextState, currentNode);
+  return finishNode(content, nextState, currentNode);
 }
 
 function takeReward(content: RunContent, state: RunState, rewardIndex: number): RunState {
@@ -200,7 +229,7 @@ function takeReward(content: RunContent, state: RunState, rewardIndex: number): 
     { type: "rewardCardAdded", cardId },
   );
 
-  return finishNode(nextState, getNode(content, state.currentNodeId));
+  return finishNode(content, nextState, getNode(content, state.act, state.currentNodeId));
 }
 
 function skipReward(content: RunContent, state: RunState): RunState {
@@ -209,8 +238,9 @@ function skipReward(content: RunContent, state: RunState): RunState {
   }
 
   return finishNode(
+    content,
     appendLog({ ...state, reward: undefined }, { type: "rewardSkipped" }),
-    getNode(content, state.currentNodeId),
+    getNode(content, state.act, state.currentNodeId),
   );
 }
 
@@ -303,5 +333,59 @@ function leaveShop(content: RunContent, state: RunState): RunState {
     throw new Error("can only leave when in shop");
   }
 
-  return finishNode(appendLog({ ...state, shop: undefined }, { type: "shopLeft" }), getNode(content, state.currentNodeId));
+  return finishNode(content, appendLog({ ...state, shop: undefined }, { type: "shopLeft" }), getNode(content, state.act, state.currentNodeId));
+}
+
+function applyBlessing(content: RunContent, state: RunState, blessing: BlessingDefinition): RunState {
+  if (blessing.kind === "heal") {
+    const amount = Math.min(blessing.value ?? 0, state.maxHp - state.hp);
+    return appendLog(
+      {
+        ...state,
+        hp: Math.min(state.maxHp, state.hp + (blessing.value ?? 0)),
+      },
+      { type: "recoveredHp", amount },
+    );
+  }
+
+  if (blessing.kind === "gold") {
+    const amount = blessing.value ?? 0;
+    return appendLog(
+      {
+        ...state,
+        gold: state.gold + amount,
+      },
+      { type: "goldGained", amount },
+    );
+  }
+
+  if (blessing.kind === "maxHp") {
+    const amount = blessing.value ?? 0;
+    return appendLog(
+      {
+        ...state,
+        hp: state.hp + amount,
+        maxHp: state.maxHp + amount,
+      },
+      { type: "fortified", maxHp: amount },
+    );
+  }
+
+  if (blessing.kind === "card") {
+    const cardId = blessing.cardId;
+
+    if (!cardId) {
+      throw new Error(`blessing ${blessing.id} must define cardId`);
+    }
+
+    return appendLog(
+      {
+        ...state,
+        deck: [...state.deck, cardId],
+      },
+      { type: "blessingCardAdded", cardId },
+    );
+  }
+
+  return assertNever(blessing.kind);
 }

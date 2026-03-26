@@ -164,7 +164,7 @@ function createSnapshot(
     seed,
     actions,
     locale,
-    map: content.map,
+    acts: content.acts,
     state,
     observation: localizeObservation(observeRun(content, state), locale),
     legalActions: legalActions(content, state),

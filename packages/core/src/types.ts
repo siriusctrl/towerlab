@@ -1,7 +1,8 @@
 export type NodeKind = "battle" | "elite" | "rest" | "shop" | "boss" | "start";
-export type RunPhase = "combat" | "map" | "rest" | "reward" | "shop" | "victory" | "defeat";
+export type RunPhase = "blessing" | "combat" | "map" | "rest" | "reward" | "shop" | "victory" | "defeat";
 export type RestOptionId = "recover" | "fortify";
 export type CardRarity = "common" | "uncommon" | "rare";
+export type BlessingKind = "heal" | "gold" | "maxHp" | "card";
 
 export interface CardRarityBuckets {
   common: string[];
@@ -22,6 +23,7 @@ export interface CharacterDefinition {
   startGold: number;
   starterDeck: string[];
   startingRelicId: string;
+  blessingCards: [string, string, string];
   rewardCardPools: CardRarityBuckets;
   shopCardPools: CardRarityBuckets;
   relicPools: CharacterRelicPools;
@@ -33,6 +35,19 @@ export interface MapNode {
   nextIds: string[];
   encounterId?: string;
   relicReward?: string;
+}
+
+export interface BlessingDefinition {
+  id: string;
+  kind: BlessingKind;
+  value?: number;
+  cardId?: string;
+}
+
+export interface TowerAct {
+  id: string;
+  map: MapNode[];
+  blessings: BlessingDefinition[];
 }
 
 export interface CardDefinition {
@@ -57,14 +72,18 @@ export type LogEffect =
   | { type: "block"; amount: number };
 
 export type LogEvent =
+  | { type: "actStarted"; act: number }
   | { type: "enteredNode"; nodeId: string; kind: NodeKind }
   | { type: "movedToNode"; nodeId: string; kind: NodeKind }
   | { type: "atEntrance" }
+  | { type: "blessingChosen"; blessingId: string }
+  | { type: "goldGained"; amount: number }
   | { type: "enemyAppeared"; enemyId: string; intent: EnemyIntent }
   | { type: "playedCard"; cardId: string; effects: LogEffect[] }
   | { type: "enemyDefeated"; enemyId: string; gold: number }
   | { type: "rewardOffered" }
   | { type: "rewardCardAdded"; cardId: string }
+  | { type: "blessingCardAdded"; cardId: string }
   | { type: "rewardSkipped" }
   | { type: "chooseNextPath" }
   | { type: "chooseCampfire" }
@@ -111,7 +130,7 @@ export interface RunContent {
   enemies: Record<string, EnemyDefinition>;
   relics: Record<string, RelicDefinition>;
   character: CharacterDefinition;
-  map: MapNode[];
+  acts: TowerAct[];
 }
 
 export interface EnemyState {
@@ -147,6 +166,7 @@ export interface ShopState {
 export interface RunState {
   seed: number;
   characterId: string;
+  act: number;
   rng: number;
   phase: RunPhase;
   hp: number;
@@ -180,6 +200,8 @@ export interface ObservedEnemy {
 interface ObservationBase {
   seed: number;
   characterId: string;
+  act: number;
+  totalActs: number;
   phase: RunPhase;
   hp: number;
   maxHp: number;
@@ -188,6 +210,12 @@ interface ObservationBase {
   currentNode: MapNode;
   relics: RelicDefinition[];
   log: LogEvent[];
+}
+
+export interface BlessingObservation extends ObservationBase {
+  phase: "blessing";
+  blessings: BlessingDefinition[];
+  nextNodes: MapNode[];
 }
 
 export interface CombatObservation extends ObservationBase {
@@ -231,6 +259,7 @@ export interface EndObservation extends ObservationBase {
 }
 
 export type Observation =
+  | BlessingObservation
   | CombatObservation
   | MapObservation
   | RestObservation
@@ -239,6 +268,7 @@ export type Observation =
   | EndObservation;
 
 export type RunAction =
+  | { type: "chooseBlessing"; blessingId: string }
   | { type: "choosePath"; nodeId: string }
   | { type: "playCard"; handIndex: number }
   | { type: "endTurn" }

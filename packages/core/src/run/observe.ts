@@ -1,13 +1,15 @@
 import { REST_OPTIONS, SHOP_CARD_PRICE, SHOP_CARD_REMOVE_PRICE } from "../constants.js";
-import { getCombat, getCurrentIntent, getNode, getRelicValue } from "../shared.js";
+import { getAct, getCombat, getCurrentIntent, getNode, getRelicValue } from "../shared.js";
 import type { Observation, RunAction, RunContent, RunState } from "../types.js";
 import { getCard, getRelic } from "../validate.js";
 
 export function observeRun(content: RunContent, state: RunState): Observation {
-  const currentNode = getNode(content, state.currentNodeId);
+  const currentNode = getNode(content, state.act, state.currentNodeId);
   const base = {
     seed: state.seed,
     characterId: state.characterId,
+    act: state.act,
+    totalActs: content.acts.length,
     phase: state.phase,
     hp: state.hp,
     maxHp: state.maxHp,
@@ -41,7 +43,16 @@ export function observeRun(content: RunContent, state: RunState): Observation {
     };
   }
 
-  const nextNodes = currentNode.nextIds.map((nodeId) => getNode(content, nodeId));
+  const nextNodes = currentNode.nextIds.map((nodeId) => getNode(content, state.act, nodeId));
+
+  if (state.phase === "blessing") {
+    return {
+      ...base,
+      phase: "blessing",
+      blessings: getAct(content, state.act).blessings,
+      nextNodes,
+    };
+  }
 
   if (state.phase === "map") {
     return {
@@ -95,6 +106,10 @@ export function observeRun(content: RunContent, state: RunState): Observation {
 }
 
 export function legalActions(content: RunContent, state: RunState): RunAction[] {
+  if (state.phase === "blessing") {
+    return getAct(content, state.act).blessings.map((blessing) => ({ type: "chooseBlessing", blessingId: blessing.id }));
+  }
+
   if (state.phase === "combat") {
     const combat = getCombat(state);
     const actions: RunAction[] = combat.hand.flatMap((cardId, handIndex) => {
@@ -106,7 +121,7 @@ export function legalActions(content: RunContent, state: RunState): RunAction[] 
   }
 
   if (state.phase === "map") {
-    const currentNode = getNode(content, state.currentNodeId);
+    const currentNode = getNode(content, state.act, state.currentNodeId);
     return currentNode.nextIds.map((nodeId) => ({ type: "choosePath", nodeId }));
   }
 

@@ -5,6 +5,7 @@ import {
   createRun,
   observeRun,
   type CombatObservation,
+  type MapNode,
   type RunContent,
   type RunState,
 } from "../index.js";
@@ -49,28 +50,28 @@ const content: RunContent = {
     [],
     [],
   ),
-  map: [
+  acts: [createAct([
     { id: "gate", kind: "battle", encounterId: "scout", nextIds: ["camp"] },
     { id: "camp", kind: "rest", nextIds: ["summit"] },
     { id: "summit", kind: "boss", encounterId: "core", nextIds: [] },
-  ],
+  ])],
 };
 
 describe("createRun", () => {
-  it("produces the same opening combat state for the same seed", () => {
+  it("produces the same opening blessing state for the same seed", () => {
     const first = createRun(content, 7);
     const second = createRun(content, 7);
     const firstView = observeRun(content, first);
     const secondView = observeRun(content, second);
 
-    expect(first.phase).toBe("combat");
-    expect(second.phase).toBe("combat");
+    expect(first.phase).toBe("blessing");
+    expect(second.phase).toBe("blessing");
     expect(firstView).toEqual(secondView);
   });
 
-  it("changes the opening hand for a different seed", () => {
-    const first = observeCombat(content, createRun(content, 7));
-    const second = observeCombat(content, createRun(content, 8));
+  it("changes the opening hand for a different seed once combat begins", () => {
+    const first = observeCombat(content, enterOpeningCombat(content, createRun(content, 7)));
+    const second = observeCombat(content, enterOpeningCombat(content, createRun(content, 8)));
 
     expect(first.hand.map((card) => card.id)).not.toEqual(second.hand.map((card) => card.id));
   });
@@ -148,18 +149,18 @@ describe("run progression", () => {
         },
       },
       character: createCharacter(["strike", "strike", "strike", "strike", "strike"], [], []),
-      map: [
+      acts: [createAct([
         { id: "gate", kind: "battle", encounterId: "guard", nextIds: ["forge", "hall"] },
         { id: "hall", kind: "battle", encounterId: "watchman", nextIds: ["rest", "market"] },
         { id: "forge", kind: "elite", encounterId: "warden", nextIds: ["market"] },
         { id: "rest", kind: "rest", nextIds: ["summit"] },
         { id: "market", kind: "shop", nextIds: ["summit"] },
         { id: "summit", kind: "boss", encounterId: "core", nextIds: [] },
-      ],
+      ])],
     };
 
-    let state = createRun(tradeoffContent, 101);
-
+    let state = beginAct(tradeoffContent, createRun(tradeoffContent, 101));
+    state = enterOpeningCombat(tradeoffContent, state);
     state = winCurrentCombat(tradeoffContent, state);
     const firstChoice = observeRun(tradeoffContent, state);
 
@@ -199,8 +200,9 @@ describe("run progression", () => {
     expect(view.nextNodes.map((node) => node.id)).toEqual(["summit"]);
 
     state = createRun(tradeoffContent, 101);
-    state = winCurrentCombat(tradeoffContent, state);
-    state = applyAction(tradeoffContent, state, { type: "choosePath", nodeId: "hall" });
+    state = beginAct(tradeoffContent, state);
+    state = enterOpeningCombat(tradeoffContent, state);
+    state = applyAction(tradeoffContent, winCurrentCombat(tradeoffContent, state), { type: "choosePath", nodeId: "hall" });
 
     state = winCurrentCombat(tradeoffContent, state);
     const hallEncounter = observeRun(tradeoffContent, state);
@@ -239,7 +241,7 @@ describe("post-combat rewards", () => {
         },
       },
       character: createCharacter(["strike", "strike", "defend"], ["strike", "defend", "surge"], []),
-      map: [{ id: "gate", kind: "battle", encounterId: "patrol", nextIds: [] }],
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "patrol", nextIds: [] }])],
     };
 
     let state = createRun(rewardContent, 15);
@@ -281,7 +283,7 @@ describe("post-combat rewards", () => {
         },
       },
       character: createCharacter(["strike", "strike", "defend"], ["strike", "defend", "surge"], []),
-      map: [{ id: "gate", kind: "battle", encounterId: "patrol", nextIds: [] }],
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "patrol", nextIds: [] }])],
     };
 
     let state = createRun(rewardContent, 16);
@@ -326,7 +328,10 @@ describe("shop behavior", () => {
         },
       },
       character: createCharacter(["strike", "strike", "defend", "surge"], [], ["strike", "defend", "surge"]),
-      map: [{ id: "gate", kind: "battle", encounterId: "vendor", nextIds: ["market"] }, { id: "market", kind: "shop", nextIds: [] }],
+      acts: [createAct([
+        { id: "gate", kind: "battle", encounterId: "vendor", nextIds: ["market"] },
+        { id: "market", kind: "shop", nextIds: [] },
+      ])],
     };
 
     let state = createRun(shopContent, 20);
@@ -403,13 +408,13 @@ describe("relic systems", () => {
         },
       },
       character: createCharacter(["strike", "strike", "strike", "strike", "strike"], [], []),
-      map: [
+      acts: [createAct([
         { id: "gate", kind: "battle", encounterId: "scout", relicReward: "bucklerFrame", nextIds: ["summit"] },
         { id: "summit", kind: "boss", encounterId: "core", nextIds: [] },
-      ],
+      ])],
     };
 
-    let state = createRun(bucklerContent, 50);
+    let state = enterOpeningCombat(bucklerContent, createRun(bucklerContent, 50));
     const firstCombat = observeRun(bucklerContent, state);
     expect(firstCombat.phase).toBe("combat");
     expect(firstCombat.block).toBe(0);
@@ -453,7 +458,7 @@ describe("relic systems", () => {
         },
       },
       character: createCharacter(["strike", "strike", "strike"], [], ["strike"]),
-      map: [{ id: "gate", kind: "battle", encounterId: "scout", relicReward: "reinforcedFrame", nextIds: [] }],
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "scout", relicReward: "reinforcedFrame", nextIds: [] }])],
     };
 
     let state = createRun(relicContent, 22);
@@ -503,10 +508,10 @@ describe("relic systems", () => {
         },
       },
       character: createCharacter(["strike", "strike", "strike"], [], ["strike"]),
-      map: [
+      acts: [createAct([
         { id: "gate", kind: "battle", encounterId: "scout", relicReward: "combatFocus", nextIds: ["summit"] },
         { id: "summit", kind: "boss", encounterId: "core", nextIds: [] },
-      ],
+      ])],
     };
 
     let state = createRun(relicContent, 23);
@@ -549,11 +554,11 @@ describe("relic systems", () => {
         },
       },
       character: createCharacter(["strike", "strike", "strike", "strike"], [], ["strike"]),
-      map: [
+      acts: [createAct([
         { id: "gate", kind: "battle", encounterId: "sentinel", relicReward: "medicinePack", nextIds: ["camp"] },
         { id: "camp", kind: "rest", nextIds: ["market"] },
         { id: "market", kind: "shop", nextIds: [] },
-      ],
+      ])],
     };
 
     let restRun = createRun(restContent, 24);
@@ -593,10 +598,10 @@ describe("relic systems", () => {
         },
       },
       character: createCharacter(["strike", "strike", "strike", "strike"], [], ["strike"]),
-      map: [
+      acts: [createAct([
         { id: "gate", kind: "battle", encounterId: "sentinel", relicReward: "merchantTag", nextIds: ["market"] },
         { id: "market", kind: "shop", nextIds: [] },
-      ],
+      ])],
     };
 
     let shopRun = createRun(discountContent, 30);
@@ -623,8 +628,27 @@ function observeCombat(runContent: RunContent, state: RunState): CombatObservati
   return view;
 }
 
+function beginAct(runContent: RunContent, state: RunState): RunState {
+  if (state.phase !== "blessing") {
+    return state;
+  }
+
+  return applyAction(runContent, state, { type: "chooseBlessing", blessingId: runContent.acts[state.act - 1]!.blessings[0]!.id });
+}
+
+function enterOpeningCombat(runContent: RunContent, state: RunState): RunState {
+  let nextState = beginAct(runContent, state);
+
+  if (nextState.phase === "map") {
+    const currentNode = runContent.acts[nextState.act - 1]!.map.find((node) => node.id === nextState.currentNodeId)!;
+    nextState = applyAction(runContent, nextState, { type: "choosePath", nodeId: currentNode.nextIds[0]! });
+  }
+
+  return nextState;
+}
+
 function winCurrentCombat(runContent: RunContent, state: RunState): RunState {
-  let nextState = state;
+  let nextState = enterOpeningCombat(runContent, state);
 
   while (nextState.phase === "combat") {
     const view = observeCombat(runContent, nextState);
@@ -643,7 +667,17 @@ function winCurrentCombat(runContent: RunContent, state: RunState): RunState {
   return nextState;
 }
 
+function createAct(map: MapNode[]) {
+  return {
+    id: "act-1",
+    map: [{ id: "start", kind: "start", nextIds: [map[0]!.id] }, ...map],
+    blessings: [{ id: "act-1-heal", kind: "heal" as const, value: 1 }],
+  };
+}
+
 function createCharacter(starterDeck: string[], rewardPool: string[] = [], shopPool: string[] = []) {
+  const blessingCard = rewardPool[0] ?? shopPool[0] ?? starterDeck[0]!;
+
   return {
     id: "test",
     name: "Test",
@@ -652,6 +686,7 @@ function createCharacter(starterDeck: string[], rewardPool: string[] = [], shopP
     startGold: 0,
     starterDeck,
     startingRelicId: "starterCharm",
+    blessingCards: [blessingCard, blessingCard, blessingCard],
     rewardCardPools: { common: rewardPool, uncommon: [], rare: [] },
     shopCardPools: { common: shopPool, uncommon: [], rare: [] },
     relicPools: { elite: [], boss: [] },

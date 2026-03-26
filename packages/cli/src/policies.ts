@@ -56,6 +56,10 @@ function chooseGreedyAction(content: RunContent, state: RunState): RunAction {
     return chooseBestCombatAction(observation, actions, false);
   }
 
+  if (observation.phase === "blessing") {
+    return chooseBestBlessingAction(content, state, observation.blessings, actions, false);
+  }
+
   if (observation.phase === "map") {
     return chooseBestMapAction(observation.nextNodes, actions, {
       boss: 100,
@@ -89,6 +93,10 @@ function chooseHeuristicAction(content: RunContent, state: RunState): RunAction 
 
   if (observation.phase === "combat") {
     return chooseBestCombatAction(observation, actions, true);
+  }
+
+  if (observation.phase === "blessing") {
+    return chooseBestBlessingAction(content, state, observation.blessings, actions, true);
   }
 
   if (observation.phase === "map") {
@@ -166,6 +174,27 @@ function chooseBestMapAction(
     const bestScore = bestNode ? scores[bestNode.kind] ?? 0 : 0;
 
     return nodeScore > bestScore ? action : best;
+  });
+}
+
+function chooseBestBlessingAction(
+  content: RunContent,
+  state: RunState,
+  blessings: Array<{ id: string; kind: string; value?: number; cardId?: string }>,
+  actions: RunAction[],
+  preferSafety: boolean,
+): RunAction {
+  const blessingActions = actions.filter(
+    (action): action is Extract<RunAction, { type: "chooseBlessing" }> => action.type === "chooseBlessing",
+  );
+
+  return blessingActions.reduce((best, action) => {
+    const blessing = blessings.find((candidate) => candidate.id === action.blessingId);
+    const bestBlessing = blessings.find((candidate) => candidate.id === best.blessingId);
+    const blessingScore = blessing ? scoreBlessing(content, state, blessing, preferSafety) : Number.NEGATIVE_INFINITY;
+    const bestScore = bestBlessing ? scoreBlessing(content, state, bestBlessing, preferSafety) : Number.NEGATIVE_INFINITY;
+
+    return blessingScore > bestScore ? action : best;
   });
 }
 
@@ -298,4 +327,37 @@ function scoreRewardCard(id: string, damage: number, block: number, preferFlexib
 
 function countStarterCards(content: RunContent, deck: string[]): number {
   return deck.filter((cardId) => cardId === "strike" || cardId === "defend").filter((cardId) => content.cards[cardId]).length;
+}
+
+function scoreBlessing(
+  content: RunContent,
+  state: RunState,
+  blessing: { kind: string; value?: number; cardId?: string },
+  preferSafety: boolean,
+): number {
+  if (blessing.kind === "card" && blessing.cardId) {
+    const card = content.cards[blessing.cardId];
+
+    if (!card) {
+      return 0;
+    }
+
+    return scoreRewardCard(card.id, card.damage ?? 0, card.block ?? 0, preferSafety) + 30;
+  }
+
+  if (blessing.kind === "maxHp") {
+    return 55 + (blessing.value ?? 0) * 3;
+  }
+
+  if (blessing.kind === "gold") {
+    return 40 + (blessing.value ?? 0);
+  }
+
+  if (blessing.kind === "heal") {
+    const missingHp = state.maxHp - state.hp;
+    const effectiveHealing = Math.min(missingHp, blessing.value ?? 0);
+    return preferSafety ? effectiveHealing * 5 : effectiveHealing * 2;
+  }
+
+  return 0;
 }

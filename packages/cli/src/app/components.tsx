@@ -1,7 +1,9 @@
-import type { CharacterDefinition, MapNode, Observation, RunAction } from "@towerlab/core";
+import type { CharacterDefinition, MapNode, Observation, RunAction, RunContent } from "@towerlab/core";
 import { Box, Text } from "ink";
 
 import {
+  formatBlessingDescription,
+  formatBlessingName,
   formatNodeLabel,
   formatText,
   localizeCharacterName,
@@ -54,8 +56,9 @@ export function StatusBar({
         <Text wrap="truncate-end">
           <Text bold color="cyan">{text(locale, "snapshotTitle")}</Text>
           <Text dimColor>
-            {"  "}{text(locale, "seed")} {observation.seed} {"·"} {characterName} {"·"} {text(locale, "floor")} {observation.floor} {"·"} {text(locale, "hp")}{" "}
-            {observation.hp}/{observation.maxHp} {"·"} {text(locale, "gold")} {observation.gold} {"·"} {formatNodeLabel(observation.currentNode, locale)}
+            {"  "}{text(locale, "seed")} {observation.seed} {"·"} {characterName} {"·"} {text(locale, "act")} {observation.act}/{observation.totalActs} {"·"}{" "}
+            {text(locale, "floor")} {observation.floor} {"·"} {text(locale, "hp")} {observation.hp}/{observation.maxHp} {"·"} {text(locale, "gold")} {observation.gold} {"·"}{" "}
+            {formatNodeLabel(observation.currentNode, locale)}
           </Text>
         </Text>
       </Box>
@@ -67,7 +70,7 @@ export function StatusBar({
       <Text wrap="truncate-end">
         <Text bold color="cyan">{text(locale, "snapshotTitle")}</Text>
         <Text dimColor>
-          {"  "}{text(locale, "seed")} {observation.seed} {"·"} {characterName} {"·"} {text(locale, "floor")} {observation.floor} {"·"}{" "}
+          {"  "}{text(locale, "seed")} {observation.seed} {"·"} {characterName} {"·"} {text(locale, "act")} {observation.act}/{observation.totalActs} {"·"} {text(locale, "floor")} {observation.floor} {"·"}{" "}
           {localizePhaseLabel(observation.phase, locale)} {"·"} {formatNodeLabel(observation.currentNode, locale)}
         </Text>
       </Text>
@@ -156,12 +159,14 @@ export function MapTreeView({
 }
 
 export function PhaseBody({
+  content,
   observation,
   locale,
   shopMenu,
   hpBarWidth,
   compactMapPhase,
 }: {
+  content: RunContent;
   observation: Observation;
   locale: Locale;
   shopMenu: ShopMenuMode;
@@ -197,6 +202,20 @@ export function PhaseBody({
         ) : (
           <Text dimColor>{text(locale, "emptyHand")}</Text>
         )}
+      </>
+    );
+  }
+
+  if (observation.phase === "blessing") {
+    return (
+      <>
+        <Text bold color="yellow">{text(locale, "blessing")}</Text>
+        <Text wrap="truncate-end">{text(locale, "chooseBlessing")}</Text>
+        {observation.blessings.map((blessing, index) => (
+          <Text key={blessing.id} wrap="truncate-end">
+            {index + 1}. {formatBlessingName(content, blessing, locale)} - {formatBlessingDescription(content, blessing, locale)}
+          </Text>
+        ))}
       </>
     );
   }
@@ -377,6 +396,10 @@ export function PhaseBody({
 }
 
 export function Controls({ observation, locale, shopMenu }: { observation: Observation; locale: Locale; shopMenu: ShopMenuMode }) {
+  if (observation.phase === "blessing") {
+    return <Text dimColor wrap="truncate-end">{text(locale, "controlsBlessing")}</Text>;
+  }
+
   if (observation.phase === "combat") {
     return <Text dimColor wrap="truncate-end">{text(locale, "controlsCombat")}</Text>;
   }

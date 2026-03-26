@@ -1,4 +1,5 @@
 import type {
+  BlessingDefinition,
   CardDefinition,
   CombatObservation,
   EnemyIntent,
@@ -128,16 +129,24 @@ export function formatLogEntries(content: RunContent, log: LogEvent[], locale: L
 
 export function formatLogEvent(content: RunContent, event: LogEvent, locale: Locale): string {
   switch (event.type) {
+    case "actStarted":
+      return locale === "zh" ? `进入第 ${event.act} 层。先古之民在等待。` : `Entered act ${event.act}. The Ancient waits.`;
     case "enteredNode":
       return locale === "zh"
         ? `进入 ${localizeNodeName(event.nodeId, locale)}（${localizeNodeKind(event.kind, locale)}）。`
-        : `Entered ${event.nodeId} (${event.kind}).`;
+        : `Entered ${localizeNodeName(event.nodeId, locale)} (${event.kind}).`;
     case "movedToNode":
       return locale === "zh"
         ? `前往 ${localizeNodeName(event.nodeId, locale)}（${localizeNodeKind(event.kind, locale)}）。`
-        : `Moved to ${event.nodeId} (${event.kind}).`;
+        : `Moved to ${localizeNodeName(event.nodeId, locale)} (${event.kind}).`;
     case "atEntrance":
       return locale === "zh" ? "来到入口。请选择第一条路径。" : "At the entrance. Choose the first path.";
+    case "blessingChosen":
+      return locale === "zh"
+        ? `接受祝福：${formatBlessingName(content, readBlessing(content, event.blessingId), locale)}。`
+        : `Accepted blessing: ${formatBlessingName(content, readBlessing(content, event.blessingId), locale)}.`;
+    case "goldGained":
+      return locale === "zh" ? `获得 ${event.amount} 金币。` : `Gained ${event.amount} gold.`;
     case "enemyAppeared": {
       const enemyName = readEnemyName(content, event.enemyId);
       return locale === "zh"
@@ -169,6 +178,12 @@ export function formatLogEvent(content: RunContent, event: LogEvent, locale: Loc
       return locale === "zh"
         ? `将${localizeCardName(cardName, locale)}加入牌组。`
         : `Added ${cardName} to deck.`;
+    }
+    case "blessingCardAdded": {
+      const cardName = readCardName(content, event.cardId);
+      return locale === "zh"
+        ? `祝福将${localizeCardName(cardName, locale)}加入牌组。`
+        : `Blessing added ${cardName} to deck.`;
     }
     case "rewardSkipped":
       return locale === "zh" ? "跳过奖励。" : "Skipped reward.";
@@ -241,7 +256,7 @@ export function formatText(
   let value = text(locale, key);
 
   for (const [placeholder, replacement] of Object.entries(replacements)) {
-    value = value.replace(`{${placeholder}}`, String(replacement));
+    value = value.split(`{${placeholder}}`).join(String(replacement));
   }
 
   return value;
@@ -271,9 +286,9 @@ export function localizeNodeName(nodeId: string, locale: Locale): string {
     return names[nodeId];
   }
 
-  const generated = nodeId.match(/^(start|battle|elite|rest|shop|boss)-r(\d+)(?:-p(\d+))?$/u);
+  const generated = nodeId.match(/^(?:act(\d+)-)?(start|battle|elite|rest|shop|boss)-r(\d+)(?:-p(\d+))?$/u);
   if (generated) {
-    const [, kind, row, position] = generated;
+    const [, , kind, row, position] = generated;
     if (kind === "start") {
       return locale === "zh" ? "岔路口" : "Crossroads";
     }
@@ -305,6 +320,40 @@ export function formatNodeLabel(
   return `${localizeNodeName(node.id, locale)} (${localizeNodeKind(node.kind, locale)})`;
 }
 
+export function formatBlessingName(content: RunContent, blessing: BlessingDefinition, locale: Locale): string {
+  if (blessing.kind === "heal") {
+    return text(locale, "blessingHealName");
+  }
+
+  if (blessing.kind === "gold") {
+    return text(locale, "blessingGoldName");
+  }
+
+  if (blessing.kind === "maxHp") {
+    return text(locale, "blessingMaxHpName");
+  }
+
+  const cardName = blessing.cardId ? readCardName(content, blessing.cardId) : text(locale, "reward");
+  return formatText(locale, "blessingCardName", { card: localizeCardName(cardName, locale) });
+}
+
+export function formatBlessingDescription(content: RunContent, blessing: BlessingDefinition, locale: Locale): string {
+  if (blessing.kind === "heal") {
+    return formatText(locale, "blessingHealDescription", { amount: blessing.value ?? 0 });
+  }
+
+  if (blessing.kind === "gold") {
+    return formatText(locale, "blessingGoldDescription", { amount: blessing.value ?? 0 });
+  }
+
+  if (blessing.kind === "maxHp") {
+    return formatText(locale, "blessingMaxHpDescription", { amount: blessing.value ?? 0 });
+  }
+
+  const cardName = blessing.cardId ? readCardName(content, blessing.cardId) : text(locale, "reward");
+  return formatText(locale, "blessingCardDescription", { card: localizeCardName(cardName, locale) });
+}
+
 const nodeKindBadges: Record<Locale, Record<string, string>> = {
   en: { battle: "F", elite: "E", rest: "R", shop: "$", boss: "B", start: "S" },
   zh: { battle: "战", elite: "精", rest: "营", shop: "商", boss: "首", start: "始" },
@@ -315,6 +364,7 @@ export function localizeNodeKindBadge(kind: string, locale: Locale): string {
 }
 
 const phaseLabelKeys: Record<string, keyof typeof localeText.en> = {
+  blessing: "blessing",
   combat: "combat",
   map: "map",
   rest: "rest",
@@ -344,6 +394,7 @@ export function localizeErrorMessage(message: string, locale: Locale): string {
     [/^Need (\d+) gold to buy (.+)$/, (gold, cardName) => `需要 ${gold} 金币才能购买${localizeCardName(cardName, locale)}`],
     [/^Need (\d+) gold to remove (.+)$/, (gold, cardName) => `需要 ${gold} 金币才能移除${localizeCardName(cardName, locale)}`],
     [/^(.+) costs (\d+) energy$/, (cardName, cost) => `${localizeCardName(cardName, locale)} 需要 ${cost} 点能量`],
+    [/^blessings are only available at the start of an act$/, () => "只有在每层开始时才能选择祝福"],
     [/^path choices are only available on the map$/, () => "只有在地图阶段才能选择路径"],
     [/^cards can only be played during combat$/, () => "只有在战斗阶段才能打出卡牌"],
     [/^ending the turn is only available during combat$/, () => "只有在战斗阶段才能结束回合"],
@@ -355,6 +406,7 @@ export function localizeErrorMessage(message: string, locale: Locale): string {
     [/^Unknown positional argument: (.+)$/, (arg) => `未知的位置参数：${arg}`],
     [/^Invalid JSON action: (.+)$/, (raw) => `动作 JSON 非法：${raw}`],
     [/^Invalid action shape: (.+)$/, (raw) => `动作结构非法：${raw}`],
+    [/^Invalid chooseBlessing action: (.+)$/, (raw) => `chooseBlessing 动作非法：${raw}`],
     [/^Invalid choosePath action: (.+)$/, (raw) => `choosePath 动作非法：${raw}`],
     [/^Invalid playCard action: (.+)$/, (raw) => `playCard 动作非法：${raw}`],
     [/^Invalid chooseRest action: (.+)$/, (raw) => `chooseRest 动作非法：${raw}`],
@@ -501,4 +553,16 @@ function readEnemyName(content: RunContent, enemyId: string): string {
 
 function readRelicName(content: RunContent, relicId: string): string {
   return content.relics[relicId]?.name ?? relicId;
+}
+
+function readBlessing(content: RunContent, blessingId: string): BlessingDefinition {
+  for (const act of content.acts) {
+    const blessing = act.blessings.find((candidate) => candidate.id === blessingId);
+
+    if (blessing) {
+      return blessing;
+    }
+  }
+
+  throw new Error(`unknown blessing: ${blessingId}`);
 }
