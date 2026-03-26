@@ -1,6 +1,6 @@
 import type { RunContent } from "@towerlab/core";
 
-import { generateMap } from "./map.js";
+import { generateMap } from "./map/index.js";
 
 const baseContent: Omit<RunContent, "map"> = {
   cards: {

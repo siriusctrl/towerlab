@@ -53,7 +53,9 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
   const relicNames = view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
   const compactLegendLine = getMapCompactLegendLine(locale);
   const sidebarWidth = Math.max(32, Math.min(52, Math.max(getTerminalTextWidth(compactLegendLine) + 4, Math.floor(columns * 0.35))));
+  const compactMapPhase = view.phase === "map" && rows <= 24;
   const showSidebar = view.phase !== "map" && rows >= 24 && columns - sidebarWidth >= 48;
+  const hideMainMapLegend = compactMapPhase || (view.phase === "map" && rows <= 24 && columns < 100);
   const showInlineLog = !showSidebar && rows >= 28;
   const recentLogLimit = rows >= 30 ? 6 : rows >= 26 ? 5 : 4;
   const hpBarWidth = Math.min(20, Math.max(10, Math.floor(columns * 0.15)));
@@ -155,23 +157,25 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
     }
   });
 
-  const ruleWidth = Math.max(0, columns - 2);
+  const ruleWidth = Math.max(0, columns);
 
   return (
     <Box flexDirection="column" width={columns} height={rows} overflow="hidden">
       <Box flexDirection="column" flexShrink={0} paddingX={1} overflow="hidden">
-        <StatusBar observation={view} locale={locale} relicNames={relicNames} hpBarWidth={hpBarWidth} />
+        <StatusBar observation={view} locale={locale} relicNames={relicNames} hpBarWidth={hpBarWidth} compact={compactMapPhase} />
       </Box>
-      <Text dimColor wrap="truncate-end">
-        {"\u2500".repeat(ruleWidth)}
-      </Text>
+      {!compactMapPhase ? (
+        <Text dimColor wrap="truncate-end">
+          {"\u2500".repeat(ruleWidth)}
+        </Text>
+      ) : null}
 
       <Box flexDirection="row" flexGrow={1} overflow="hidden">
         <Box flexDirection="column" flexGrow={1} paddingLeft={1} overflow="hidden">
           {!showSidebar && view.phase === "map" ? (
-            <MapTreeView map={content.map} observation={view} actions={actions} locale={locale} width={columns - 2} />
+            <MapTreeView map={content.map} observation={view} actions={actions} locale={locale} width={columns - 2} showLegend={!hideMainMapLegend} />
           ) : null}
-          <PhaseBody observation={view} locale={locale} shopMenu={shopMenu} hpBarWidth={hpBarWidth} />
+          <PhaseBody observation={view} locale={locale} shopMenu={shopMenu} hpBarWidth={hpBarWidth} compactMapPhase={compactMapPhase} />
           {showInlineLog ? (
             <Box marginTop={1} flexDirection="column" overflow="hidden">
               <RecentLogPanel observation={view} locale={locale} limit={recentLogLimit} />
@@ -201,9 +205,11 @@ export function App({ seed, locale = DEFAULT_LOCALE }: AppProps) {
         ) : null}
       </Box>
 
-      <Text dimColor wrap="truncate-end">
-        {"\u2500".repeat(ruleWidth)}
-      </Text>
+      {!compactMapPhase ? (
+        <Text dimColor wrap="truncate-end">
+          {"\u2500".repeat(ruleWidth)}
+        </Text>
+      ) : null}
       <Box flexDirection="column" flexShrink={0} paddingX={1} overflow="hidden">
         <Controls observation={view} locale={locale} shopMenu={shopMenu} />
         {error ? (
@@ -221,15 +227,31 @@ function StatusBar({
   locale,
   relicNames,
   hpBarWidth,
+  compact = false,
 }: {
   observation: Observation;
   locale: Locale;
   relicNames: string;
   hpBarWidth: number;
+  compact?: boolean;
 }) {
   const hpBar = renderHpBar(observation.hp, observation.maxHp, hpBarWidth);
   const hpColor = getHpColor(observation.hp, observation.maxHp);
   const showRelics = relicNames !== text(locale, "none");
+
+  if (compact) {
+    return (
+      <Box flexDirection="column" flexShrink={0} overflow="hidden">
+        <Text wrap="truncate-end">
+          <Text bold color="cyan">{text(locale, "snapshotTitle")}</Text>
+          <Text dimColor>
+            {"  "}{text(locale, "seed")} {observation.seed} {"\u00b7"} {text(locale, "floor")} {observation.floor} {"\u00b7"} {text(locale, "hp")}{" "}
+            {observation.hp}/{observation.maxHp} {"\u00b7"} {text(locale, "gold")} {observation.gold} {"\u00b7"} {formatNodeLabel(observation.currentNode, locale)}
+          </Text>
+        </Text>
+      </Box>
+    );
+  }
 
   return (
     <Box flexDirection="column" flexShrink={0} overflow="hidden">
@@ -294,6 +316,7 @@ function MapTreeView({
   width,
   compact = false,
   compactLegendLine,
+  showLegend = true,
 }: {
   map: MapNode[];
   observation: Observation;
@@ -302,6 +325,7 @@ function MapTreeView({
   width: number;
   compact?: boolean;
   compactLegendLine?: string;
+  showLegend?: boolean;
 }) {
   const visitedNodeIds = deriveVisitedNodeIds(map, actions);
   const mapRows = createMapFloorRows(map, observation, locale, visitedNodeIds, width, compact ? "icon" : "icon");
@@ -317,7 +341,7 @@ function MapTreeView({
             {compactLegendLine ?? getMapCompactLegendLine(locale)}
           </Text>
         </>
-      ) : (
+      ) : showLegend ? (
         <>
           <Text bold color="magenta">
             {text(locale, "map")}
@@ -328,7 +352,7 @@ function MapTreeView({
             </Text>
           ))}
         </>
-      )}
+      ) : null}
       {mapRows.map((row, rowIndex) => (
         <Text key={rowIndex} wrap="truncate-end">
           {row.map((cell, cellIndex) => (
@@ -352,11 +376,13 @@ function PhaseBody({
   locale,
   shopMenu,
   hpBarWidth,
+  compactMapPhase,
 }: {
   observation: Observation;
   locale: Locale;
   shopMenu: ShopMenuMode;
   hpBarWidth: number;
+  compactMapPhase: boolean;
 }) {
   if (observation.phase === "combat") {
     const enemyHpBar = renderHpBar(observation.enemy.hp, observation.enemy.maxHp, Math.min(15, hpBarWidth));
@@ -392,6 +418,20 @@ function PhaseBody({
   }
 
   if (observation.phase === "map") {
+    if (compactMapPhase) {
+      return (
+        <Text bold wrap="truncate-end">
+          {text(locale, "paths")}{" "}
+          {observation.nextNodes.map((node, index) => (
+            <Text key={node.id} color={getChoiceColor(index)} bold>
+              {index > 0 ? "  " : ""}
+              {index + 1}. {formatNodeLabel(node, locale)}
+            </Text>
+          ))}
+        </Text>
+      );
+    }
+
     return (
       <>
         <Text bold>{text(locale, "paths")}</Text>

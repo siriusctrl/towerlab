@@ -89,23 +89,28 @@ Use this in tests to assert layout properties.
 
 ## Map Rendering Specifically
 
-The map is a DAG defined in `packages/content`. The view layer in `view.ts`
-transforms it into renderable rows. Key functions:
+The map is a seeded DAG generated in `packages/content/src/map/`. The view
+layer in `view.ts` delegates to the dedicated renderer in
+`packages/cli/src/map/` and transforms the result into renderable rows. Key
+functions:
 
-- `createMapTreeRows()` — builds the tree structure from map data
-- `formatMapLines()` — converts tree rows to plain text strings
+- `createMapFloorRows()` — builds renderable rows from map data
+- `formatMapLines()` — converts row cells to plain text strings
+- `renderDagreMap()` — orchestrates layout, routing, and rasterization
+- `generateMap()` — materializes a deterministic map from a seed
 
 To debug map rendering in isolation:
 
 ```ts
-import { sampleContent } from '@towerlab/content';
+import { createSeededContent } from '@towerlab/content';
 import { createRun, observeRun } from '@towerlab/core';
-import { createMapTreeRows, formatMapLines, deriveVisitedNodeIds } from './view.js';
+import { createMapFloorRows, formatMapLines, deriveVisitedNodeIds } from './view.js';
 
-const state = createRun(sampleContent, 7);
-const obs = observeRun(sampleContent, state);
-const visited = deriveVisitedNodeIds(sampleContent.map, []);
-const rows = createMapTreeRows(sampleContent.map, obs, 'en', visited);
+const content = createSeededContent(7);
+const state = createRun(content, 7);
+const obs = observeRun(content, state);
+const visited = deriveVisitedNodeIds(content.map, []);
+const rows = createMapFloorRows(content.map, obs, 'en', visited, 80);
 console.log(formatMapLines(rows).join('\n'));
 ```
 

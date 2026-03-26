@@ -1,20 +1,17 @@
-import type { MapNode, NodeKind } from "@towerlab/core";
+import type { MapNode } from "@towerlab/core";
 
-type RegularNodeKind = Exclude<NodeKind, "boss" | "start">;
-type TransitionStyle = "balanced" | "left" | "right";
-
-const REGULAR_ROW_PATTERNS = [
-  [3, 4, 4, 5, 4, 4, 3, 3],
-  [3, 4, 5, 4, 5, 4, 3, 3],
-  [3, 5, 4, 5, 4, 4, 3, 3],
-] as const;
-
-const EARLY_KIND_POOL: RegularNodeKind[] = ["battle", "battle", "elite", "rest", "shop"];
-const MID_KIND_POOL: RegularNodeKind[] = ["battle", "battle", "elite", "rest", "shop"];
-const LATE_KIND_POOL: RegularNodeKind[] = ["battle", "battle", "rest", "rest", "shop"];
-const OPENING_KINDS: RegularNodeKind[] = ["battle", "battle", "elite"];
-const ELITE_RELIC_POOL = ["combatFocus", "bucklerFrame", "medicinePack", "merchantTag"] as const;
-const TRANSITION_STYLES: TransitionStyle[] = ["balanced", "left", "right"];
+import {
+  EARLY_KIND_POOL,
+  ELITE_RELIC_POOL,
+  LATE_KIND_POOL,
+  MID_KIND_POOL,
+  OPENING_KINDS,
+  REGULAR_ROW_PATTERNS,
+  TRANSITION_STYLES,
+  type RegularNodeKind,
+  type TransitionStyle,
+} from "./config.js";
+import { nextSeed, normalizeSeed, pickFrom, shuffle } from "./rng.js";
 
 type GeneratedNode = MapNode & {
   row: number;
@@ -183,9 +180,7 @@ function connectRows(previousRow: GeneratedNode[], nextRow: GeneratedNode[], see
 
 function addEdge(from: GeneratedNode, to: GeneratedNode, edgeSet: Set<string>): void {
   const key = `${from.id}->${to.id}`;
-  if (edgeSet.has(key)) {
-    return;
-  }
+  if (edgeSet.has(key)) return;
 
   from.nextIds.push(to.id);
   edgeSet.add(key);
@@ -212,38 +207,4 @@ function projectIndex(index: number, fromCount: number, toCount: number, style: 
 
 function clampIndex(index: number, count: number): number {
   return Math.max(0, Math.min(count - 1, index));
-}
-
-function pickFrom<const T>(items: readonly T[], seed: number): { value: T; rng: number } {
-  const next = nextSeed(seed);
-  const index = next % items.length;
-
-  return {
-    value: items[index]!,
-    rng: next,
-  };
-}
-
-function shuffle<T>(items: readonly T[], seed: number): { items: T[]; rng: number } {
-  const shuffled = [...items];
-  let rng = seed;
-
-  for (let index = shuffled.length - 1; index > 0; index--) {
-    const next = nextSeed(rng);
-    const swapIndex = next % (index + 1);
-    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex]!, shuffled[index]!];
-    rng = next;
-  }
-
-  return { items: shuffled, rng };
-}
-
-function normalizeSeed(seed: number): number {
-  const normalized = seed >>> 0;
-  return normalized === 0 ? 1 : normalized;
-}
-
-function nextSeed(seed: number): number {
-  const next = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
-  return next === 0 ? 1 : next;
 }

@@ -34,7 +34,10 @@ describe("baseline policies", () => {
     const state = createRun(sampleContent, 7);
     const action = choosePolicyAction("greedy", state);
 
-    expect(action.type).toBe("choosePath");
+    if (action.type !== "choosePath") {
+      throw new Error(`expected choosePath, received ${action.type}`);
+    }
+
     expect(getNode(action.nodeId).kind).toBe("elite");
   });
 
@@ -42,7 +45,10 @@ describe("baseline policies", () => {
     const state = gateMapState(7);
     const action = choosePolicyAction("heuristic", state);
 
-    expect(action.type).toBe("choosePath");
+    if (action.type !== "choosePath") {
+      throw new Error(`expected choosePath, received ${action.type}`);
+    }
+
     expect(getNode(action.nodeId).kind).toBe("shop");
   });
 
