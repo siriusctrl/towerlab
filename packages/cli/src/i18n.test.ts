@@ -2,7 +2,7 @@ import { sampleContent } from "@towerlab/content";
 import type { LogEvent } from "@towerlab/core";
 import { describe, expect, test } from "vitest";
 
-import { formatBlessingAcquisition, formatBlessingDescription, formatBlessingName, formatLogEntries, localizeCardKeyword } from "./i18n.js";
+import { formatBlessingAcquisition, formatBlessingDescription, formatBlessingName, formatCardEffectLines, formatLogEntries, localizeCardDefinition, localizeCardKeyword } from "./i18n.js";
 
 describe("i18n log localization", () => {
   test("formats every current core log event template in zh", () => {
@@ -104,5 +104,40 @@ describe("i18n log localization", () => {
   test("localizes retain keyword labels in both locales", () => {
     expect(localizeCardKeyword("retain", "en")).toBe("Retain");
     expect(localizeCardKeyword("retain", "zh")).toBe("保留");
+  });
+
+  test("keeps upgraded card names with plus suffix in localized output", () => {
+    const upgraded = localizeCardDefinition(
+      {
+        id: "strike",
+        upgraded: true,
+        damage: 9,
+      },
+      "zh",
+      sampleContent,
+    );
+
+    expect(upgraded.name).toBe("打击+");
+    expect(upgraded.upgraded).toBe(true);
+  });
+
+  test("formats card effects from numeric card fields into locale-specific lines", () => {
+    const card = localizeCardDefinition(
+      {
+        id: "war-cry",
+        name: "War Cry",
+        cost: 1,
+        damage: 0,
+        draw: 1,
+        energy: 1,
+      },
+      "en",
+      sampleContent,
+    );
+
+    expect(formatCardEffectLines(card, "en")).toEqual([
+      "Draw 1 card.",
+      "Gain 1 energy.",
+    ]);
   });
 });

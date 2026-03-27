@@ -1,11 +1,12 @@
 import { createSeededContent, DEFAULT_CHARACTER_ID } from "@towerlab/content";
-import { createRun, observeRun, type CardDefinition, type Observation, type RunContent } from "@towerlab/core";
+import { createRun, observeRun, type Observation, type RunContent } from "@towerlab/core";
 
 import {
   DEFAULT_LOCALE,
   formatBlessingAcquisition,
   formatBlessingDescription,
   formatBlessingName,
+  formatCardEffectLines,
   formatCombatStatus,
   formatNodeLabel,
   formatText,
@@ -31,7 +32,7 @@ import {
 export function renderSnapshot(seed: number, locale: Locale = DEFAULT_LOCALE, characterId = DEFAULT_CHARACTER_ID): string {
   const content = createSeededContent(seed, characterId);
   const state = createRun(content, seed);
-  const observation = localizeObservation(observeRun(content, state), locale);
+  const observation = localizeObservation(observeRun(content, state), locale, content);
   const currentMap = content.acts[observation.act - 1]?.map ?? [];
   const visitedNodeIds = deriveVisitedNodeIds(currentMap, []);
 
@@ -87,7 +88,7 @@ function renderObservation(content: RunContent, observation: Observation, locale
 
     for (const [index, blessing] of observation.blessings.entries()) {
       const acquisition = formatBlessingAcquisition(blessing, locale);
-      const blessingCard = blessing.cardId ? localizeCardDefinition(content.cards[blessing.cardId]!, locale) : null;
+      const blessingCard = blessing.cardId ? localizeCardDefinition(content.cards[blessing.cardId]!, locale, content) : null;
       lines.push(`${index + 1}. ${formatBlessingName(content, blessing, locale)}`);
       if (blessingCard) {
         lines.push(...formatSnapshotKeywordLines(blessingCard, locale, "   "));
@@ -166,14 +167,14 @@ function renderObservation(content: RunContent, observation: Observation, locale
   return lines.join("\n");
 }
 
-function formatSnapshotCardLines(card: CardDefinition, locale: Locale, prefix: string, indent: string): string[] {
+function formatSnapshotCardLines(card: Parameters<typeof formatCardEffectLines>[0], locale: Locale, prefix: string, indent: string): string[] {
   return [
     `${prefix}${card.name} [${card.cost}]`,
     ...formatSnapshotKeywordLines(card, locale, indent),
-    `${indent}${card.description}`,
+    ...formatCardEffectLines(card, locale).map((line) => `${indent}${line}`),
   ];
 }
 
-function formatSnapshotKeywordLines(card: CardDefinition, locale: Locale, indent: string): string[] {
+function formatSnapshotKeywordLines(card: Parameters<typeof formatCardEffectLines>[0], locale: Locale, indent: string): string[] {
   return (card.keywords ?? []).map((keyword) => `${indent}${localizeCardKeyword(keyword, locale)}`);
 }

@@ -1,4 +1,4 @@
-import type { CardDefinition, CharacterDefinition, MapNode, Observation, RunAction, RunContent, RunState } from "@towerlab/core";
+import type { CharacterDefinition, MapNode, Observation, RunAction, RunContent, RunState } from "@towerlab/core";
 import { Box, Text } from "ink";
 
 import {
@@ -8,6 +8,9 @@ import {
   formatCombatStatus,
   formatNodeLabel,
   formatText,
+  formatCardEffectLines,
+  type CliCardDefinition,
+  type CardLike,
   localizeCardDefinition,
   localizeCardKeyword,
   localizeCharacterName,
@@ -37,8 +40,13 @@ import {
 import { getChoiceColor, getMapCellColor, isDimmedMapCell, isEmphasizedMapCell } from "./utils.js";
 
 type ReferenceMode = "hidden" | "status" | "library";
+type RestMode = "options" | "upgrade";
 type LibrarySection = "starter" | "common" | "rare" | "epic" | "relics";
 type StatusSection = "deck" | "relics";
+export type RestDeckUpgradeCard = {
+  deckIndex: number;
+  card: CliCardDefinition;
+};
 type ReferenceLine = {
   text: string;
   bold?: boolean;
@@ -186,6 +194,8 @@ export function PhaseBody({
   observation,
   locale,
   shopMenu,
+  restMode,
+  restUpgradeCards,
   hpBarWidth,
   compactMapPhase,
 }: {
@@ -193,6 +203,8 @@ export function PhaseBody({
   observation: Observation;
   locale: Locale;
   shopMenu: ShopMenuMode;
+  restMode: RestMode;
+  restUpgradeCards: ReadonlyArray<RestDeckUpgradeCard>;
   hpBarWidth: number;
   compactMapPhase: boolean;
 }) {
@@ -250,7 +262,8 @@ export function PhaseBody({
         {observation.blessings.map((blessing, index) => {
           const acquisition = formatBlessingAcquisition(blessing, locale);
           const description = formatBlessingDescription(content, blessing, locale);
-          const blessingCard = blessing.cardId ? localizeCardDefinition(content.cards[blessing.cardId]!, locale) : null;
+          const blessingCard = blessing.cardId ? localizeCardDefinition(content.cards[blessing.cardId]!, locale, content) : null;
+          const blessingLines = blessingCard ? formatCardEffectLines(blessingCard, locale) : [];
 
           return (
             <Box key={blessing.id} flexDirection="column">
@@ -260,6 +273,11 @@ export function PhaseBody({
               {blessingCard?.keywords?.map((keyword) => (
                 <Text key={`${blessing.id}-${keyword}`} color="yellow" bold wrap="truncate-end">
                   {"   "}{localizeCardKeyword(keyword, locale)}
+                </Text>
+              ))}
+              {blessingLines.map((line) => (
+                <Text key={`${blessing.id}-effect-${line}`} dimColor wrap="truncate-end">
+                  {"   "}{line}
                 </Text>
               ))}
               {acquisition ? (
@@ -305,6 +323,35 @@ export function PhaseBody({
   }
 
   if (observation.phase === "rest") {
+    if (restMode === "upgrade") {
+      return (
+        <>
+          <Text bold color="yellow">
+            {text(locale, "rest")}
+          </Text>
+          <Text wrap="truncate-end">{text(locale, "chooseDeckUpgrade")}</Text>
+          {restUpgradeCards.length > 0 ? (
+            restUpgradeCards.map((option, index) => (
+              <CardBlock
+                key={`${option.deckIndex}-${option.card.id}`}
+                card={option.card}
+                locale={locale}
+                namePrefix={`${index + 1}. `}
+                indent="   "
+              />
+            ))
+          ) : (
+            <Text dimColor wrap="truncate-end">
+              {text(locale, "noUpgradableDeckCards")}
+            </Text>
+          )}
+          <Text dimColor wrap="truncate-end">
+            {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
+          </Text>
+        </>
+      );
+    }
+
     return (
       <>
         <Text bold color="yellow">
@@ -450,7 +497,17 @@ export function PhaseBody({
   );
 }
 
-export function Controls({ observation, locale, shopMenu }: { observation: Observation; locale: Locale; shopMenu: ShopMenuMode }) {
+export function Controls({
+  observation,
+  locale,
+  shopMenu,
+  restMode,
+}: {
+  observation: Observation;
+  locale: Locale;
+  shopMenu: ShopMenuMode;
+  restMode: RestMode;
+}) {
   const baseControls =
     observation.phase === "blessing"
       ? text(locale, "controlsBlessing")
@@ -459,7 +516,9 @@ export function Controls({ observation, locale, shopMenu }: { observation: Obser
         : observation.phase === "map"
           ? text(locale, "controlsMap")
           : observation.phase === "rest"
-            ? text(locale, "controlsRest")
+            ? restMode === "upgrade"
+              ? text(locale, "controlsRestUpgrade")
+              : text(locale, "controlsRest")
             : observation.phase === "reward"
               ? text(locale, "controlsReward")
               : observation.phase === "shop"
@@ -622,19 +681,27 @@ function statusSectionLabel(locale: Locale, section: StatusSection): string {
   return text(locale, "currentRelics");
 }
 
-function formatCardCollectionLines(cardIds: string[], content: RunContent, locale: Locale): ReferenceLine[] {
-  const counts = new Map<string, number>();
+function formatCardCollectionLines(cardIds: ReadonlyArray<string | CardLike>, content: RunContent, locale: Locale): ReferenceLine[] {
+  const counts = new Map<string, { card: CliCardDefinition; count: number }>();
 
-  for (const cardId of cardIds) {
-    if (!content.cards[cardId]) {
-      continue;
+  for (const entry of cardIds) {
+    const card = localizeCardDefinition(
+      typeof entry === "string" ? { id: entry, cost: 0 } : entry,
+      locale,
+      content,
+    );
+    const key = `${card.id}|${card.upgraded ? "1" : "0"}`;
+    const current = counts.get(key);
+
+    if (!current) {
+      counts.set(key, { card, count: 1 });
+    } else {
+      counts.set(key, { card: current.card, count: current.count + 1 });
     }
-
-    counts.set(cardId, (counts.get(cardId) ?? 0) + 1);
   }
 
-  return [...counts.entries()].flatMap(([cardId, count]) =>
-    buildCardReferenceLines(localizeCardDefinition(content.cards[cardId]!, locale), locale, `${count > 1 ? `${count}x ` : ""}`, "  "),
+  return [...counts.values()].flatMap(({ card, count }) =>
+    buildCardReferenceLines(card, locale, `${count > 1 ? `${count}x ` : ""}`, "  "),
   );
 }
 
@@ -645,12 +712,14 @@ function CardBlock({
   indent,
   dimmed = false,
 }: {
-  card: CardDefinition;
+  card: CliCardDefinition;
   locale: Locale;
   namePrefix: string;
   indent: string;
   dimmed?: boolean;
 }) {
+  const effectLines = formatCardEffectLines(card, locale);
+
   return (
     <Box flexDirection="column">
       <Text color={dimmed ? "gray" : undefined} bold wrap="truncate-end">
@@ -661,14 +730,16 @@ function CardBlock({
           {indent}{localizeCardKeyword(keyword, locale)}
         </Text>
       ))}
-      <Text color={dimmed ? "gray" : undefined} wrap="truncate-end">
-        {indent}{card.description}
-      </Text>
+      {effectLines.map((line) => (
+        <Text key={`${card.id}-${line}`} color={dimmed ? "gray" : undefined} wrap="truncate-end">
+          {indent}{line}
+        </Text>
+      ))}
     </Box>
   );
 }
 
-function buildCardReferenceLines(card: CardDefinition, locale: Locale, namePrefix: string, indent: string): ReferenceLine[] {
+function buildCardReferenceLines(card: CliCardDefinition, locale: Locale, namePrefix: string, indent: string): ReferenceLine[] {
   const lines: ReferenceLine[] = [
     { text: `${namePrefix}${card.name} [${card.cost}]`, bold: true },
   ];
@@ -681,7 +752,10 @@ function buildCardReferenceLines(card: CardDefinition, locale: Locale, namePrefi
     });
   }
 
-  lines.push({ text: `${indent}${card.description}` });
+  for (const line of formatCardEffectLines(card, locale)) {
+    lines.push({ text: `${indent}${line}` });
+  }
+
   return lines;
 }
 

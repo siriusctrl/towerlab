@@ -142,7 +142,7 @@ function createHeadlessResponse(parsed: HeadlessParseResult): HeadlessResponse {
   const trace = traceRun(content, parsed.seed, parsed.actions).steps.map((entry, index) => ({
     step: index,
     action: entry.action,
-    observation: localizeObservation(entry.observation, parsed.locale),
+    observation: localizeObservation(entry.observation, parsed.locale, content),
   }));
 
   return {
@@ -166,7 +166,7 @@ function createSnapshot(
     locale,
     acts: content.acts,
     state,
-    observation: localizeObservation(observeRun(content, state), locale),
+    observation: localizeObservation(observeRun(content, state), locale, content),
     legalActions: legalActions(content, state),
   };
 }

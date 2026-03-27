@@ -11,6 +11,7 @@ import {
   Controls,
   LIBRARY_SECTION_COUNT,
   MapTreeView,
+  RestDeckUpgradeCard,
   PhaseBody,
   RecentLogPanel,
   ReferenceControls,
@@ -45,6 +46,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const [statusSectionIndex, setStatusSectionIndex] = useState(0);
   const [librarySectionIndex, setLibrarySectionIndex] = useState(0);
   const [referenceScrollOffset, setReferenceScrollOffset] = useState(0);
+  const [restMode, setRestMode] = useState<"options" | "upgrade">("options");
   const stateRef = useRef(state);
   const contentRef = useRef(content);
   const actionsRef = useRef(actions);
@@ -53,8 +55,9 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     () => characters.map((character) => createSeededContent(seed, character.id as CharacterId)),
     [seed],
   );
-  const view = content && state ? localizeObservation(observeRun(content, state), locale) : null;
+  const view = content && state ? localizeObservation(observeRun(content, state), locale, content) : null;
   const currentMap = content && view ? content.acts[view.act - 1]?.map ?? [] : [];
+  const restUpgradeCards = useMemo<RestDeckUpgradeCard[]>(() => (view?.phase === "rest" ? view.upgradableDeckCards : []), [view]);
   const recentLogEntries = content && view ? formatLogEntries(content, view.log, locale) : [];
   const relicNames = view && view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
   const characterName = selectedCharacterId ? localizeCharacterName(selectedCharacterId, locale) : "";
@@ -91,6 +94,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setStatusSectionIndex(0);
     setLibrarySectionIndex(0);
     setReferenceScrollOffset(0);
+    setRestMode("options");
     setCharacterSelectMode("choose");
     setCharacterSelectIndex(nextIndex);
   };
@@ -129,6 +133,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setStatusSectionIndex(0);
     setLibrarySectionIndex(0);
     setReferenceScrollOffset(0);
+    setRestMode("options");
   };
 
   useEffect(() => {
@@ -136,6 +141,15 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
       setShopMenu("top");
     }
   }, [view?.phase]);
+
+  useEffect(() => {
+    if (view?.phase === "rest") {
+      setRestMode(view.mode === "upgrade" ? "upgrade" : "options");
+      return;
+    }
+
+    setRestMode("options");
+  }, [view]);
 
   const toggleReference = (nextMode: Exclude<ReferenceMode, "hidden">) => {
     setReferenceMode((current) => {
@@ -296,6 +310,31 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     }
 
     if (view.phase === "rest") {
+      const isUpgradeMode = view.mode === "upgrade" || restMode === "upgrade";
+
+      if (isUpgradeMode) {
+        if (input === "b") {
+          setRestMode("options");
+          return;
+        }
+
+        const cardIndex = readChoiceIndex(input, restUpgradeCards.length);
+        if (cardIndex !== null) {
+          const deckIndex = restUpgradeCards[cardIndex]?.deckIndex;
+
+          if (deckIndex !== undefined) {
+            runAction({ type: "upgradeRestCard", deckIndex });
+          }
+        }
+
+        return;
+      }
+
+      if (input === "u" && restUpgradeCards.length > 0) {
+        setRestMode("upgrade");
+        return;
+      }
+
       const choiceIndex = readChoiceIndex(input, view.restOptions.length);
       if (choiceIndex !== null) {
         runAction({ type: "chooseRest", optionId: view.restOptions[choiceIndex].id });
@@ -381,7 +420,16 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
             />
           ) : (
             <>
-              <PhaseBody content={content!} observation={view} locale={locale} shopMenu={shopMenu} hpBarWidth={hpBarWidth} compactMapPhase={compactMapPhase} />
+              <PhaseBody
+                content={content!}
+                observation={view}
+                locale={locale}
+                shopMenu={shopMenu}
+                restMode={restMode}
+                restUpgradeCards={restUpgradeCards}
+                hpBarWidth={hpBarWidth}
+                compactMapPhase={compactMapPhase}
+              />
               {showInlineLog ? (
                 <Box marginTop={1} flexDirection="column" overflow="hidden">
                   <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
@@ -444,7 +492,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
         </Text>
       ) : null}
       <Box flexDirection="column" flexShrink={0} paddingX={1} overflow="hidden">
-        <Controls observation={view} locale={locale} shopMenu={shopMenu} />
+        <Controls observation={view} locale={locale} shopMenu={shopMenu} restMode={restMode} />
         <ReferenceControls locale={locale} referenceMode={referenceMode} />
         {error ? (
           <Text color="red" wrap="truncate-end">

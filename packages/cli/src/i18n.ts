@@ -63,7 +63,11 @@ export function readLocale(args: string[]): Locale {
   return DEFAULT_LOCALE;
 }
 
-export function localizeObservation(observation: Observation, locale: Locale): Observation {
+export function localizeObservation(
+  observation: Observation,
+  locale: Locale,
+  content: RunContent | null = null,
+): Observation {
   if (locale === "en") {
     return observation;
   }
@@ -76,7 +80,7 @@ export function localizeObservation(observation: Observation, locale: Locale): O
     return {
       ...combatObservation,
       relics,
-      hand: combatObservation.hand.map((card) => localizeCardDefinition(card, locale)),
+      hand: localizeObservedCards(combatObservation.hand as CardLike[], locale, content),
       enemy: {
         ...combatObservation.enemy,
         name: localizeEnemyName(combatObservation.enemy.name, locale),
@@ -92,6 +96,11 @@ export function localizeObservation(observation: Observation, locale: Locale): O
       ...restObservation,
       relics,
       restOptions: restObservation.restOptions.map((option) => localizeRestOption(option, locale)),
+      upgradableDeckCards: restObservation.upgradableDeckCards.map((entry) => ({
+        ...entry,
+        card: localizeCardDefinition(entry.card as CardLike, locale, content),
+        upgradedCard: localizeCardDefinition(entry.upgradedCard as CardLike, locale, content),
+      })),
     };
   }
 
@@ -101,7 +110,7 @@ export function localizeObservation(observation: Observation, locale: Locale): O
     return {
       ...rewardObservation,
       relics,
-      cardChoices: rewardObservation.cardChoices.map((card) => localizeCardDefinition(card, locale)),
+      cardChoices: localizeObservedCards(rewardObservation.cardChoices as (string | CardLike)[], locale, content),
     };
   }
 
@@ -111,10 +120,10 @@ export function localizeObservation(observation: Observation, locale: Locale): O
     return {
       ...shopObservation,
       relics,
-      forSale: shopObservation.forSale.map((card) => localizeCardDefinition(card, locale)),
+      forSale: localizeObservedCards(shopObservation.forSale as (string | CardLike)[], locale, content),
       removableDeckCards: shopObservation.removableDeckCards.map((entry) => ({
         ...entry,
-        card: localizeCardDefinition(entry.card, locale),
+        card: localizeCardDefinition(entry.card as CardLike, locale, content),
       })),
     };
   }
@@ -465,16 +474,112 @@ function isLocale(value: string): value is Locale {
   return SUPPORTED_LOCALES.includes(value as Locale);
 }
 
-export function localizeCardDefinition(card: CardDefinition, locale: Locale): CardDefinition {
-  if (locale === "en") {
-    return card;
-  }
+export interface CliCardDefinition extends Omit<CardDefinition, "keywords"> {
+  upgraded: boolean;
+  cost: number;
+  description: string;
+  keywords: CardKeyword[];
+  baseCardId?: string;
+}
+
+export type CardLike = Partial<CardDefinition> & {
+  id: string;
+  baseCardId?: string;
+  upgraded?: boolean;
+  cost?: number;
+  damage?: number;
+  block?: number;
+  draw?: number;
+  energy?: number;
+  heal?: number;
+  weak?: number;
+  vulnerable?: number;
+  poison?: number;
+  poisonMultiplier?: number;
+};
+
+export function localizeCardDefinition(
+  card: CardLike,
+  locale: Locale,
+  content: RunContent | null = null,
+): CliCardDefinition {
+  const resolved = resolveCardDefinition(card, content);
+
+  const localizedName = locale === "en" ? resolved.name : localizeCardName(resolved.name, locale);
+  const suffixName = resolved.upgraded && !/[+＋]$/.test(localizedName) ? `${localizedName}+` : localizedName;
+  const localizedDescription = locale === "en"
+    ? resolved.description
+    : localizeCardDescription(resolved.description, locale);
 
   return {
-    ...card,
-    name: localizeCardName(card.name, locale),
-    description: localizeCardDescription(card.description, locale),
+    ...resolved,
+    upgraded: resolved.upgraded,
+    name: suffixName,
+    description: localizedDescription,
+    keywords: resolveCardKeywords(resolved),
+    cost: resolved.cost,
   };
+}
+
+export function formatCardEffectLines(card: CliCardDefinition, locale: Locale): string[] {
+  const lines: string[] = [];
+
+  if (card.damage != null && card.damage !== 0) {
+    lines.push(locale === "zh" ? `造成 ${card.damage} 点伤害。` : `Deal ${card.damage} damage.`);
+  }
+
+  if (card.block != null && card.block !== 0) {
+    lines.push(locale === "zh" ? `获得 ${card.block} 点格挡。` : `Gain ${card.block} block.`);
+  }
+
+  if (card.draw != null && card.draw !== 0) {
+    lines.push(locale === "zh" ? `抽 ${card.draw} 张牌。` : `Draw ${card.draw} card${card.draw === 1 ? "" : "s"}.`);
+  }
+
+  if (card.energy != null && card.energy !== 0) {
+    lines.push(locale === "zh" ? `获得 ${card.energy} 点能量。` : `Gain ${card.energy} energy.`);
+  }
+
+  if (card.heal != null && card.heal !== 0) {
+    lines.push(locale === "zh" ? `恢复 ${card.heal} 点生命。` : `Recover ${card.heal} HP.`);
+  }
+
+  if (card.weak != null && card.weak !== 0) {
+    lines.push(locale === "zh" ? `施加 ${card.weak} 层虚弱。` : `Apply ${card.weak} Weak.`);
+  }
+
+  if (card.vulnerable != null && card.vulnerable !== 0) {
+    lines.push(locale === "zh" ? `施加 ${card.vulnerable} 层易伤。` : `Apply ${card.vulnerable} Vulnerable.`);
+  }
+
+  if (card.poison != null && card.poison !== 0) {
+    lines.push(locale === "zh" ? `施加 ${card.poison} 层中毒。` : `Apply ${card.poison} Poison.`);
+  }
+
+  if (card.poisonMultiplier != null && card.poisonMultiplier !== 1) {
+    lines.push(locale === "zh" ? "将中毒层数翻倍。" : "Multiply Poison by 2.");
+  }
+
+  if (lines.length > 0) {
+    const normalizedDescription = normalizeText(card.description);
+    const normalizedLines = normalizeText(lines.join(" "));
+
+    if (normalizedDescription !== normalizedLines) {
+      lines.push(card.description);
+    }
+
+    return lines;
+  }
+
+  return card.description ? [card.description] : [];
+}
+
+export function localizeObservedCards<T extends readonly (string | CardLike)[]>(
+  cards: T,
+  locale: Locale,
+  content: RunContent | null,
+): CliCardDefinition[] {
+  return cards.map((card) => localizeCardDefinition(typeof card === "string" ? { id: card } : card, locale, content));
 }
 
 export function localizeCardKeyword(keyword: CardKeyword, locale: Locale): string {
@@ -608,8 +713,68 @@ function readCardName(content: RunContent, cardId: string): string {
   return content.cards[cardId]?.name ?? cardId;
 }
 
+function resolveCardDefinition(card: CardLike, content: RunContent | null): CliCardDefinition {
+  const baseId = card.baseCardId ?? card.id;
+  const baseCard = content ? content.cards[baseId] ?? content.cards[card.id] : null;
+  const merged: CardLike = {
+    id: card.id,
+    ...baseCard,
+    ...card,
+    description: card.description ?? baseCard?.description ?? "",
+    name: card.name ?? baseCard?.name ?? card.id,
+    cost: card.cost ?? baseCard?.cost ?? 0,
+    baseCardId: card.baseCardId ?? baseCard?.id,
+  };
+
+  return {
+    ...merged,
+    upgraded: merged.upgraded ?? false,
+    keywords: resolveCardKeywords(merged),
+    description: merged.description ?? "",
+    damage: merged.damage,
+    block: merged.block,
+    draw: merged.draw,
+    energy: merged.energy,
+    heal: merged.heal,
+    weak: merged.weak,
+    vulnerable: merged.vulnerable,
+    poison: merged.poison,
+    poisonMultiplier: merged.poisonMultiplier,
+    cost: merged.cost ?? 0,
+  };
+}
+
+function resolveCardKeywords(card: CardLike): CardKeyword[] {
+  const keywordSet = new Set<CardKeyword>();
+
+  const rawKeywords = card.keywords ?? [];
+  for (const rawKeyword of rawKeywords) {
+    if (rawKeyword === "exhaust" || rawKeyword === "retain") {
+      keywordSet.add(rawKeyword);
+    }
+  }
+
+  if (card.exhaust) {
+    keywordSet.add("exhaust");
+  }
+
+  if (card.retain) {
+    keywordSet.add("retain");
+  }
+
+  return [...keywordSet];
+}
+
+
 function readCardDescription(content: RunContent, cardId: string): string | null {
   return content.cards[cardId]?.description ?? null;
+}
+
+function normalizeText(value: string): string {
+  return value
+    .replace(/\s+/gu, " ")
+    .replace(/[。！？，、；：,!?:;]/gu, ".")
+    .trim();
 }
 
 function readEnemyName(content: RunContent, enemyId: string): string {
