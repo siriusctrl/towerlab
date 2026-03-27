@@ -3,7 +3,6 @@ import { createRun, observeRun, type Observation, type RunContent } from "@tower
 
 import {
   DEFAULT_LOCALE,
-  formatBlessingAcquisition,
   formatBlessingDescription,
   formatBlessingName,
   formatCardEffectLines,
@@ -87,16 +86,15 @@ function renderObservation(content: RunContent, observation: Observation, locale
     lines.push(`${text(locale, "blessing")}:`);
 
     for (const [index, blessing] of observation.blessings.entries()) {
-      const acquisition = formatBlessingAcquisition(blessing, locale);
       const blessingCard = blessing.cardId ? localizeCardDefinition(content.cards[blessing.cardId]!, locale, content) : null;
-      lines.push(`${index + 1}. ${formatBlessingName(content, blessing, locale)}`);
+      const title = blessingCard
+        ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}${formatBlessingName(content, blessing, locale)}`
+        : formatBlessingName(content, blessing, locale);
+      lines.push(`${index + 1}. ${title}`);
       if (blessingCard) {
         lines.push(...formatSnapshotKeywordLines(blessingCard, locale, "   "));
       }
-      if (acquisition) {
-        lines.push(`   ${text(locale, "blessingGainLabel")}${labelSuffix}${acquisition}`);
-      }
-      lines.push(`   ${text(locale, "blessingEffectLabel")}${labelSuffix}${formatBlessingDescription(content, blessing, locale)}`);
+      lines.push(`   ${formatBlessingDescription(content, blessing, locale)}`);
     }
   } else if (observation.phase === "map") {
     lines.push(`${text(locale, "paths")}`);

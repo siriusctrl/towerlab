@@ -34,9 +34,8 @@ describe("headless CLI", () => {
     expect(snapshot).toContain("祝福:");
     expect(snapshot).toContain("1. 厚赏");
     expect(snapshot).toContain("2. 强健");
-    expect(snapshot).toContain("3. 愤怒");
-    expect(snapshot).toContain("获得：加入牌组");
-    expect(snapshot).toContain("效果：造成 4 点伤害。");
+    expect(snapshot).toContain("3. 获得卡牌：愤怒");
+    expect(snapshot).toContain("造成 4 点伤害。");
     expect(snapshot).toContain("- 来到入口。请选择第一条路径。");
     expect(snapshot).toContain("最近事件:");
   });

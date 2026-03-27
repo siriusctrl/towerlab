@@ -133,8 +133,8 @@ describe("App layout", () => {
   test("renders blessing options without spacer gaps between choices", async () => {
     const frame = await renderFrame({ columns: 80, rows: 24, locale: "zh" });
 
-    expect(frame).toMatch(/效果：获得 30 金币。\n\s*2\. 强健/u);
-    expect(frame).toMatch(/效果：获得 6 点最大生命并回复 6 点生命。\n\s*3\. 愤怒/u);
+    expect(frame).toMatch(/获得 30 金币。\n\s*2\. 强健/u);
+    expect(frame).toMatch(/获得 6 点最大生命并回复 6 点生命。\n\s*3\. 获得卡牌：愤怒/u);
   });
 
   test("keeps opening blessings, compact map, and post-move minimap stable across multiple seeds", async () => {
@@ -149,8 +149,8 @@ describe("App layout", () => {
       expect(startFrame).toContain("1. ");
       expect(startFrame).toContain("2. ");
       expect(startFrame).toContain("3. ");
-      expect(startFrame).toContain("获得：加入牌组");
-      expect(startFrame).toContain("效果：造成 4 点伤害。");
+      expect(startFrame).toContain("获得卡牌：愤怒");
+      expect(startFrame).toContain("造成 4 点伤害。");
       expect(startFrame).not.toContain("：:");
       expect(startFrame).not.toContain("::");
       expect(mapFrame).toContain("路径： 1.");

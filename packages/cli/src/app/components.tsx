@@ -2,7 +2,6 @@ import type { CharacterDefinition, MapNode, Observation, RunAction, RunContent, 
 import { Box, Text } from "ink";
 
 import {
-  formatBlessingAcquisition,
   formatBlessingDescription,
   formatBlessingName,
   formatCombatStatus,
@@ -261,33 +260,24 @@ export function PhaseBody({
         <Text bold color="yellow">{text(locale, "blessing")}</Text>
         <Text wrap="truncate-end">{text(locale, "chooseBlessing")}</Text>
         {observation.blessings.map((blessing, index) => {
-          const acquisition = formatBlessingAcquisition(blessing, locale);
           const description = formatBlessingDescription(content, blessing, locale);
           const blessingCard = blessing.cardId ? localizeCardDefinition(content.cards[blessing.cardId]!, locale, content) : null;
-          const blessingLines = blessingCard ? formatCardEffectLines(blessingCard, locale) : [];
+          const title = blessingCard
+            ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}${formatBlessingName(content, blessing, locale)}`
+            : formatBlessingName(content, blessing, locale);
 
           return (
             <Box key={blessing.id} flexDirection="column">
               <Text bold wrap="truncate-end">
-                {index + 1}. {formatBlessingName(content, blessing, locale)}
+                {index + 1}. {title}
               </Text>
               {blessingCard?.keywords?.map((keyword) => (
                 <Text key={`${blessing.id}-${keyword}`} color="yellow" bold wrap="truncate-end">
                   {"   "}{localizeCardKeyword(keyword, locale)}
                 </Text>
               ))}
-              {blessingLines.map((line) => (
-                <Text key={`${blessing.id}-effect-${line}`} dimColor wrap="truncate-end">
-                  {"   "}{line}
-                </Text>
-              ))}
-              {acquisition ? (
-                <Text dimColor wrap="truncate-end">
-                  {"   "}{text(locale, "blessingGainLabel")}{labelSuffix}{acquisition}
-                </Text>
-              ) : null}
               <Text dimColor wrap="truncate-end">
-                {"   "}{text(locale, "blessingEffectLabel")}{labelSuffix}{description}
+                {"   "}{description}
               </Text>
             </Box>
           );
