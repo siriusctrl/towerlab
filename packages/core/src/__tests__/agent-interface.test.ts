@@ -124,7 +124,7 @@ describe("legalActions", () => {
     const restState = applyAction(content, state, { type: "choosePath", nodeId: "camp" });
     expect(legalActions(content, restState)).toEqual([
       { type: "chooseRest", optionId: "recover" },
-      { type: "chooseRest", optionId: "fortify" },
+      { type: "chooseRest", optionId: "upgrade" },
     ]);
 
     const shopState = applyAction(content, state, { type: "choosePath", nodeId: "market" });

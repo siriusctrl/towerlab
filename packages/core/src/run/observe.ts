@@ -1,5 +1,5 @@
-import { REST_OPTIONS, SHOP_CARD_PRICE, SHOP_CARD_REMOVE_PRICE, STARTING_ENERGY } from "../constants.js";
-import { getAct, getCombat, getCurrentIntent, getNode, getRelicValue } from "../shared.js";
+import { REST_HEAL_RATIO, REST_OPTION_IDS, SHOP_CARD_PRICE, SHOP_CARD_REMOVE_PRICE, STARTING_ENERGY } from "../constants.js";
+import { getAct, getCombat, getCurrentIntent, getNode, getRelicValue, materializeCardDefinition, materializeCardInstance } from "../shared.js";
 import type { Observation, RunAction, RunContent, RunState } from "../types.js";
 import { getCard, getRelic } from "../validate.js";
 
@@ -31,9 +31,10 @@ export function observeRun(content: RunContent, state: RunState): Observation {
       baseEnergy: STARTING_ENERGY + getRelicValue(content, state, "combatEnergy"),
       block: combat.block,
       status: combat.status,
-      hand: combat.hand.map((cardId) => getCard(content, cardId)),
+      hand: combat.hand.map((card) => materializeCardInstance(content, card)),
       drawPileCount: combat.drawPile.length,
       discardPileCount: combat.discardPile.length,
+      exhaustPileCount: combat.exhaustPile.length,
       enemy: {
         id: combat.enemy.id,
         name: combat.enemy.name,
@@ -66,10 +67,40 @@ export function observeRun(content: RunContent, state: RunState): Observation {
   }
 
   if (state.phase === "rest") {
+    const healAmount = Math.max(1, Math.floor(state.maxHp * REST_HEAL_RATIO)) + getRelicValue(content, state, "restHealBonus");
+    const restOptions = REST_OPTION_IDS.map((optionId) => {
+      if (optionId === "recover") {
+        return {
+          id: optionId,
+          label: "Recover",
+          description: `Heal ${healAmount} HP.`,
+        };
+      }
+
+      return {
+        id: optionId,
+        label: "Upgrade",
+        description: "Upgrade a card in your deck.",
+      };
+    });
+    const upgradableDeckCards = (state.rest?.upgradableDeckIndices ?? [])
+      .filter((index) => index >= 0 && index < state.deck.length)
+      .map((deckIndex) => {
+        const card = state.deck[deckIndex]!;
+        const cardDefinition = getCard(content, card.cardId);
+        return {
+          deckIndex,
+          card: materializeCardInstance(content, card),
+          upgradedCard: materializeCardDefinition(cardDefinition, true, card.instanceId),
+        };
+      });
+
     return {
       ...base,
       phase: "rest",
-      restOptions: REST_OPTIONS,
+      mode: state.rest?.mode ?? "menu",
+      restOptions,
+      upgradableDeckCards,
       nextNodes,
     };
   }
@@ -80,7 +111,7 @@ export function observeRun(content: RunContent, state: RunState): Observation {
     return {
       ...base,
       phase: "reward",
-      cardChoices: choices.map((cardId) => getCard(content, cardId)),
+      cardChoices: choices.map((cardId) => materializeCardDefinition(getCard(content, cardId), false)),
       nextNodes,
     };
   }
@@ -89,12 +120,12 @@ export function observeRun(content: RunContent, state: RunState): Observation {
     const forSale = state.shop?.forSale ?? [];
     const removableDeckCards = (state.shop?.removableDeckIndices ?? [])
       .filter((index) => index >= 0 && index < state.deck.length)
-      .map((deckIndex) => ({ deckIndex, card: getCard(content, state.deck[deckIndex]) }));
+      .map((deckIndex) => ({ deckIndex, card: materializeCardInstance(content, state.deck[deckIndex]!) }));
 
     return {
       ...base,
       phase: "shop",
-      forSale: forSale.map((cardId) => getCard(content, cardId)),
+      forSale: forSale.map((cardId) => materializeCardDefinition(getCard(content, cardId), false)),
       removableDeckCards,
       removeDeckCardCost: SHOP_CARD_REMOVE_PRICE,
       nextNodes,
@@ -115,8 +146,8 @@ export function legalActions(content: RunContent, state: RunState): RunAction[] 
 
   if (state.phase === "combat") {
     const combat = getCombat(state);
-    const actions: RunAction[] = combat.hand.flatMap((cardId, handIndex) => {
-      const card = getCard(content, cardId);
+    const actions: RunAction[] = combat.hand.flatMap((instance, handIndex) => {
+      const card = materializeCardInstance(content, instance);
       return card.cost <= combat.energy ? [{ type: "playCard", handIndex }] : [];
     });
 
@@ -129,7 +160,11 @@ export function legalActions(content: RunContent, state: RunState): RunAction[] 
   }
 
   if (state.phase === "rest") {
-    return REST_OPTIONS.map((option) => ({ type: "chooseRest", optionId: option.id }));
+    if (state.rest?.mode === "upgrade") {
+      return state.rest.upgradableDeckIndices.map((deckIndex): RunAction => ({ type: "upgradeRestCard", deckIndex }));
+    }
+
+    return REST_OPTION_IDS.map((optionId) => ({ type: "chooseRest", optionId }));
   }
 
   if (state.phase === "reward") {

@@ -71,9 +71,13 @@ function chooseGreedyAction(content: RunContent, state: RunState): RunAction {
   }
 
   if (observation.phase === "rest") {
+    if (observation.mode === "upgrade") {
+      return chooseBestUpgradeAction(content, observation.upgradableDeckCards, actions, false);
+    }
+
     return observation.hp * 2 <= observation.maxHp
       ? { type: "chooseRest", optionId: "recover" }
-      : { type: "chooseRest", optionId: "fortify" };
+      : { type: "chooseRest", optionId: "upgrade" };
   }
 
   if (observation.phase === "reward") {
@@ -111,9 +115,13 @@ function chooseHeuristicAction(content: RunContent, state: RunState): RunAction 
   }
 
   if (observation.phase === "rest") {
+    if (observation.mode === "upgrade") {
+      return chooseBestUpgradeAction(content, observation.upgradableDeckCards, actions, true);
+    }
+
     return observation.hp * 10 <= observation.maxHp * 7
       ? { type: "chooseRest", optionId: "recover" }
-      : { type: "chooseRest", optionId: "fortify" };
+      : { type: "chooseRest", optionId: "upgrade" };
   }
 
   if (observation.phase === "reward") {
@@ -225,6 +233,23 @@ function chooseBestRewardAction(
   return preferFlexibleCards && bestScore <= 10 ? { type: "skipReward" } : bestReward;
 }
 
+function chooseBestUpgradeAction(
+  content: RunContent,
+  cards: Array<{ deckIndex: number; card: { id: string; damage?: number; block?: number; draw?: number; energy?: number; heal?: number }; upgradedCard: { id: string; damage?: number; block?: number; draw?: number; energy?: number; heal?: number } }>,
+  actions: RunAction[],
+  preferFlexibleCards: boolean,
+): RunAction {
+  const upgradeActions = actions.filter((action): action is Extract<RunAction, { type: "upgradeRestCard" }> => action.type === "upgradeRestCard");
+
+  return upgradeActions.reduce((best, action) => {
+    const card = cards.find((entry) => entry.deckIndex === action.deckIndex);
+    const bestCard = cards.find((entry) => entry.deckIndex === best.deckIndex);
+    const score = card ? scoreUpgrade(card, content, preferFlexibleCards) : Number.NEGATIVE_INFINITY;
+    const bestScore = bestCard ? scoreUpgrade(bestCard, content, preferFlexibleCards) : Number.NEGATIVE_INFINITY;
+    return score > bestScore ? action : best;
+  }, upgradeActions[0] ?? actions[0]!);
+}
+
 function chooseGreedyShopAction(content: RunContent, state: RunState, actions: RunAction[]): RunAction {
   const buyActions = actions.filter((action): action is Extract<RunAction, { type: "buyShop" }> => action.type === "buyShop");
 
@@ -299,7 +324,7 @@ function chooseStarterRemoval(content: RunContent, state: RunState, actions: Run
   for (const cardId of starterPriority) {
     const action = actions.find(
       (candidate): candidate is Extract<RunAction, { type: "removeDeckCard" }> =>
-        candidate.type === "removeDeckCard" && state.deck[candidate.deckIndex] === cardId,
+        candidate.type === "removeDeckCard" && state.deck[candidate.deckIndex]?.cardId === cardId,
     );
 
     if (action) {
@@ -331,8 +356,8 @@ function scoreRewardCard(
   return damage * 3 + block * 3 + flexibilityBonus + nonStarterBonus;
 }
 
-function countStarterCards(content: RunContent, deck: string[]): number {
-  return deck.filter((cardId) => isStarterCard(content, cardId)).filter((cardId) => content.cards[cardId]).length;
+function countStarterCards(content: RunContent, deck: Array<{ cardId: string }>): number {
+  return deck.filter((card) => isStarterCard(content, card.cardId)).filter((card) => content.cards[card.cardId]).length;
 }
 
 function isStarterCard(content: RunContent, cardId: string): boolean {
@@ -370,4 +395,21 @@ function scoreBlessing(
   }
 
   return 0;
+}
+
+function scoreUpgrade(
+  entry: { card: { id: string; damage?: number; block?: number; draw?: number; energy?: number; heal?: number }; upgradedCard: { id: string; damage?: number; block?: number; draw?: number; energy?: number; heal?: number } },
+  content: RunContent,
+  preferFlexibleCards: boolean,
+): number {
+  const before = scoreRewardCard(content, entry.card.id, entry.card.damage ?? 0, entry.card.block ?? 0, preferFlexibleCards)
+    + (entry.card.draw ?? 0) * 2
+    + (entry.card.energy ?? 0) * 4
+    + (entry.card.heal ?? 0) * 2;
+  const after = scoreRewardCard(content, entry.upgradedCard.id, entry.upgradedCard.damage ?? 0, entry.upgradedCard.block ?? 0, preferFlexibleCards)
+    + (entry.upgradedCard.draw ?? 0) * 2
+    + (entry.upgradedCard.energy ?? 0) * 4
+    + (entry.upgradedCard.heal ?? 0) * 2;
+
+  return after - before;
 }

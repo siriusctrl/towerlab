@@ -17,7 +17,7 @@ The legal action set stays phase-aligned:
 - blessing: choose a blessing
 - combat: play a card, end the turn
 - map: choose a path
-- rest: choose a campfire option
+- rest: choose a campfire option, then possibly choose a deck card to upgrade
 - reward: take a reward, or skip it
 - shop: buy a card, remove a card, or leave
 - victory and defeat: no actions
@@ -54,7 +54,9 @@ Important properties of the current contract:
 - `map` is returned explicitly so agents do not have to infer the tower from local next-node context
 - `state.log` and `observation.log` are structured `LogEvent[]` arrays
 - runs are multi-act and include character context, current act, and total act count
+- `state.deck` is `CardInstance[]`, so upgrades apply to individual copies rather than all cards sharing an id
 - observed card objects may include structured fields such as `damage`, `block`, `draw`, `energy`, `heal`, and `keywords`
+- observed card objects also include `upgraded`, and rest observations expose both the current card and upgraded preview for each upgradable deck entry
 - combat observations expose both current `energy` and turn-base `baseEnergy`
 
 Agent rule:

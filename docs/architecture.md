@@ -13,6 +13,7 @@ Responsibilities:
 - seeded randomness
 - run creation and act progression
 - blessing, combat, map, rest, reward, shop, victory, and defeat transitions
+- stable per-copy card instances and card-upgrade transitions
 - relic application and deterministic effects
 - structured `LogEvent[]` recording for state and observation
 - pure observation shaping
@@ -25,6 +26,7 @@ Static game content plus seeded content assembly.
 Responsibilities:
 - character definitions
 - card definitions
+- per-character typed data modules for starter decks, pools, cards, and relics
 - structured card keywords and effect metadata
 - relic definitions
 - enemy definitions
@@ -57,7 +59,7 @@ Responsibilities:
 ## Boundary notes
 
 - `core` owns the rules and the structured log/event protocol.
-- `content` owns character content, card/relic pools, keyword metadata, and seeded act/map inputs.
+- `content` owns character content, card/relic pools, keyword metadata, upgrade numbers, and seeded act/map inputs.
 - `cli` owns presentation, localization, keybindings, keyword emphasis, and convenience policy tooling.
 - renderer output is never the source of truth; headless and replay surfaces must stay aligned with core state.
 

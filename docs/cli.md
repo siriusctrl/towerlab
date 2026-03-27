@@ -53,6 +53,7 @@ Controls:
   - `1-9` choose the indexed path
 - rest:
   - `1-9` choose the indexed campfire action
+  - if `Upgrade` is chosen, `1-9` choose the indexed deck card to upgrade
 - reward:
   - `1-9` take the indexed reward
   - `s` skip
@@ -83,6 +84,7 @@ Status panel sections:
 - `Current Relics`
 
 The relic section shows the active relic descriptions inline.
+The deck section is rendered from the current upgraded card instances, not from the starter list.
 
 Library panel sections:
 - starter deck
@@ -100,7 +102,7 @@ Cards are rendered in a three-part shape rather than a single prose line:
 
 Current keyword behavior:
 - keywords are rendered as a separate emphasized line
-- the renderer currently uses this for `Exhaust`
+- the renderer currently uses this for `Exhaust` and `Retain`
 - keyword semantics come from structured card data, not from parsing card description strings
 
 ## Route Tree
@@ -210,6 +212,8 @@ Field semantics:
 - `state` is the raw core state and remains the source of truth
 - `observation` is the player-facing projection and is localized when `--lang` is set
 - `state.log` and `observation.log` are structured `LogEvent[]` arrays, not localized prose strings
+- `state.deck` is raw `CardInstance[]`, so each copy keeps its own `instanceId` and `upgraded` flag
+- observed cards are resolved renderable cards with fields such as `id`, `name`, `cost`, `upgraded`, and structured effect metadata
 - `map` is the full graph from content so agents do not need to infer the tower from `nextNodes` alone
 - `legalActions` is the current valid action set from `packages/core`
 - `state` and `observation` include character and act context for multi-act runs
@@ -229,6 +233,8 @@ Supported action objects:
 {"type":"playCard","handIndex":0}
 {"type":"endTurn"}
 {"type":"chooseRest","optionId":"recover"}
+{"type":"chooseRest","optionId":"upgrade"}
+{"type":"upgradeRestCard","deckIndex":3}
 {"type":"skipReward"}
 {"type":"takeReward","rewardIndex":1}
 {"type":"buyShop","saleIndex":0}

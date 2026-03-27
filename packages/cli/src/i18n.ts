@@ -1,12 +1,14 @@
 import type {
   BlessingDefinition,
   CardDefinition,
+  CardInstance,
   CardKeyword,
   CombatObservation,
   EnemyIntent,
   LogEffect,
   LogEvent,
   Observation,
+  ResolvedCard,
   RewardObservation,
   RelicDefinition,
   RestObservation,
@@ -166,15 +168,16 @@ export function formatLogEvent(content: RunContent, event: LogEvent, locale: Loc
     }
     case "playedCard": {
       const cardName = readCardName(content, event.cardId);
+      const displayName = event.upgraded ? `${cardName}+` : cardName;
       const effects = formatLogEffects(event.effects, locale);
 
       if (effects.length === 0) {
-        return locale === "zh" ? `打出${localizeCardName(cardName, locale)}。` : `Played ${cardName}.`;
+        return locale === "zh" ? `打出${localizeCardName(displayName, locale)}。` : `Played ${displayName}.`;
       }
 
       return locale === "zh"
-        ? `打出${localizeCardName(cardName, locale)}：${effects.join("，")}。`
-        : `Played ${cardName}: ${effects.join(", ")}.`;
+        ? `打出${localizeCardName(displayName, locale)}：${effects.join("，")}。`
+        : `Played ${displayName}: ${effects.join(", ")}.`;
     }
     case "enemyDefeated": {
       const enemyName = readEnemyName(content, event.enemyId);
@@ -196,6 +199,12 @@ export function formatLogEvent(content: RunContent, event: LogEvent, locale: Loc
         ? `祝福将${localizeCardName(cardName, locale)}加入牌组。`
         : `Blessing added ${cardName} to deck.`;
     }
+    case "cardUpgraded": {
+      const cardName = readCardName(content, event.cardId);
+      return locale === "zh"
+        ? `将${localizeCardName(cardName, locale)}强化为${localizeCardName(`${cardName}+`, locale)}。`
+        : `Upgraded ${cardName} to ${cardName}+.`;
+    }
     case "rewardSkipped":
       return locale === "zh" ? "跳过奖励。" : "Skipped reward.";
     case "chooseNextPath":
@@ -204,8 +213,6 @@ export function formatLogEvent(content: RunContent, event: LogEvent, locale: Loc
       return locale === "zh" ? "请选择如何使用营火。" : "Choose how to use the campfire.";
     case "recoveredHp":
       return locale === "zh" ? `恢复 ${event.amount} 点生命。` : `Recovered ${event.amount} HP.`;
-    case "fortified":
-      return locale === "zh" ? `巩固成功，最大生命 +${event.maxHp}。` : `Fortified for +${event.maxHp} max HP.`;
     case "shopEntered":
       return locale === "zh" ? "你发现了一间商店。看看有哪些货物。" : "You found a shop. Browse the offers.";
     case "shopCardBought": {
@@ -215,7 +222,7 @@ export function formatLogEvent(content: RunContent, event: LogEvent, locale: Loc
         : `Bought ${cardName} for ${event.gold} gold.`;
     }
     case "deckCardRemoved": {
-      const cardName = readCardName(content, event.cardId);
+      const cardName = event.upgraded ? `${readCardName(content, event.cardId)}+` : readCardName(content, event.cardId);
       return locale === "zh"
         ? `从牌组移除${localizeCardName(cardName, locale)}，花费 ${event.gold} 金币。`
         : `Removed ${cardName} from deck for ${event.gold} gold.`;
@@ -253,6 +260,8 @@ export function formatLogEvent(content: RunContent, event: LogEvent, locale: Loc
     case "climbEnded":
       return locale === "zh" ? "你的攀登到此结束。" : "Your climb ends here.";
   }
+
+  return locale === "zh" ? "未知事件。" : "Unknown event.";
 }
 
 export function text(locale: Locale, key: keyof typeof localeText.en): string {
@@ -418,6 +427,8 @@ export function localizeErrorMessage(message: string, locale: Locale): string {
     [/^cards can only be played during combat$/, () => "只有在战斗阶段才能打出卡牌"],
     [/^ending the turn is only available during combat$/, () => "只有在战斗阶段才能结束回合"],
     [/^rest options are only available at rest nodes$/, () => "只有在营火节点才能选择营火行动"],
+    [/^card upgrades are only available after choosing upgrade at a campfire$/, () => "只有在选择强化后才能在营火强化卡牌"],
+    [/^no upgradable cards remain in the deck$/, () => "当前牌组里没有可强化的卡牌"],
     [/^reward choices are only available after combat$/, () => "只有在战斗后才能选择奖励"],
     [/^shop actions are only available at shop nodes$/, () => "只有在商店节点才能执行商店行动"],
     [/^deck removal is only available at shop nodes$/, () => "只有在商店节点才能移除卡牌"],
@@ -430,6 +441,7 @@ export function localizeErrorMessage(message: string, locale: Locale): string {
     [/^Invalid choosePath action: (.+)$/, (raw) => `choosePath 动作非法：${raw}`],
     [/^Invalid playCard action: (.+)$/, (raw) => `playCard 动作非法：${raw}`],
     [/^Invalid chooseRest action: (.+)$/, (raw) => `chooseRest 动作非法：${raw}`],
+    [/^Invalid upgradeRestCard action: (.+)$/, (raw) => `upgradeRestCard 动作非法：${raw}`],
     [/^Invalid takeReward action: (.+)$/, (raw) => `takeReward 动作非法：${raw}`],
     [/^Invalid buyShop action: (.+)$/, (raw) => `buyShop 动作非法：${raw}`],
     [/^Invalid removeDeckCard action: (.+)$/, (raw) => `removeDeckCard 动作非法：${raw}`],
@@ -474,29 +486,35 @@ function isLocale(value: string): value is Locale {
   return SUPPORTED_LOCALES.includes(value as Locale);
 }
 
-export interface CliCardDefinition extends Omit<CardDefinition, "keywords"> {
-  upgraded: boolean;
-  cost: number;
-  description: string;
-  keywords: CardKeyword[];
+export interface CliCardDefinition extends ResolvedCard {
   baseCardId?: string;
+  keywords?: CardKeyword[];
 }
 
-export type CardLike = Partial<CardDefinition> & {
-  id: string;
-  baseCardId?: string;
-  upgraded?: boolean;
-  cost?: number;
-  damage?: number;
-  block?: number;
-  draw?: number;
-  energy?: number;
-  heal?: number;
-  weak?: number;
-  vulnerable?: number;
-  poison?: number;
-  poisonMultiplier?: number;
-};
+export type CardLike =
+  | CardDefinition
+  | ResolvedCard
+  | CardInstance
+  | {
+      id: string;
+      name?: string;
+      baseCardId?: string;
+      upgraded?: boolean;
+      cost?: number;
+      description?: string;
+      keywords?: CardKeyword[];
+      damage?: number;
+      block?: number;
+      draw?: number;
+      energy?: number;
+      heal?: number;
+      weak?: number;
+      vulnerable?: number;
+      poison?: number;
+      poisonMultiplier?: number;
+      exhaust?: boolean;
+      retain?: boolean;
+    };
 
 export function localizeCardDefinition(
   card: CardLike,
@@ -564,7 +582,7 @@ export function formatCardEffectLines(card: CliCardDefinition, locale: Locale): 
     const normalizedDescription = normalizeText(card.description);
     const normalizedLines = normalizeText(lines.join(" "));
 
-    if (normalizedDescription !== normalizedLines) {
+    if (normalizedDescription.length > 0 && normalizedDescription !== normalizedLines) {
       lines.push(card.description);
     }
 
@@ -640,7 +658,16 @@ function localizeRestOption(option: RestOption, locale: Locale): RestOption {
 }
 
 function localizeCardName(name: string, locale: Locale): string {
-  return locale === "zh" ? (cardNames[name] ?? name) : name;
+  if (locale !== "zh") {
+    return name;
+  }
+
+  if (/[+＋]$/.test(name)) {
+    const baseName = name.replace(/[+＋]$/u, "");
+    return `${cardNames[baseName] ?? baseName}+`;
+  }
+
+  return cardNames[name] ?? name;
 }
 
 function localizeCardDescription(description: string, locale: Locale): string {
@@ -714,23 +741,66 @@ function readCardName(content: RunContent, cardId: string): string {
 }
 
 function resolveCardDefinition(card: CardLike, content: RunContent | null): CliCardDefinition {
-  const baseId = card.baseCardId ?? card.id;
+  if (isCardInstance(card)) {
+    if (!content) {
+      throw new Error(`cannot resolve card instance ${card.instanceId} without run content`);
+    }
+
+    const definition = content.cards[card.cardId];
+    if (!definition) {
+      throw new Error(`unknown card: ${card.cardId}`);
+    }
+
+    return resolveCardDefinition(
+      {
+        ...resolveCardNumbers(definition, card.upgraded),
+        id: definition.id,
+        name: definition.name,
+        baseCardId: definition.id,
+        upgraded: card.upgraded,
+      },
+      content,
+    );
+  }
+
+  if (isCardDefinition(card)) {
+    return resolveCardDefinition(
+      {
+        ...resolveCardNumbers(card, false),
+        id: card.id,
+        name: card.name,
+        baseCardId: card.id,
+        upgraded: false,
+      },
+      content,
+    );
+  }
+
+  const baseCardId = "baseCardId" in card ? card.baseCardId : undefined;
+  const baseId = baseCardId ?? card.id;
   const baseCard = content ? content.cards[baseId] ?? content.cards[card.id] : null;
-  const merged: CardLike = {
-    id: card.id,
-    ...baseCard,
+  const baseNumbers = baseCard ? resolveCardNumbers(baseCard, card.upgraded ?? false) : null;
+  const merged = {
+    ...(baseNumbers ?? {}),
     ...card,
-    description: card.description ?? baseCard?.description ?? "",
+    id: card.id,
     name: card.name ?? baseCard?.name ?? card.id,
-    cost: card.cost ?? baseCard?.cost ?? 0,
-    baseCardId: card.baseCardId ?? baseCard?.id,
+    baseCardId: baseCardId ?? baseCard?.id ?? card.id,
+    upgraded: card.upgraded ?? false,
+    description: card.description ?? baseNumbers?.description ?? "",
+    cost: card.cost ?? baseNumbers?.cost ?? 0,
   };
 
   return {
-    ...merged,
-    upgraded: merged.upgraded ?? false,
+    id: merged.id,
+    instanceId: "instanceId" in merged ? merged.instanceId : undefined,
+    name: merged.name,
+    rarity: baseCard?.rarity ?? "common",
+    upgraded: merged.upgraded,
+    baseCardId: merged.baseCardId,
+    cost: merged.cost,
+    description: merged.description,
     keywords: resolveCardKeywords(merged),
-    description: merged.description ?? "",
     damage: merged.damage,
     block: merged.block,
     draw: merged.draw,
@@ -740,25 +810,26 @@ function resolveCardDefinition(card: CardLike, content: RunContent | null): CliC
     vulnerable: merged.vulnerable,
     poison: merged.poison,
     poisonMultiplier: merged.poisonMultiplier,
-    cost: merged.cost ?? 0,
+    exhaust: merged.exhaust,
+    retain: merged.retain,
   };
 }
 
 function resolveCardKeywords(card: CardLike): CardKeyword[] {
   const keywordSet = new Set<CardKeyword>();
 
-  const rawKeywords = card.keywords ?? [];
+  const rawKeywords = "keywords" in card ? card.keywords ?? [] : [];
   for (const rawKeyword of rawKeywords) {
     if (rawKeyword === "exhaust" || rawKeyword === "retain") {
       keywordSet.add(rawKeyword);
     }
   }
 
-  if (card.exhaust) {
+  if ("exhaust" in card && card.exhaust) {
     keywordSet.add("exhaust");
   }
 
-  if (card.retain) {
+  if ("retain" in card && card.retain) {
     keywordSet.add("retain");
   }
 
@@ -767,7 +838,7 @@ function resolveCardKeywords(card: CardLike): CardKeyword[] {
 
 
 function readCardDescription(content: RunContent, cardId: string): string | null {
-  return content.cards[cardId]?.description ?? null;
+  return content.cards[cardId]?.description ?? content.cards[cardId]?.base.description ?? null;
 }
 
 function normalizeText(value: string): string {
@@ -795,4 +866,16 @@ function readBlessing(content: RunContent, blessingId: string): BlessingDefiniti
   }
 
   throw new Error(`unknown blessing: ${blessingId}`);
+}
+
+function isCardDefinition(card: CardLike): card is CardDefinition {
+  return "base" in card && "upgraded" in card && typeof card.base === "object" && typeof card.upgraded === "object";
+}
+
+function isCardInstance(card: CardLike): card is CardInstance {
+  return "cardId" in card && "instanceId" in card && typeof card.cardId === "string";
+}
+
+function resolveCardNumbers(card: CardDefinition, upgraded: boolean): CardDefinition["base"] {
+  return upgraded ? card.upgraded : card.base;
 }

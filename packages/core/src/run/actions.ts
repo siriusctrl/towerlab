@@ -1,4 +1,4 @@
-import { REST_FORTIFY, REST_HEAL, SHOP_CARD_PRICE, SHOP_CARD_REMOVE_PRICE } from "../constants.js";
+import { REST_HEAL_RATIO, SHOP_CARD_PRICE, SHOP_CARD_REMOVE_PRICE } from "../constants.js";
 import { finishCombat, resolveEnemyTurn, startPlayerTurn } from "../combat.js";
 import { enterNode } from "../node.js";
 import { finishNode } from "../progression.js";
@@ -9,8 +9,11 @@ import {
   appendLog,
   assertNever,
   buildRemovableDeckIndices,
+  buildUpgradableDeckIndices,
   computeAttackDamage,
+  createCardInstance,
   getAct,
+  getCardNumbers,
   getCombat,
   getNode,
   getRelicValue,
@@ -31,6 +34,8 @@ export function applyAction(content: RunContent, state: RunState, action: RunAct
       return endTurn(content, state);
     case "chooseRest":
       return chooseRest(content, state, action.optionId);
+    case "upgradeRestCard":
+      return upgradeRestCard(content, state, action.deckIndex);
     case "takeReward":
       return takeReward(content, state, action.rewardIndex);
     case "skipReward":
@@ -63,6 +68,7 @@ function choosePath(content: RunContent, state: RunState, nodeId: string): RunSt
       ...state,
       floor: currentNode.kind === "start" ? state.floor : state.floor + 1,
       currentNodeId: nextNode.id,
+      rest: undefined,
       reward: undefined,
       shop: undefined,
     },
@@ -84,13 +90,13 @@ function chooseBlessing(content: RunContent, state: RunState, blessingId: string
   }
 
   let nextState = appendLog(state, { type: "blessingChosen", blessingId });
-
   nextState = applyBlessing(content, nextState, blessing);
 
   return appendLog(
     {
       ...nextState,
       phase: "map",
+      rest: undefined,
       reward: undefined,
       shop: undefined,
     },
@@ -104,41 +110,49 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
   }
 
   const combat = getCombat(state);
-  const cardId = combat.hand[handIndex];
+  const cardInstance = combat.hand[handIndex];
 
-  if (!cardId) {
+  if (!cardInstance) {
     throw new Error(`hand index ${handIndex} is not available`);
   }
 
-  const card = getCard(content, cardId);
+  const card = getCard(content, cardInstance.cardId);
+  const numbers = getCardNumbers(card, cardInstance.upgraded);
 
-  if (card.cost > combat.energy) {
-    throw new Error(`${card.name} costs ${card.cost} energy`);
+  if (numbers.cost > combat.energy) {
+    throw new Error(`${card.name} costs ${numbers.cost} energy`);
   }
 
   let enemy = combat.enemy;
   let block = combat.block;
   let hp = state.hp;
-  let energy = combat.energy - card.cost;
+  let energy = combat.energy - numbers.cost;
   let drawPile = combat.drawPile;
-  let discardPile = card.exhaust ? combat.discardPile : [...combat.discardPile, cardId];
+  let discardPile = combat.discardPile;
+  let exhaustPile = combat.exhaustPile;
   let hand = combat.hand.filter((_, index) => index !== handIndex);
   let nextRng = state.rng;
   const effects: LogEffect[] = [];
 
-  if (card.damage && card.damage > 0) {
-    const dealtDamage = computeAttackDamage(card.damage, combat.status, enemy.status);
+  if (numbers.exhaust) {
+    exhaustPile = [...exhaustPile, cardInstance];
+  } else {
+    discardPile = [...discardPile, cardInstance];
+  }
+
+  if (numbers.damage && numbers.damage > 0) {
+    const dealtDamage = computeAttackDamage(numbers.damage, combat.status, enemy.status);
     enemy = applyDamageToEnemy(enemy, dealtDamage);
     effects.push({ type: "damage", amount: dealtDamage });
   }
 
-  if (card.block && card.block > 0) {
-    block += card.block;
-    effects.push({ type: "block", amount: card.block });
+  if (numbers.block && numbers.block > 0) {
+    block += numbers.block;
+    effects.push({ type: "block", amount: numbers.block });
   }
 
-  if (card.draw && card.draw > 0) {
-    const drawnCards = drawCards(drawPile, discardPile, card.draw, nextRng);
+  if (numbers.draw && numbers.draw > 0) {
+    const drawnCards = drawCards(drawPile, discardPile, numbers.draw, nextRng);
     drawPile = drawnCards.drawPile;
     discardPile = drawnCards.discardPile;
     hand = [...hand, ...drawnCards.drawn];
@@ -149,46 +163,46 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
     }
   }
 
-  if (card.energy && card.energy > 0) {
-    energy += card.energy;
-    effects.push({ type: "energy", amount: card.energy });
+  if (numbers.energy && numbers.energy > 0) {
+    energy += numbers.energy;
+    effects.push({ type: "energy", amount: numbers.energy });
   }
 
-  if (card.heal && card.heal > 0) {
-    const healed = Math.min(card.heal, state.maxHp - state.hp);
-    hp = Math.min(state.maxHp, state.hp + card.heal);
+  if (numbers.heal && numbers.heal > 0) {
+    const healed = Math.min(numbers.heal, state.maxHp - state.hp);
+    hp = Math.min(state.maxHp, state.hp + numbers.heal);
 
     if (healed > 0) {
       effects.push({ type: "heal", amount: healed });
     }
   }
 
-  if ((card.weak ?? 0) > 0) {
-    const weak = card.weak ?? 0;
+  if ((numbers.weak ?? 0) > 0) {
+    const weak = numbers.weak ?? 0;
     enemy = { ...enemy, status: applyStatus(enemy.status, { weak }) };
     effects.push({ type: "weak", amount: weak });
   }
 
-  if ((card.vulnerable ?? 0) > 0) {
-    const vulnerable = card.vulnerable ?? 0;
+  if ((numbers.vulnerable ?? 0) > 0) {
+    const vulnerable = numbers.vulnerable ?? 0;
     enemy = { ...enemy, status: applyStatus(enemy.status, { vulnerable }) };
     effects.push({ type: "vulnerable", amount: vulnerable });
   }
 
-  if ((card.poison ?? 0) > 0) {
-    const poison = card.poison ?? 0;
+  if ((numbers.poison ?? 0) > 0) {
+    const poison = numbers.poison ?? 0;
     enemy = { ...enemy, status: applyStatus(enemy.status, { poison }) };
     effects.push({ type: "poison", amount: poison });
   }
 
-  if ((card.poisonMultiplier ?? 1) > 1 && enemy.status.poison > 0) {
-    const nextPoison = enemy.status.poison * card.poisonMultiplier!;
+  if ((numbers.poisonMultiplier ?? 1) > 1 && enemy.status.poison > 0) {
+    const nextPoison = enemy.status.poison * (numbers.poisonMultiplier ?? 1);
     const addedPoison = nextPoison - enemy.status.poison;
     enemy = { ...enemy, status: { ...enemy.status, poison: nextPoison } };
     effects.push({ type: "poison", amount: addedPoison });
   }
 
-  if (card.exhaust) {
+  if (numbers.exhaust) {
     effects.push({ type: "exhaust" });
   }
 
@@ -203,11 +217,12 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
         drawPile,
         hand,
         discardPile,
+        exhaustPile,
         energy,
         block,
       },
     },
-    { type: "playedCard", cardId, effects },
+    { type: "playedCard", cardId: card.id, upgraded: cardInstance.upgraded, effects },
   );
 
   if (enemy.hp <= 0) {
@@ -223,8 +238,8 @@ function endTurn(content: RunContent, state: RunState): RunState {
   }
 
   const combat = getCombat(state);
-  const retainedHand = combat.hand.filter((cardId) => getCard(content, cardId).retain);
-  const discardedHand = combat.hand.filter((cardId) => !getCard(content, cardId).retain);
+  const retainedHand = combat.hand.filter((instance) => getCardNumbers(getCard(content, instance.cardId), instance.upgraded).retain);
+  const discardedHand = combat.hand.filter((instance) => !getCardNumbers(getCard(content, instance.cardId), instance.upgraded).retain);
   const poisonDamage = combat.status.poison;
   const nextHp = Math.max(0, state.hp - poisonDamage);
   let nextState: RunState = {
@@ -269,33 +284,78 @@ function chooseRest(content: RunContent, state: RunState, optionId: RestOptionId
   }
 
   const currentNode = getNode(content, state.act, state.currentNodeId);
-  let nextState = state;
 
   if (optionId === "recover") {
-    const healAmount = REST_HEAL + getRelicValue(content, state, "restHealBonus");
+    const healAmount = Math.max(1, Math.floor(state.maxHp * REST_HEAL_RATIO)) + getRelicValue(content, state, "restHealBonus");
     const healed = Math.min(healAmount, state.maxHp - state.hp);
 
-    nextState = appendLog(
+    const nextState = appendLog(
       {
         ...state,
         hp: Math.min(state.maxHp, state.hp + healAmount),
       },
       { type: "recoveredHp", amount: healed },
     );
-  } else if (optionId === "fortify") {
-    nextState = appendLog(
-      {
-        ...state,
-        maxHp: state.maxHp + REST_FORTIFY,
-        hp: state.hp + REST_FORTIFY,
-      },
-      { type: "fortified", maxHp: REST_FORTIFY },
-    );
-  } else {
-    return assertNever(optionId);
+
+    return finishNode(content, nextState, currentNode);
   }
 
-  return finishNode(content, nextState, currentNode);
+  if (optionId === "upgrade") {
+    const upgradableDeckIndices = buildUpgradableDeckIndices(state.deck);
+
+    if (upgradableDeckIndices.length === 0) {
+      throw new Error("no upgradable cards remain in the deck");
+    }
+
+    return {
+      ...state,
+      rest: {
+        mode: "upgrade",
+        upgradableDeckIndices,
+      },
+    };
+  }
+
+  return assertNever(optionId);
+}
+
+function upgradeRestCard(content: RunContent, state: RunState, deckIndex: number): RunState {
+  if (state.phase !== "rest" || state.rest?.mode !== "upgrade") {
+    throw new Error("card upgrades are only available after choosing upgrade at a campfire");
+  }
+
+  const cardInstance = state.deck[deckIndex];
+
+  if (!cardInstance) {
+    throw new Error(`deck index ${deckIndex} is not available`);
+  }
+
+  if (cardInstance.upgraded) {
+    throw new Error(`deck index ${deckIndex} is already upgraded`);
+  }
+
+  if (!state.rest.upgradableDeckIndices.includes(deckIndex)) {
+    throw new Error(`deck index ${deckIndex} cannot be upgraded now`);
+  }
+
+  const currentNode = getNode(content, state.act, state.currentNodeId);
+  const nextDeck = [...state.deck];
+  nextDeck[deckIndex] = {
+    ...cardInstance,
+    upgraded: true,
+  };
+
+  return finishNode(
+    content,
+    appendLog(
+      {
+        ...state,
+        deck: nextDeck,
+      },
+      { type: "cardUpgraded", cardId: cardInstance.cardId },
+    ),
+    currentNode,
+  );
 }
 
 function takeReward(content: RunContent, state: RunState, rewardIndex: number): RunState {
@@ -310,10 +370,12 @@ function takeReward(content: RunContent, state: RunState, rewardIndex: number): 
     throw new Error(`reward index ${rewardIndex} is not available`);
   }
 
+  const cardInstance = createCardInstance(cardId, state.nextCardInstanceId);
   const nextState = appendLog(
     {
       ...state,
-      deck: [...state.deck, cardId],
+      deck: [...state.deck, cardInstance],
+      nextCardInstanceId: state.nextCardInstanceId + 1,
       reward: undefined,
     },
     { type: "rewardCardAdded", cardId },
@@ -357,15 +419,19 @@ function buyShop(content: RunContent, state: RunState, saleIndex: number): RunSt
     throw new Error(`Need ${price} gold to buy ${getCard(content, cardId).name}`);
   }
 
+  const purchasedCard = createCardInstance(cardId, state.nextCardInstanceId);
+  const nextDeck = [...state.deck, purchasedCard];
+
   return appendLog(
     {
       ...state,
       gold: state.gold - price,
-      deck: [...state.deck, cardId],
+      deck: nextDeck,
+      nextCardInstanceId: state.nextCardInstanceId + 1,
       shop: {
         ...shop,
         forSale: shop.forSale.filter((_, index) => index !== saleIndex),
-        removableDeckIndices: buildRemovableDeckIndices([...state.deck, cardId]),
+        removableDeckIndices: buildRemovableDeckIndices(nextDeck),
       },
     },
     { type: "shopCardBought", cardId, gold: price },
@@ -383,7 +449,9 @@ function removeDeckCard(content: RunContent, state: RunState, deckIndex: number)
     throw new Error("shop state is missing");
   }
 
-  if (state.deck[deckIndex] === undefined) {
+  const deckCard = state.deck[deckIndex];
+
+  if (!deckCard) {
     throw new Error(`deck index ${deckIndex} is not available`);
   }
 
@@ -392,13 +460,13 @@ function removeDeckCard(content: RunContent, state: RunState, deckIndex: number)
   }
 
   if (state.gold < SHOP_CARD_REMOVE_PRICE) {
-    throw new Error(`Need ${SHOP_CARD_REMOVE_PRICE} gold to remove ${getCard(content, state.deck[deckIndex]).name}`);
+    throw new Error(`Need ${SHOP_CARD_REMOVE_PRICE} gold to remove ${getCard(content, deckCard.cardId).name}`);
   }
 
   const nextDeck = [...state.deck];
-  const removedCardId = nextDeck[deckIndex];
+  const removedCard = nextDeck[deckIndex];
 
-  if (!removedCardId) {
+  if (!removedCard) {
     throw new Error(`deck index ${deckIndex} is not available`);
   }
 
@@ -414,7 +482,7 @@ function removeDeckCard(content: RunContent, state: RunState, deckIndex: number)
         removableDeckIndices: buildRemovableDeckIndices(nextDeck),
       },
     },
-    { type: "deckCardRemoved", cardId: removedCardId, gold: SHOP_CARD_REMOVE_PRICE },
+    { type: "deckCardRemoved", cardId: removedCard.cardId, upgraded: removedCard.upgraded, gold: SHOP_CARD_REMOVE_PRICE },
   );
 }
 
@@ -429,6 +497,7 @@ function leaveShop(content: RunContent, state: RunState): RunState {
 function applyBlessing(content: RunContent, state: RunState, blessing: BlessingDefinition): RunState {
   if (blessing.kind === "heal") {
     const amount = Math.min(blessing.value ?? 0, state.maxHp - state.hp);
+
     return appendLog(
       {
         ...state,
@@ -440,6 +509,7 @@ function applyBlessing(content: RunContent, state: RunState, blessing: BlessingD
 
   if (blessing.kind === "gold") {
     const amount = blessing.value ?? 0;
+
     return appendLog(
       {
         ...state,
@@ -451,13 +521,14 @@ function applyBlessing(content: RunContent, state: RunState, blessing: BlessingD
 
   if (blessing.kind === "maxHp") {
     const amount = blessing.value ?? 0;
+
     return appendLog(
       {
         ...state,
-        hp: state.hp + amount,
         maxHp: state.maxHp + amount,
+        hp: state.hp + amount,
       },
-      { type: "fortified", maxHp: amount },
+      { type: "recoveredHp", amount },
     );
   }
 
@@ -468,10 +539,13 @@ function applyBlessing(content: RunContent, state: RunState, blessing: BlessingD
       throw new Error(`blessing ${blessing.id} must define cardId`);
     }
 
+    const cardInstance = createCardInstance(cardId, state.nextCardInstanceId);
+
     return appendLog(
       {
         ...state,
-        deck: [...state.deck, cardId],
+        deck: [...state.deck, cardInstance],
+        nextCardInstanceId: state.nextCardInstanceId + 1,
       },
       { type: "blessingCardAdded", cardId },
     );

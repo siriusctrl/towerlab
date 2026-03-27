@@ -1,6 +1,8 @@
 import type { CardDefinition, EnemyDefinition, RelicDefinition, RelicKind, RunContent } from "./types.js";
+import { getCardNumbers } from "./shared.js";
 
 export function validateContent(content: RunContent): void {
+  validateCards(content);
   validateCharacter(content);
   validateMap(content);
   validatePools(content);
@@ -128,7 +130,20 @@ function validateRelics(content: RunContent): void {
   }
 }
 
-function validateCardBuckets(
+function validateCards(content: RunContent): void {
+  for (const card of Object.values(content.cards)) {
+    validateCardNumbers(card.id, "base", getCardNumbers(card, false));
+    validateCardNumbers(card.id, "upgraded", getCardNumbers(card, true));
+  }
+}
+
+function validateCardNumbers(cardId: string, label: "base" | "upgraded", numbers: CardDefinition["base"]): void {
+  if (numbers.cost < 0) {
+    throw new Error(`card ${cardId} ${label} cost must be non-negative`);
+  }
+}
+
+export function validateCardBuckets(
   buckets: RunContent["character"]["rewardCardPools"],
   content: RunContent,
 ): void {

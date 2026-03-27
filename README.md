@@ -12,6 +12,7 @@ The project has two equally important goals:
 
 The current playable slice is small, but no longer toy-sized:
 - two playable characters with different starter decks, relics, and card pools
+- campfires now offer percentage-based recovery or a one-card upgrade
 - cards now support a small structured combat vocabulary beyond raw damage/block
 - card views render emphasized keyword lines separately from effect text
 - three acts, each starting with a blessing choice before route navigation
@@ -127,6 +128,7 @@ The current card rarity model is:
 - `epic`
 
 Characters own their own starter decks, starter relics, reward pools, shop pools, and relic pools.
+Core state stores deck cards as stable card instances, so upgrades are tracked per copy instead of per card id.
 Enemies stay shared across characters and vary by act.
 
 The current structured card vocabulary includes:

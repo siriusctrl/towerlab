@@ -3,10 +3,10 @@ export interface ShuffleResult<T> {
   rng: number;
 }
 
-export interface DrawResult {
-  drawPile: string[];
-  discardPile: string[];
-  drawn: string[];
+export interface DrawResult<T> {
+  drawPile: T[];
+  discardPile: T[];
+  drawn: T[];
   rng: number;
 }
 
@@ -32,10 +32,10 @@ export function shuffle<T>(items: T[], seed: number): ShuffleResult<T> {
   };
 }
 
-export function drawCards(drawPile: string[], discardPile: string[], count: number, rng: number): DrawResult {
+export function drawCards<T>(drawPile: T[], discardPile: T[], count: number, rng: number): DrawResult<T> {
   let nextDrawPile = [...drawPile];
   let nextDiscardPile = [...discardPile];
-  const drawn: string[] = [];
+  const drawn: T[] = [];
   let nextRng = rng;
 
   while (drawn.length < count) {

@@ -1,6 +1,9 @@
 import { LOG_LIMIT } from "./constants.js";
 import { shuffle } from "./rng.js";
 import type {
+  CardDefinition,
+  CardInstance,
+  CardNumbers,
   CardRarity,
   CardRarityBuckets,
   CombatStatus,
@@ -9,11 +12,12 @@ import type {
   LogEvent,
   MapNode,
   RelicKind,
+  ResolvedCard,
   TowerAct,
   RunContent,
   RunState,
 } from "./types.js";
-import { getRelic } from "./validate.js";
+import { getCard, getRelic } from "./validate.js";
 
 export function createCombatStatus(): CombatStatus {
   return { weak: 0, vulnerable: 0, poison: 0 };
@@ -98,6 +102,65 @@ export function getNode(content: RunContent, act: number, nodeId: string): MapNo
   return node;
 }
 
+export function createCardInstance(cardId: string, nextCardInstanceId: number, upgraded = false): CardInstance {
+  return {
+    instanceId: `card-${nextCardInstanceId}`,
+    cardId,
+    upgraded,
+  };
+}
+
+export function instantiateDeck(cardIds: string[], startingInstanceId = 1): { deck: CardInstance[]; nextCardInstanceId: number } {
+  let nextCardInstanceId = startingInstanceId;
+  const deck = cardIds.map((cardId) => {
+    const instance = createCardInstance(cardId, nextCardInstanceId);
+    nextCardInstanceId += 1;
+    return instance;
+  });
+
+  return { deck, nextCardInstanceId };
+}
+
+export function getCardNumbers(card: CardDefinition, upgraded: boolean): CardNumbers {
+  const fallback: CardNumbers = {
+    cost: card.cost,
+    description: card.description,
+    keywords: card.keywords,
+    damage: card.damage,
+    block: card.block,
+    draw: card.draw,
+    energy: card.energy,
+    heal: card.heal,
+    weak: card.weak,
+    vulnerable: card.vulnerable,
+    poison: card.poison,
+    poisonMultiplier: card.poisonMultiplier,
+    exhaust: card.exhaust,
+    retain: card.retain,
+  };
+
+  if (upgraded) {
+    return card.upgraded ?? fallback;
+  }
+
+  return card.base ?? fallback;
+}
+
+export function materializeCardDefinition(card: CardDefinition, upgraded: boolean, instanceId?: string): ResolvedCard {
+  return {
+    id: card.id,
+    instanceId,
+    name: card.name,
+    rarity: card.rarity,
+    upgraded,
+    ...getCardNumbers(card, upgraded),
+  };
+}
+
+export function materializeCardInstance(content: RunContent, instance: CardInstance): ResolvedCard {
+  return materializeCardDefinition(getCard(content, instance.cardId), instance.upgraded, instance.instanceId);
+}
+
 export function selectCardsFromPool(cardPool: string[], count: number, rng: number): { cards: string[]; rng: number } {
   if (cardPool.length === 0 || count <= 0) {
     return {
@@ -145,8 +208,6 @@ function selectCardFromBucketChain(
   selected: Set<string>,
   rng: number,
 ): { cardId?: string; rng: number } {
-  let nextRng = rng;
-
   for (const rarity of getBucketFallbackOrder(preferred)) {
     const available = [...new Set(buckets[rarity])].filter((cardId) => !selected.has(cardId));
 
@@ -154,14 +215,14 @@ function selectCardFromBucketChain(
       continue;
     }
 
-    const shuffled = shuffle(available, nextRng);
+    const shuffled = shuffle(available, rng);
     return {
       cardId: shuffled.items[0],
       rng: shuffled.rng,
     };
   }
 
-  return { rng: nextRng };
+  return { rng };
 }
 
 function getBucketFallbackOrder(preferred: CardRarity): CardRarity[] {
@@ -176,8 +237,12 @@ function getBucketFallbackOrder(preferred: CardRarity): CardRarity[] {
   return ["common", "rare", "epic"];
 }
 
-export function buildRemovableDeckIndices(deck: string[]): number[] {
+export function buildRemovableDeckIndices(deck: CardInstance[]): number[] {
   return deck.map((_, index) => index);
+}
+
+export function buildUpgradableDeckIndices(deck: CardInstance[]): number[] {
+  return deck.flatMap((card, index) => (card.upgraded ? [] : [index]));
 }
 
 export function appendLog(state: RunState, event: LogEvent): RunState {

@@ -37,10 +37,10 @@ describe("App layout", () => {
 
     expect(starterFrame).toContain("图鉴");
     expect(starterFrame).toContain("起始牌组");
-    expect(starterFrame).toContain("4x 打击 [1]");
+    expect(starterFrame).toContain("4x 打击");
     expect(starterFrame).toContain("造成 6 点伤害。");
     expect(rareFrame).toContain("稀有卡");
-    expect(rareFrame).toContain("上勾拳 [2]");
+    expect(rareFrame).toContain("上勾拳");
     expect(rareFrame).toContain("战斗狂潮 [0]");
     expect(rareFrame).toContain("消耗");
     const battleTranceLine = rareFrame.split("\n").findIndex((line) => line.includes("战斗狂潮 [0]"));
@@ -48,7 +48,7 @@ describe("App layout", () => {
     expect(rareFrame.split("\n")[battleTranceLine + 1]).toContain("消耗");
     expect(rareFrame.split("\n")[battleTranceLine + 2]).toContain("抽 2 张牌。");
     expect(epicFrame).toContain("史诗卡");
-    expect(epicFrame).toContain("无懈可击 [2]");
+    expect(epicFrame).toContain("无懈可击");
     expect(epicFrame).toContain("获得 20 点格挡。");
   });
 
@@ -119,10 +119,11 @@ describe("App layout", () => {
     expect(deckFrame).toContain("Status");
     expect(deckFrame).toContain("Deck  Current Relics");
     expect(deckFrame).toContain("Deck size 10");
-    expect(deckFrame).toContain("4x Strike [1]");
+    expect(deckFrame).toContain("4x Strike");
     expect(deckFrame).toContain("Deal 6 damage.");
-    expect(deckFrame).toContain("Bash [2]");
-    expect(deckFrame).toContain("Deal 8 damage. Apply 2 Vulnerable.");
+    expect(deckFrame).toContain("Bash");
+    expect(deckFrame).toContain("Deal 8 damage.");
+    expect(deckFrame).toContain("Apply 2 Vulnerable.");
 
     expect(relicFrame).toContain("Status");
     expect(relicFrame).toContain("Relics 1");
@@ -170,6 +171,7 @@ async function renderFrame({
   locale = "en",
   characterId = DEFAULT_CHARACTER_ID as CharacterId | null,
   inputs = [],
+  ticksPerInput = 2,
 }: {
   seed?: number;
   columns: number;
@@ -177,6 +179,7 @@ async function renderFrame({
   locale?: "en" | "zh";
   characterId?: CharacterId | null;
   inputs?: string[];
+  ticksPerInput?: number;
 }): Promise<string> {
   const props = characterId === null ? { seed, locale } : { seed, locale, characterId };
   const instance = render(React.createElement(App, props));
@@ -188,8 +191,9 @@ async function renderFrame({
 
   for (const input of inputs) {
     instance.stdin.write(input);
-    await waitForInk();
-    await waitForInk();
+    for (let i = 0; i < ticksPerInput; i += 1) {
+      await waitForInk();
+    }
   }
 
   return instance.lastFrame() ?? "";

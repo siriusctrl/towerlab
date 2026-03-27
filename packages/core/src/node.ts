@@ -1,6 +1,6 @@
 import { startCombat } from "./combat.js";
 import { createShopState } from "./shop.js";
-import { appendLog } from "./shared.js";
+import { appendLog, buildUpgradableDeckIndices } from "./shared.js";
 import type { MapNode, RunContent, RunState } from "./types.js";
 
 export function enterNode(content: RunContent, state: RunState, node: MapNode): RunState {
@@ -10,6 +10,7 @@ export function enterNode(content: RunContent, state: RunState, node: MapNode): 
         ...state,
         phase: "map",
         combat: undefined,
+        rest: undefined,
         reward: undefined,
         shop: undefined,
       },
@@ -23,6 +24,10 @@ export function enterNode(content: RunContent, state: RunState, node: MapNode): 
         ...state,
         phase: "rest",
         combat: undefined,
+        rest: {
+          mode: "menu",
+          upgradableDeckIndices: buildUpgradableDeckIndices(state.deck),
+        },
         reward: undefined,
         shop: undefined,
       },
@@ -38,6 +43,7 @@ export function enterNode(content: RunContent, state: RunState, node: MapNode): 
         ...state,
         phase: "shop",
         combat: undefined,
+        rest: undefined,
         reward: undefined,
         shop: shopState.shop,
         rng: shopState.rng,

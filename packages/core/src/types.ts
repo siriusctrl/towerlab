@@ -1,6 +1,6 @@
 export type NodeKind = "battle" | "elite" | "rest" | "shop" | "boss" | "start";
 export type RunPhase = "blessing" | "combat" | "map" | "rest" | "reward" | "shop" | "victory" | "defeat";
-export type RestOptionId = "recover" | "fortify";
+export type RestOptionId = "recover" | "upgrade";
 export type CardRarity = "common" | "rare" | "epic";
 export type BlessingKind = "heal" | "gold" | "maxHp" | "card";
 export type CardKeyword = "exhaust" | "retain";
@@ -57,9 +57,7 @@ export interface TowerAct {
   blessings: BlessingDefinition[];
 }
 
-export interface CardDefinition {
-  id: string;
-  name: string;
+export interface CardNumbers {
   cost: number;
   description: string;
   keywords?: CardKeyword[];
@@ -74,6 +72,28 @@ export interface CardDefinition {
   poisonMultiplier?: number;
   exhaust?: boolean;
   retain?: boolean;
+}
+
+export interface CardDefinition extends CardNumbers {
+  id: string;
+  name: string;
+  rarity: CardRarity;
+  base: CardNumbers;
+  upgraded: CardNumbers;
+}
+
+export interface CardInstance {
+  instanceId: string;
+  cardId: string;
+  upgraded: boolean;
+}
+
+export interface ResolvedCard extends CardNumbers {
+  id: string;
+  instanceId?: string;
+  name: string;
+  rarity: CardRarity;
+  upgraded: boolean;
 }
 
 export interface EnemyIntent {
@@ -106,19 +126,19 @@ export type LogEvent =
   | { type: "blessingChosen"; blessingId: string }
   | { type: "goldGained"; amount: number }
   | { type: "enemyAppeared"; enemyId: string; intent: EnemyIntent }
-  | { type: "playedCard"; cardId: string; effects: LogEffect[] }
+  | { type: "playedCard"; cardId: string; upgraded: boolean; effects: LogEffect[] }
   | { type: "enemyDefeated"; enemyId: string; gold: number }
   | { type: "rewardOffered" }
   | { type: "rewardCardAdded"; cardId: string }
   | { type: "blessingCardAdded"; cardId: string }
+  | { type: "cardUpgraded"; cardId: string }
   | { type: "rewardSkipped" }
   | { type: "chooseNextPath" }
   | { type: "chooseCampfire" }
   | { type: "recoveredHp"; amount: number }
-  | { type: "fortified"; maxHp: number }
   | { type: "shopEntered" }
   | { type: "shopCardBought"; cardId: string; gold: number }
-  | { type: "deckCardRemoved"; cardId: string; gold: number }
+  | { type: "deckCardRemoved"; cardId: string; upgraded: boolean; gold: number }
   | { type: "shopLeft" }
   | { type: "relicAlreadyOwned"; relicId: string }
   | { type: "relicAcquired"; relicId: string }
@@ -177,9 +197,10 @@ export interface EnemyState {
 
 export interface CombatState {
   enemy: EnemyState;
-  drawPile: string[];
-  hand: string[];
-  discardPile: string[];
+  drawPile: CardInstance[];
+  hand: CardInstance[];
+  discardPile: CardInstance[];
+  exhaustPile: CardInstance[];
   energy: number;
   block: number;
   status: CombatStatus;
@@ -195,6 +216,11 @@ export interface ShopState {
   removableDeckIndices: number[];
 }
 
+export interface RestState {
+  mode: "menu" | "upgrade";
+  upgradableDeckIndices: number[];
+}
+
 export interface RunState {
   seed: number;
   characterId: string;
@@ -206,9 +232,11 @@ export interface RunState {
   gold: number;
   floor: number;
   currentNodeId: string;
-  deck: string[];
+  nextCardInstanceId: number;
+  deck: CardInstance[];
   relics: string[];
   combat?: CombatState;
+  rest?: RestState;
   reward?: RewardState;
   shop?: ShopState;
   log: LogEvent[];
@@ -257,9 +285,10 @@ export interface CombatObservation extends ObservationBase {
   baseEnergy: number;
   block: number;
   status: CombatStatus;
-  hand: CardDefinition[];
+  hand: ResolvedCard[];
   drawPileCount: number;
   discardPileCount: number;
+  exhaustPileCount: number;
   enemy: ObservedEnemy;
 }
 
@@ -270,20 +299,22 @@ export interface MapObservation extends ObservationBase {
 
 export interface RestObservation extends ObservationBase {
   phase: "rest";
+  mode: "menu" | "upgrade";
   restOptions: RestOption[];
+  upgradableDeckCards: { deckIndex: number; card: ResolvedCard; upgradedCard: ResolvedCard }[];
   nextNodes: MapNode[];
 }
 
 export interface RewardObservation extends ObservationBase {
   phase: "reward";
-  cardChoices: CardDefinition[];
+  cardChoices: ResolvedCard[];
   nextNodes: MapNode[];
 }
 
 export interface ShopObservation extends ObservationBase {
   phase: "shop";
-  forSale: CardDefinition[];
-  removableDeckCards: { deckIndex: number; card: CardDefinition }[];
+  forSale: ResolvedCard[];
+  removableDeckCards: { deckIndex: number; card: ResolvedCard }[];
   removeDeckCardCost: number;
   nextNodes: MapNode[];
 }
@@ -308,6 +339,7 @@ export type RunAction =
   | { type: "playCard"; handIndex: number }
   | { type: "endTurn" }
   | { type: "chooseRest"; optionId: RestOptionId }
+  | { type: "upgradeRestCard"; deckIndex: number }
   | { type: "skipReward" }
   | { type: "takeReward"; rewardIndex: number }
   | { type: "buyShop"; saleIndex: number }

@@ -76,7 +76,7 @@ describe("baseline policies", () => {
       throw new Error(`expected removeDeckCard, received ${action.type}`);
     }
 
-    expect(sampleContent.character.starterDeck).toContain(state.deck[action.deckIndex]);
+    expect(sampleContent.character.starterDeck).toContain(state.deck[action.deckIndex]?.cardId);
   });
 });
 

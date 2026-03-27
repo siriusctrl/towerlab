@@ -1,6 +1,6 @@
 import { enterNode } from "../node.js";
 import { normalizeSeed } from "../rng.js";
-import { appendLog } from "../shared.js";
+import { appendLog, instantiateDeck } from "../shared.js";
 import type { RunContent, RunState } from "../types.js";
 import { validateContent } from "../validate.js";
 
@@ -13,6 +13,7 @@ export function createRun(content: RunContent, seed: number): RunState {
   }
 
   validateContent(content);
+  const starterDeck = instantiateDeck(content.character.starterDeck);
 
   const baseState: RunState = {
     seed,
@@ -25,7 +26,8 @@ export function createRun(content: RunContent, seed: number): RunState {
     gold: content.character.startGold,
     floor: 1,
     currentNodeId: firstNode.id,
-    deck: [...content.character.starterDeck],
+    nextCardInstanceId: starterDeck.nextCardInstanceId,
+    deck: starterDeck.deck,
     relics: [content.character.startingRelicId],
     log: [],
   };

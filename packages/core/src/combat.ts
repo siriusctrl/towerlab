@@ -2,7 +2,7 @@ import { HAND_SIZE, STARTING_ENERGY } from "./constants.js";
 import { finishNode } from "./progression.js";
 import { drawCards, shuffle } from "./rng.js";
 import { getRewardChoices, grantRelicReward } from "./rewards.js";
-import { appendLog, createCombatStatus, getCombat, getCurrentIntent, getNode, getRelicValue, tickStatus, computeAttackDamage } from "./shared.js";
+import { appendLog, computeAttackDamage, createCombatStatus, getCombat, getCurrentIntent, getNode, getRelicValue } from "./shared.js";
 import type { EnemyState, MapNode, RunContent, RunState } from "./types.js";
 import { getEnemyDefinition } from "./validate.js";
 
@@ -47,11 +47,13 @@ export function startCombat(content: RunContent, state: RunState, node: MapNode)
         drawPile: drawn.drawPile,
         hand: drawn.drawn,
         discardPile: drawn.discardPile,
+        exhaustPile: [],
         energy: STARTING_ENERGY + getRelicValue(content, state, "combatEnergy"),
         block: playerStartingBlock,
         status: createCombatStatus(),
         turn: 1,
       },
+      rest: undefined,
       reward: undefined,
       shop: undefined,
     },
@@ -133,7 +135,11 @@ export function resolveEnemyTurn(state: RunState): RunState {
   enemy = {
     ...enemy,
     hp: Math.max(0, enemy.hp - enemyPoisonDamage),
-    status: tickStatus(enemy.status),
+    status: {
+      weak: Math.max(0, enemy.status.weak - 1),
+      vulnerable: Math.max(0, enemy.status.vulnerable - 1),
+      poison: Math.max(0, enemy.status.poison - 1),
+    },
   };
 
   const nextEnemy: EnemyState = {

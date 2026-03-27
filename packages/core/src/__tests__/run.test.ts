@@ -284,13 +284,14 @@ describe("card effects", () => {
     };
 
     let state = enterOpeningCombat(retainContent, createRun(retainContent, 105));
+    const openingDeck = takeCardInstances(state.deck, ["hold", "strike", "strike", "strike", "strike", "strike"]);
 
     state = {
       ...state,
       combat: {
         ...state.combat!,
-        hand: ["hold", "strike"],
-        drawPile: ["strike", "strike", "strike", "strike"],
+        hand: openingDeck.slice(0, 2),
+        drawPile: openingDeck.slice(2),
         discardPile: [],
         turn: 1,
       },
@@ -303,7 +304,7 @@ describe("card effects", () => {
     expect(after.hand.map((card) => card.id)).toEqual(["hold", "strike", "strike", "strike", "strike"]);
     expect(after.drawPileCount).toBe(0);
     expect(after.discardPileCount).toBe(1);
-    expect(state.combat?.discardPile).toEqual(["strike"]);
+    expect(state.combat?.discardPile.map((card) => card.cardId)).toEqual(["strike"]);
   });
 
   it("applies weak, vulnerable, and poison through structured combat fields", () => {
@@ -335,11 +336,12 @@ describe("card effects", () => {
     };
 
     let state = enterOpeningCombat(statusContent, createRun(statusContent, 106));
+    const openingDeck = takeCardInstances(state.deck, ["venom", "strike", "strike", "strike", "strike"]);
     state = {
       ...state,
       combat: {
         ...state.combat!,
-        hand: ["venom", "strike"],
+        hand: openingDeck.slice(0, 2),
         drawPile: [],
         discardPile: [],
         status: { weak: 1, vulnerable: 0, poison: 0 },
@@ -375,17 +377,28 @@ describe("run progression", () => {
     expect(restView.currentNode.id).toBe("camp");
   });
 
-  it("applies the fortify rest option and keeps the run going", () => {
+  it("upgrades a deck card at rest and keeps the run going", () => {
     let state = createRun(content, 7);
 
     state = winCurrentCombat(content, state);
     state = applyAction(content, state, { type: "choosePath", nodeId: "camp" });
-    const hpBeforeRest = state.hp;
-    state = applyAction(content, state, { type: "chooseRest", optionId: "fortify" });
+    const restView = observeRun(content, state);
+
+    if (restView.phase !== "rest") {
+      throw new Error(`expected rest phase, received ${restView.phase}`);
+    }
+
+    const target = restView.upgradableDeckCards.find((entry) => entry.card.id === "strike");
+
+    if (!target) {
+      throw new Error("expected an upgradable strike at rest");
+    }
+
+    state = applyAction(content, state, { type: "chooseRest", optionId: "upgrade" });
+    state = applyAction(content, state, { type: "upgradeRestCard", deckIndex: target.deckIndex });
 
     expect(state.phase).toBe("map");
-    expect(state.maxHp).toBe(85);
-    expect(state.hp).toBe(hpBeforeRest + 5);
+    expect(state.deck[target.deckIndex]?.upgraded).toBe(true);
   });
 
   it("supports route tradeoffs through battle, elite, rest, and shop", () => {
@@ -580,7 +593,7 @@ describe("post-combat rewards", () => {
     const chosenCard = rewardView.cardChoices[0];
     const afterReward = applyAction(rewardContent, state, { type: "takeReward", rewardIndex: 0 });
 
-    expect(afterReward.deck).toContain(chosenCard.id);
+    expect(afterReward.deck.some((card) => card.cardId === chosenCard.id && !card.upgraded)).toBe(true);
     expect(afterReward.deck.length).toBe(rewardContent.character.starterDeck.length + 1);
   });
 
@@ -929,7 +942,7 @@ describe("relic systems", () => {
     restRun = applyAction(restContent, restRun, { type: "choosePath", nodeId: "camp" });
     restRun = { ...restRun, hp: 10 };
     restRun = applyAction(restContent, restRun, { type: "chooseRest", optionId: "recover" });
-    expect(restRun.hp).toBe(31);
+    expect(restRun.hp).toBe(37);
 
     const discountContent: RunContent = {
       cards: {
@@ -1059,4 +1072,18 @@ function createCharacter(
     shopCardPools: { common: shopPool, rare: [], epic: [] },
     relicPools: { elite: [], boss: [] },
   };
+}
+
+function takeCardInstances(deck: RunState["deck"], cardIds: string[]): RunState["deck"] {
+  const remaining = [...deck];
+
+  return cardIds.map((cardId) => {
+    const index = remaining.findIndex((card) => card.cardId === cardId);
+
+    if (index < 0) {
+      throw new Error(`missing test card instance for ${cardId}`);
+    }
+
+    return remaining.splice(index, 1)[0]!;
+  });
 }

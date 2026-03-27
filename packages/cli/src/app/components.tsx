@@ -681,12 +681,21 @@ function statusSectionLabel(locale: Locale, section: StatusSection): string {
   return text(locale, "currentRelics");
 }
 
-function formatCardCollectionLines(cardIds: ReadonlyArray<string | CardLike>, content: RunContent, locale: Locale): ReferenceLine[] {
+function formatCardCollectionLines(
+  cardIds: ReadonlyArray<string | CardLike | { cardId: string; upgraded: boolean; instanceId: string }>,
+  content: RunContent,
+  locale: Locale,
+): ReferenceLine[] {
   const counts = new Map<string, { card: CliCardDefinition; count: number }>();
 
   for (const entry of cardIds) {
+    const cardLike = typeof entry === "string"
+      ? { id: entry, cost: 0 }
+      : "cardId" in entry
+        ? { id: entry.cardId, baseCardId: entry.cardId, upgraded: entry.upgraded, instanceId: entry.instanceId }
+        : entry;
     const card = localizeCardDefinition(
-      typeof entry === "string" ? { id: entry, cost: 0 } : entry,
+      cardLike,
       locale,
       content,
     );

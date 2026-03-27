@@ -42,11 +42,19 @@ export function parseAction(raw: string): RunAction {
       return { type: "endTurn" };
 
     case "chooseRest": {
-      if (decoded.optionId !== "recover" && decoded.optionId !== "fortify") {
+      if (decoded.optionId !== "recover" && decoded.optionId !== "upgrade") {
         throw new Error(`Invalid chooseRest action: ${raw}`);
       }
 
       return { type: "chooseRest", optionId: decoded.optionId };
+    }
+
+    case "upgradeRestCard": {
+      if (typeof decoded.deckIndex !== "number" || !Number.isInteger(decoded.deckIndex)) {
+        throw new Error(`Invalid upgradeRestCard action: ${raw}`);
+      }
+
+      return { type: "upgradeRestCard", deckIndex: decoded.deckIndex };
     }
 
     case "skipReward":

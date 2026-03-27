@@ -11,6 +11,8 @@ export function finishNode(content: RunContent, state: RunState, currentNode: Ma
         phase: "blessing",
         floor: 1,
         currentNodeId: getAct(content, state.act + 1).map[0]!.id,
+        combat: undefined,
+        rest: undefined,
         reward: undefined,
         shop: undefined,
       },
@@ -30,6 +32,8 @@ export function finishNode(content: RunContent, state: RunState, currentNode: Ma
       {
         ...state,
         phase: finalPhase,
+        combat: undefined,
+        rest: undefined,
         reward: undefined,
         shop: undefined,
       },
@@ -41,6 +45,8 @@ export function finishNode(content: RunContent, state: RunState, currentNode: Ma
     {
       ...state,
       phase: "map",
+      combat: undefined,
+      rest: undefined,
       reward: undefined,
       shop: undefined,
     },
