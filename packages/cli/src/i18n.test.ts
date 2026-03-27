@@ -116,6 +116,8 @@ describe("i18n log localization", () => {
   test("localizes retain keyword labels in both locales", () => {
     expect(localizeCardKeyword("retain", "en")).toBe("Retain");
     expect(localizeCardKeyword("retain", "zh")).toBe("保留");
+    expect(localizeCardKeyword("ethereal", "en")).toBe("Ethereal");
+    expect(localizeCardKeyword("ethereal", "zh")).toBe("虚无");
   });
 
   test("keeps upgraded card names with plus suffix in localized output", () => {

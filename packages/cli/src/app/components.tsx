@@ -46,6 +46,7 @@ type StatusSection = "deck" | "relics";
 export type RestDeckUpgradeCard = {
   deckIndex: number;
   card: CliCardDefinition;
+  upgradedCard: CliCardDefinition;
 };
 type ReferenceLine = {
   text: string;
@@ -332,13 +333,17 @@ export function PhaseBody({
           <Text wrap="truncate-end">{text(locale, "chooseDeckUpgrade")}</Text>
           {restUpgradeCards.length > 0 ? (
             restUpgradeCards.map((option, index) => (
-              <CardBlock
-                key={`${option.deckIndex}-${option.card.id}`}
-                card={option.card}
-                locale={locale}
-                namePrefix={`${index + 1}. `}
-                indent="   "
-              />
+              <Box key={`${option.deckIndex}-${option.card.id}`} flexDirection="column">
+                <Text dimColor wrap="truncate-end">
+                  {index + 1}. {option.card.name} → {option.upgradedCard.name}
+                </Text>
+                <CardBlock
+                  card={option.upgradedCard}
+                  locale={locale}
+                  namePrefix="   "
+                  indent="      "
+                />
+              </Box>
             ))
           ) : (
             <Text dimColor wrap="truncate-end">

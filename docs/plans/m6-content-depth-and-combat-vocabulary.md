@@ -34,10 +34,11 @@ M6 exists to deepen the actual game while preserving the current KISS architectu
 
 The following M6 work is already on `main`:
 - card effects now support `draw`, `energy`, `heal`, `exhaust`, and `retain`
-- `exhaust` and `retain` are represented as structured card keywords rather than prose-only text
+- `exhaust`, `retain`, and `ethereal` are represented as structured card keywords rather than prose-only text
 - decks are now stored as per-copy card instances, so upgrades can target one specific copy at a campfire
 - campfires now present `Recover` or `Upgrade`, with recovery based on max-HP percentage rather than a flat amount
 - character content is split into per-character typed data modules instead of one large mixed content file
+- upgrade previews now expose the strengthened card directly in the campfire inspection flow
 - cards render as:
   - name + cost
   - keyword lines

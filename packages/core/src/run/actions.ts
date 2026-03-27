@@ -238,8 +238,17 @@ function endTurn(content: RunContent, state: RunState): RunState {
   }
 
   const combat = getCombat(state);
-  const retainedHand = combat.hand.filter((instance) => getCardNumbers(getCard(content, instance.cardId), instance.upgraded).retain);
-  const discardedHand = combat.hand.filter((instance) => !getCardNumbers(getCard(content, instance.cardId), instance.upgraded).retain);
+  const etherealHand = combat.hand.filter((instance) =>
+    getCardNumbers(getCard(content, instance.cardId), instance.upgraded).keywords?.includes("ethereal")
+  );
+  const retainedHand = combat.hand.filter((instance) => {
+    const numbers = getCardNumbers(getCard(content, instance.cardId), instance.upgraded);
+    return numbers.retain && !numbers.keywords?.includes("ethereal");
+  });
+  const discardedHand = combat.hand.filter((instance) => {
+    const numbers = getCardNumbers(getCard(content, instance.cardId), instance.upgraded);
+    return !numbers.retain && !numbers.keywords?.includes("ethereal");
+  });
   const poisonDamage = combat.status.poison;
   const nextHp = Math.max(0, state.hp - poisonDamage);
   let nextState: RunState = {
@@ -248,6 +257,7 @@ function endTurn(content: RunContent, state: RunState): RunState {
     combat: {
       ...combat,
       discardPile: [...combat.discardPile, ...discardedHand],
+      exhaustPile: [...combat.exhaustPile, ...etherealHand],
       hand: retainedHand,
       energy: 0,
       status: tickStatus(combat.status),

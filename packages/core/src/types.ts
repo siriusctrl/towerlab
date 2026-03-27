@@ -3,7 +3,7 @@ export type RunPhase = "blessing" | "combat" | "map" | "rest" | "reward" | "shop
 export type RestOptionId = "recover" | "upgrade";
 export type CardRarity = "common" | "rare" | "epic";
 export type BlessingKind = "heal" | "gold" | "maxHp" | "card";
-export type CardKeyword = "exhaust" | "retain";
+export type CardKeyword = "exhaust" | "retain" | "ethereal";
 
 export interface CombatStatus {
   weak: number;

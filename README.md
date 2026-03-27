@@ -145,6 +145,7 @@ The current structured card vocabulary includes:
 The structured keywords currently in use are:
 - `exhaust`
 - `retain`
+- `ethereal`
 
 ## Why TypeScript
 

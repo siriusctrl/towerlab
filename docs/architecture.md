@@ -28,6 +28,7 @@ Responsibilities:
 - card definitions
 - per-character typed data modules for starter decks, pools, cards, and relics
 - structured card keywords and effect metadata
+- upgraded card stats and per-copy upgrade previews
 - relic definitions
 - enemy definitions
 - per-character starter decks, blessing pools, reward pools, and shop pools

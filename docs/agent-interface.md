@@ -57,6 +57,7 @@ Important properties of the current contract:
 - `state.deck` is `CardInstance[]`, so upgrades apply to individual copies rather than all cards sharing an id
 - observed card objects may include structured fields such as `damage`, `block`, `draw`, `energy`, `heal`, and `keywords`
 - observed card objects also include `upgraded`, and rest observations expose both the current card and upgraded preview for each upgradable deck entry
+- keyword-bearing cards should be read through `keywords`, not inferred from localized prose
 - combat observations expose both current `energy` and turn-base `baseEnergy`
 
 Agent rule:

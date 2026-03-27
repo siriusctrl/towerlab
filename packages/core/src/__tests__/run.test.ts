@@ -12,10 +12,43 @@ import {
 
 const content: RunContent = {
   cards: {
-    strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
-    defend: { id: "defend", name: "Defend", cost: 1, description: "Gain 5 block.", block: 5 },
-    surge: { id: "surge", name: "Surge", cost: 1, description: "Deal 4 damage. Gain 4 block.", damage: 4, block: 4 },
-    heavy: { id: "heavy", name: "Heavy", cost: 2, description: "Deal 11 damage.", damage: 11 },
+    strike: {
+      id: "strike",
+      name: "Strike",
+      cost: 1,
+      description: "Deal 6 damage.",
+      damage: 6,
+      base: { cost: 1, description: "Deal 6 damage.", damage: 6 },
+      upgraded: { cost: 1, description: "Deal 9 damage.", damage: 9 },
+    },
+    defend: {
+      id: "defend",
+      name: "Defend",
+      cost: 1,
+      description: "Gain 5 block.",
+      block: 5,
+      base: { cost: 1, description: "Gain 5 block.", block: 5 },
+      upgraded: { cost: 1, description: "Gain 8 block.", block: 8 },
+    },
+    surge: {
+      id: "surge",
+      name: "Surge",
+      cost: 1,
+      description: "Deal 4 damage. Gain 4 block.",
+      damage: 4,
+      block: 4,
+      base: { cost: 1, description: "Deal 4 damage. Gain 4 block.", damage: 4, block: 4 },
+      upgraded: { cost: 1, description: "Deal 7 damage. Gain 7 block.", damage: 7, block: 7 },
+    },
+    heavy: {
+      id: "heavy",
+      name: "Heavy",
+      cost: 2,
+      description: "Deal 11 damage.",
+      damage: 11,
+      base: { cost: 2, description: "Deal 11 damage.", damage: 11 },
+      upgraded: { cost: 2, description: "Deal 15 damage.", damage: 15 },
+    },
   },
   enemies: {
     scout: {
@@ -307,6 +340,63 @@ describe("card effects", () => {
     expect(state.combat?.discardPile.map((card) => card.cardId)).toEqual(["strike"]);
   });
 
+  it("exhausts ethereal cards left in hand at end of turn", () => {
+    const etherealContent: RunContent = {
+      cards: {
+        flare: {
+          id: "flare",
+          name: "Flare",
+          cost: 1,
+          description: "Deal 8 damage.",
+          damage: 8,
+          keywords: ["ethereal"],
+        },
+        strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
+      },
+      enemies: {
+        drone: {
+          id: "drone",
+          name: "Drone",
+          maxHp: 50,
+          goldReward: 10,
+          intents: [{ kind: "attack", description: "Peck for 1", damage: 1 }],
+        },
+      },
+      relics: {
+        starterCharm: {
+          id: "starterCharm",
+          name: "Starter Charm",
+          description: "Starting relic for tests.",
+          kind: "maxHp",
+          value: 1,
+        },
+      },
+      character: createCharacter(["flare", "strike", "strike", "strike", "strike"]),
+      acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
+    };
+
+    let state = enterOpeningCombat(etherealContent, createRun(etherealContent, 111));
+    const openingDeck = takeCardInstances(state.deck, ["flare", "strike", "strike", "strike", "strike"]);
+    state = {
+      ...state,
+      combat: {
+        ...state.combat!,
+        hand: openingDeck.slice(0, 2),
+        drawPile: openingDeck.slice(2),
+        discardPile: [],
+        exhaustPile: [],
+        turn: 1,
+      },
+    };
+
+    state = applyAction(etherealContent, state, { type: "endTurn" });
+
+    expect(state.combat?.exhaustPile.map((card) => card.cardId)).toEqual(["flare"]);
+    expect(state.combat?.hand.map((card) => card.cardId)).not.toContain("flare");
+    expect(state.combat?.drawPile.map((card) => card.cardId)).not.toContain("flare");
+    expect(state.combat?.discardPile.map((card) => card.cardId)).not.toContain("flare");
+  });
+
   it("applies weak, vulnerable, and poison through structured combat fields", () => {
     const statusContent: RunContent = {
       cards: {
@@ -393,6 +483,8 @@ describe("run progression", () => {
     if (!target) {
       throw new Error("expected an upgradable strike at rest");
     }
+
+    expect(target.upgradedCard.damage).toBeGreaterThan(target.card.damage);
 
     state = applyAction(content, state, { type: "chooseRest", optionId: "upgrade" });
     state = applyAction(content, state, { type: "upgradeRestCard", deckIndex: target.deckIndex });

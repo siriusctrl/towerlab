@@ -7,7 +7,7 @@ type CardTemplate = {
   name: string;
   cost: number;
   description: string;
-  keywords?: Array<"exhaust" | "retain">;
+  keywords?: Array<"exhaust" | "retain" | "ethereal">;
   damage?: number;
   block?: number;
   draw?: number;
@@ -908,14 +908,73 @@ const baseCards: Record<string, CardTemplate> = {
     name: "Glass Knife",
     cost: 2,
     description: "Deal 18 damage.",
+    keywords: ["ethereal"],
     damage: 18,
   },
 };
 
+type CardStats = Omit<CardTemplate, "id" | "name">;
+
+function withKeyword(keywords: CardStats["keywords"], keyword: NonNullable<CardStats["keywords"]>[number]) {
+  return keywords?.includes(keyword) ? keywords : [...(keywords ?? []), keyword];
+}
+
+function upgradeDamage(amount: number): number {
+  if (amount >= 18) return amount + 6;
+  if (amount >= 10) return amount + 4;
+  return amount + 3;
+}
+
+function upgradeBlock(amount: number): number {
+  if (amount >= 18) return amount + 8;
+  if (amount >= 10) return amount + 5;
+  return amount + 3;
+}
+
+function formatDescription(stats: CardStats): string {
+  const lines: string[] = [];
+
+  if (stats.damage) lines.push(`Deal ${stats.damage} damage.`);
+  if (stats.block) lines.push(`Gain ${stats.block} block.`);
+  if (stats.draw) lines.push(`Draw ${stats.draw} card${stats.draw === 1 ? "" : "s"}.`);
+  if (stats.energy) lines.push(`Gain ${stats.energy} energy.`);
+  if (stats.heal) lines.push(`Recover ${stats.heal} HP.`);
+  if (stats.weak) lines.push(`Apply ${stats.weak} Weak.`);
+  if (stats.vulnerable) lines.push(`Apply ${stats.vulnerable} Vulnerable.`);
+  if (stats.poison) lines.push(`Apply ${stats.poison} Poison.`);
+  if (stats.poisonMultiplier && stats.poisonMultiplier !== 1) lines.push(`Multiply Poison by ${stats.poisonMultiplier}.`);
+
+  return lines.join(" ");
+}
+
+function buildUpgradedStats(id: string, stats: CardStats): CardStats {
+  const upgraded: CardStats = { ...stats };
+
+  if (upgraded.damage) upgraded.damage = upgradeDamage(upgraded.damage);
+  if (upgraded.block) upgraded.block = upgradeBlock(upgraded.block);
+  if (upgraded.draw) upgraded.draw += 1;
+  if (upgraded.energy) upgraded.energy += 1;
+  if (upgraded.heal) upgraded.heal += 2;
+  if (upgraded.weak) upgraded.weak += 1;
+  if (upgraded.vulnerable) upgraded.vulnerable += 1;
+  if (upgraded.poison) upgraded.poison += 2;
+
+  if (id === "battleTrance" || id === "bloodletting" || id === "adrenaline") {
+    upgraded.keywords = withKeyword(upgraded.keywords, "exhaust");
+  }
+
+  if (id === "executioner" || id === "glassKnife") {
+    upgraded.keywords = withKeyword(upgraded.keywords, "ethereal");
+  }
+
+  upgraded.description = formatDescription(upgraded);
+  return upgraded;
+}
 
 const toUpgradableCard = (card: CardTemplate): CardDefinition => {
   const { id, name, ...stats } = card;
   const rarity: CardRarity = CARD_RARITY_BY_ID[id] ?? "common";
+  const upgraded = buildUpgradedStats(id, stats);
 
   return {
     id,
@@ -923,7 +982,7 @@ const toUpgradableCard = (card: CardTemplate): CardDefinition => {
     ...stats,
     rarity,
     base: { ...stats },
-    upgraded: { ...stats },
+    upgraded,
   } as CardDefinition;
 };
 

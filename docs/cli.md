@@ -102,8 +102,13 @@ Cards are rendered in a three-part shape rather than a single prose line:
 
 Current keyword behavior:
 - keywords are rendered as a separate emphasized line
-- the renderer currently uses this for `Exhaust` and `Retain`
+- the renderer currently uses this for `Exhaust`, `Retain`, and `Ethereal`
 - keyword semantics come from structured card data, not from parsing card description strings
+
+Campfire upgrade flow:
+- choosing `Upgrade` opens a card-selection subpage
+- each entry shows the current card and the upgraded preview side by side in the same panel
+- the chosen upgrade is applied to one card instance, not to every card sharing that id
 
 ## Route Tree
 

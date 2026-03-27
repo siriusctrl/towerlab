@@ -206,10 +206,12 @@ export const cardKeywords = {
   en: {
     exhaust: "Exhaust",
     retain: "Retain",
+    ethereal: "Ethereal",
   },
   zh: {
     exhaust: "消耗",
     retain: "保留",
+    ethereal: "虚无",
   },
 } as const satisfies Record<Locale, Record<CardKeyword, string>>;
 
