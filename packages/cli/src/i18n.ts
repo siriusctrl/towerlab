@@ -579,8 +579,8 @@ export function formatCardEffectLines(card: CliCardDefinition, locale: Locale): 
   }
 
   if (lines.length > 0) {
-    const normalizedDescription = normalizeText(card.description);
-    const normalizedLines = normalizeText(lines.join(" "));
+    const normalizedDescription = normalizeComparableText(card.description);
+    const normalizedLines = normalizeComparableText(lines.join(" "));
 
     if (normalizedDescription.length > 0 && normalizedDescription !== normalizedLines) {
       lines.push(card.description);
@@ -846,6 +846,10 @@ function normalizeText(value: string): string {
     .replace(/\s+/gu, " ")
     .replace(/[。！？，、；：,!?:;]/gu, ".")
     .trim();
+}
+
+function normalizeComparableText(value: string): string {
+  return normalizeText(value).replace(/\s+/gu, "");
 }
 
 function readEnemyName(content: RunContent, enemyId: string): string {

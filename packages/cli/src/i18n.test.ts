@@ -154,4 +154,24 @@ describe("i18n log localization", () => {
       "Gain 1 energy.",
     ]);
   });
+
+  test("does not duplicate the full card description when structured effect lines already cover it", () => {
+    const card = localizeCardDefinition(
+      {
+        id: "rally-line",
+        name: "Rally Line",
+        cost: 1,
+        description: "Gain 6 block. Draw 1 card.",
+        block: 6,
+        draw: 1,
+      },
+      "en",
+      sampleContent,
+    );
+
+    expect(formatCardEffectLines(card, "en")).toEqual([
+      "Gain 6 block.",
+      "Draw 1 card.",
+    ]);
+  });
 });
