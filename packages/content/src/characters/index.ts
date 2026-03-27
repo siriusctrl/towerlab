@@ -1,7 +1,7 @@
 import type { CharacterDefinition } from "@towerlab/core";
 
-import { hunter } from "./hunter.js";
-import { warrior } from "./warrior.js";
+import { hunter } from "./hunter/index.js";
+import { warrior } from "./warrior/index.js";
 
 export const DEFAULT_CHARACTER_ID = "warrior";
 

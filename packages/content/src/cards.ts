@@ -1,6 +1,53 @@
 import type { CardDefinition } from "@towerlab/core";
 
-export const cards: Record<string, CardDefinition> = {
+type CardRarity = "common" | "rare" | "epic";
+
+type CardTemplate = {
+  id: string;
+  name: string;
+  cost: number;
+  description: string;
+  keywords?: Array<"exhaust" | "retain">;
+  damage?: number;
+  block?: number;
+  draw?: number;
+  energy?: number;
+  heal?: number;
+  weak?: number;
+  vulnerable?: number;
+  poison?: number;
+  poisonMultiplier?: number;
+  exhaust?: boolean;
+  retain?: boolean;
+};
+
+const CARD_RARITY_BY_ID: Record<string, CardRarity> = {
+  uppercut: "rare",
+  carnage: "rare",
+  battleTrance: "rare",
+  bloodletting: "rare",
+  secondWind: "rare",
+  shockwave: "rare",
+  heavyBlow: "rare",
+  warpath: "rare",
+  overrun: "rare",
+  outmaneuver: "rare",
+  legSweep: "rare",
+  dash: "rare",
+  predator: "rare",
+  cripplingCloud: "rare",
+  catalyst: "rare",
+  impervious: "epic",
+  bludgeon: "epic",
+  executioner: "epic",
+  finalCharge: "epic",
+  burningBanner: "epic",
+  warSpoils: "epic",
+  glassKnife: "epic",
+  adrenaline: "epic",
+};
+
+const baseCards: Record<string, CardTemplate> = {
   battleJab: {
     id: "battleJab",
     name: "Battle Jab",
@@ -864,3 +911,22 @@ export const cards: Record<string, CardDefinition> = {
     damage: 18,
   },
 };
+
+
+const toUpgradableCard = (card: CardTemplate): CardDefinition => {
+  const { id, name, ...stats } = card;
+  const rarity: CardRarity = CARD_RARITY_BY_ID[id] ?? "common";
+
+  return {
+    id,
+    name,
+    ...stats,
+    rarity,
+    base: { ...stats },
+    upgraded: { ...stats },
+  } as CardDefinition;
+};
+
+export const cards = Object.fromEntries(
+  Object.entries(baseCards).map(([id, card]) => [id, toUpgradableCard({ ...card, id } as CardTemplate)]),
+) as unknown as Record<string, CardDefinition>;
