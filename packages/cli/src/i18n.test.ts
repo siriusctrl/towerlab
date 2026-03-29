@@ -113,11 +113,27 @@ describe("i18n log localization", () => {
     ]);
   });
 
-  test("localizes retain keyword labels in both locales", () => {
+  test("localizes retain and ethereal keyword labels in both locales", () => {
     expect(localizeCardKeyword("retain", "en")).toBe("Retain");
     expect(localizeCardKeyword("retain", "zh")).toBe("保留");
     expect(localizeCardKeyword("ethereal", "en")).toBe("Ethereal");
     expect(localizeCardKeyword("ethereal", "zh")).toBe("虚无");
+  });
+
+  test("preserves ethereal as a rendered keyword on localized cards", () => {
+    const localized = localizeCardDefinition(
+      {
+        id: "ghostly-armor",
+        name: "Ghostly Armor",
+        cost: 1,
+        keywords: ["ethereal"],
+        block: 10,
+      },
+      "en",
+      sampleContent,
+    );
+
+    expect(localized.keywords).toContain("ethereal");
   });
 
   test("keeps upgraded card names with plus suffix in localized output", () => {

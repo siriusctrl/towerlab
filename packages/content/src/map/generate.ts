@@ -154,16 +154,16 @@ function buildRowKinds(rowNumber: number, count: number, seed: number): { kinds:
     return { kinds: shuffled.items.slice(0, count), rng: shuffled.rng };
   }
 
-  const pool = rowNumber >= 5 ? LATE_KIND_POOL : rowNumber >= 3 ? MID_KIND_POOL : EARLY_KIND_POOL;
+  const pool = rowNumber >= 7 ? LATE_KIND_POOL : rowNumber >= 4 ? MID_KIND_POOL : EARLY_KIND_POOL;
   const shuffled = shuffle(pool, seed);
   const kinds = shuffled.items.slice(0, count);
 
-  const requiredUtility = rowNumber % 2 === 0 ? "shop" : "rest";
-  if (!kinds.includes(requiredUtility)) {
+  const requiredUtility = getRequiredUtility(rowNumber);
+  if (requiredUtility && !kinds.includes(requiredUtility)) {
     kinds[kinds.length - 1] = requiredUtility;
   }
 
-  if (rowNumber <= 5 && !kinds.includes("elite")) {
+  if (rowNumber <= 7 && !kinds.includes("elite")) {
     kinds[0] = "elite";
   }
 
@@ -171,6 +171,18 @@ function buildRowKinds(rowNumber: number, count: number, seed: number): { kinds:
     kinds,
     rng: shuffled.rng,
   };
+}
+
+function getRequiredUtility(rowNumber: number): Extract<RegularNodeKind, "rest" | "shop"> | null {
+  if (rowNumber === 3 || rowNumber === 8) {
+    return "rest";
+  }
+
+  if (rowNumber === 6) {
+    return "shop";
+  }
+
+  return null;
 }
 
 function createRegularNode(

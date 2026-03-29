@@ -9,6 +9,11 @@ export const hunterCardIds = [
   "survivor",
   "poisonedStab",
   "deadlyPoison",
+  "backstab",
+  "daggerThrow",
+  "acrobatics",
+  "escapePlan",
+  "flyingKnee",
   "quickSlash",
   "backflip",
   "deflect",
@@ -20,8 +25,13 @@ export const hunterCardIds = [
   "predator",
   "cripplingCloud",
   "catalyst",
+  "piercingWail",
+  "bouncingFlask",
+  "heelHook",
+  "deadlyTactics",
   "glassKnife",
   "adrenaline",
+  "finisher",
 ] as const;
 
 export const cards: Record<string, CardDefinition> = hunterCardIds.reduce((acc, cardId) => {

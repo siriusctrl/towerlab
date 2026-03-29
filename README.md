@@ -12,10 +12,13 @@ The project has two equally important goals:
 
 The current playable slice is small, but no longer toy-sized:
 - two playable characters with different starter decks, relics, and card pools
+- both characters now have materially broader STS-style card pools instead of near-starter-only runs
 - campfires now offer percentage-based recovery or a one-card upgrade
 - cards now support a small structured combat vocabulary beyond raw damage/block
 - card views render emphasized keyword lines separately from effect text
+- combat hands now use stronger color contrast between playable and blocked cards
 - three acts, each starting with a blessing choice before route navigation
+- acts now use deeper room stacks with more route decisions before each boss
 - deterministic combat, rewards, shop, relics, and branching map routing
 - TUI status and library panels for inspecting current run state and character content
 - headless JSON mode for replay, policy evaluation, and agent control

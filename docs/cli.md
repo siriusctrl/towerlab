@@ -100,6 +100,10 @@ Cards are rendered in a three-part shape rather than a single prose line:
 - zero or more keyword lines
 - effect text
 
+Combat hand affordance:
+- combat cards use higher-contrast color treatment when affordable and a much dimmer treatment when blocked on energy
+- this distinction is intentionally visual in TTY; snapshot mode stays text-only
+
 Current keyword behavior:
 - keywords are rendered as a separate emphasized line
 - the renderer currently uses this for `Exhaust`, `Retain`, and `Ethereal`
@@ -161,6 +165,7 @@ The snapshot includes:
 - run header
 - full tower map
 - current phase details
+- combat hand affordability tags when a combat snapshot is rendered
 - recent activity
 
 ## JSON Mode

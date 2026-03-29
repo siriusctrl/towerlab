@@ -10,6 +10,9 @@ export const warriorCardIds = [
   "anger",
   "shrugItOff",
   "trueGrit",
+  "twinStrike",
+  "ironWave",
+  "thunderclap",
   "surge",
   "battleJab",
   "tempoDrill",
@@ -26,12 +29,18 @@ export const warriorCardIds = [
   "heavyBlow",
   "warpath",
   "overrun",
+  "clothesline",
+  "dropkick",
+  "ghostlyArmor",
+  "seeingRed",
+  "offering",
   "impervious",
   "bludgeon",
   "executioner",
   "finalCharge",
   "burningBanner",
   "warSpoils",
+  "reaper",
 ] as const;
 
 export const cards: Record<string, CardDefinition> = warriorCardIds.reduce((acc, cardId) => {

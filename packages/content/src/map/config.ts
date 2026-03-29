@@ -11,20 +11,20 @@ export type ActGenerationConfig = {
 };
 
 export const ACT_ROW_PATTERNS: number[][] = [
-  [3, 4, 4, 4, 4, 3, 3],
-  [3, 4, 3, 4, 4, 4, 3],
-  [3, 3, 4, 4, 4, 3, 3],
+  [3, 4, 4, 4, 4, 4, 4, 4, 3],
+  [3, 4, 3, 4, 4, 4, 4, 4, 3],
+  [3, 3, 4, 4, 4, 4, 4, 3, 3],
 ];
 
 export const REGULAR_ROW_PATTERNS = ACT_ROW_PATTERNS;
 
 export const OPENING_KINDS: RegularNodeKind[] = ["battle", "elite", "battle"];
 
-export const EARLY_KIND_POOL: RegularNodeKind[] = ["battle", "battle", "battle", "elite", "rest", "shop"];
+export const EARLY_KIND_POOL: RegularNodeKind[] = ["battle", "battle", "battle", "battle", "elite", "rest", "shop"];
 
-export const MID_KIND_POOL: RegularNodeKind[] = ["battle", "battle", "battle", "elite", "elite", "rest", "shop"];
+export const MID_KIND_POOL: RegularNodeKind[] = ["battle", "battle", "battle", "battle", "elite", "elite", "rest", "shop"];
 
-export const LATE_KIND_POOL: RegularNodeKind[] = ["battle", "battle", "elite", "elite", "rest", "shop"];
+export const LATE_KIND_POOL: RegularNodeKind[] = ["battle", "battle", "battle", "elite", "elite", "rest", "shop"];
 
 export const TRANSITION_STYLES: TransitionStyle[] = ["left", "center", "right"];
 

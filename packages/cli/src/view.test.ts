@@ -371,7 +371,8 @@ describe("cli view helpers", () => {
     const content = createSeededContent(7, "warrior");
     const map = content.acts[0]!.map;
     const nodeById = new Map(map.map((node) => [node.id, node]));
-    const currentNode = nodeById.get("act1-elite-r3-p2")!;
+    const chosenPath = buildFirstBranchPath(nodeById, 3);
+    const currentNode = nodeById.get(chosenPath.at(-1)!)!;
     const nextNodes = currentNode.nextIds.map((nodeId) => nodeById.get(nodeId)).filter((node): node is MapNode => node !== undefined);
     const observation: Observation = {
       seed: 7,
@@ -407,11 +408,7 @@ describe("cli view helpers", () => {
       map,
       observation,
       "en",
-      deriveVisitedNodeIds(map, [
-        { type: "choosePath", nodeId: "act1-elite-r1-p1" },
-        { type: "choosePath", nodeId: "act1-elite-r2-p2" },
-        { type: "choosePath", nodeId: "act1-elite-r3-p2" },
-      ]),
+      deriveVisitedNodeIds(map, chosenPath.map((nodeId) => ({ type: "choosePath", nodeId }))),
       200,
       "icon",
     ).map(expandRowCells);
@@ -432,6 +429,19 @@ describe("cli view helpers", () => {
 
 function renderMap(map: MapNode[], observation: Observation, width: number): string[] {
   return formatMapLines(createMapFloorRows(map, observation, "en", deriveVisitedNodeIds(map, []), width, "icon"));
+}
+
+function buildFirstBranchPath(nodeById: Map<string, MapNode>, steps: number): string[] {
+  const path: string[] = [];
+  let current = nodeById.get("act1-start-r0");
+
+  while (current && path.length < steps && current.nextIds.length > 0) {
+    const nextId = current.nextIds[0]!;
+    path.push(nextId);
+    current = nodeById.get(nextId);
+  }
+
+  return path;
 }
 
 function createMapObservation(map: MapNode[]): Observation {

@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 
+import { sampleContent } from "@towerlab/content";
+
 import { renderSnapshot, runHeadless } from "./index.js";
 
 describe("headless CLI", () => {
@@ -177,8 +179,17 @@ describe("headless CLI", () => {
       .map((act: { map: Array<{ kind: string; relicReward?: string }> }) => act.map.find((node) => node.kind === "boss")?.relicReward)
       .filter(Boolean);
 
-    expect(new Set(actOneEliteRelics).size).toBe(actOneEliteRelics.length);
+    const uniquePreviewCount = sampleContent.character.relicPools.elite.length;
+
+    expect(new Set(actOneEliteRelics.slice(0, uniquePreviewCount)).size).toBe(uniquePreviewCount);
     expect(new Set(bossRelics).size).toBe(bossRelics.length);
+  });
+
+  test("generated acts keep a deeper room stack per act", () => {
+    const output = JSON.parse(runHeadless(["--json", "create", "--seed", "7", "--character", "warrior"]));
+    const actSizes = output.acts.map((act: { map: Array<unknown> }) => act.map.length);
+
+    expect(actSizes.every((size: number) => size >= 34)).toBe(true);
   });
 
   test("batch-only flags are rejected outside batch mode", () => {

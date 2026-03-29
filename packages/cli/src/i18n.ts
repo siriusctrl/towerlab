@@ -820,7 +820,7 @@ function resolveCardKeywords(card: CardLike): CardKeyword[] {
 
   const rawKeywords = "keywords" in card ? card.keywords ?? [] : [];
   for (const rawKeyword of rawKeywords) {
-    if (rawKeyword === "exhaust" || rawKeyword === "retain") {
+    if (rawKeyword === "exhaust" || rawKeyword === "retain" || rawKeyword === "ethereal") {
       keywordSet.add(rawKeyword);
     }
   }

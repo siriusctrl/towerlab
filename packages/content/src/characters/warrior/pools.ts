@@ -7,6 +7,9 @@ export const warriorRewardCardPools: CardRarityBuckets = {
     "shrugItOff",
     "bash",
     "trueGrit",
+    "twinStrike",
+    "ironWave",
+    "thunderclap",
     "surge",
     "battleJab",
     "tempoDrill",
@@ -25,8 +28,13 @@ export const warriorRewardCardPools: CardRarityBuckets = {
     "heavyBlow",
     "warpath",
     "overrun",
+    "clothesline",
+    "dropkick",
+    "ghostlyArmor",
+    "seeingRed",
+    "offering",
   ],
-  epic: ["impervious", "bludgeon", "executioner", "finalCharge", "burningBanner", "warSpoils"],
+  epic: ["impervious", "bludgeon", "executioner", "finalCharge", "burningBanner", "warSpoils", "reaper"],
 };
 
 export const warriorShopCardPools: CardRarityBuckets = {

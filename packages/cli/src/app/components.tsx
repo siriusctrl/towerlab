@@ -242,7 +242,7 @@ export function PhaseBody({
               locale={locale}
               namePrefix={`${index + 1}. `}
               indent="   "
-              dimmed={card.cost > observation.energy}
+              playable={card.cost <= observation.energy}
             />
           ))
         ) : (
@@ -714,28 +714,33 @@ function CardBlock({
   locale,
   namePrefix,
   indent,
-  dimmed = false,
+  playable,
 }: {
   card: CliCardDefinition;
   locale: Locale;
   namePrefix: string;
   indent: string;
-  dimmed?: boolean;
+  playable?: boolean;
 }) {
   const effectLines = formatCardEffectLines(card, locale);
+  const dimmed = playable === false;
+  const titleColor = playable === false ? "gray" : "green";
+  const costColor = playable === false ? "red" : "yellow";
+  const keywordColor = playable === false ? "gray" : "yellow";
+  const effectColor = playable === false ? "gray" : undefined;
 
   return (
     <Box flexDirection="column">
-      <Text color={dimmed ? "gray" : undefined} bold wrap="truncate-end">
-        {namePrefix}{card.name} <Text dimColor>[{card.cost}]</Text>
+      <Text color={titleColor} bold={!dimmed} dimColor={dimmed} wrap="truncate-end">
+        {namePrefix}{card.name} <Text color={costColor}>[{card.cost}]</Text>
       </Text>
       {card.keywords?.map((keyword) => (
-        <Text key={`${card.id}-${keyword}`} color="yellow" bold wrap="truncate-end">
+        <Text key={`${card.id}-${keyword}`} color={keywordColor} bold={!dimmed} dimColor={dimmed} wrap="truncate-end">
           {indent}{localizeCardKeyword(keyword, locale)}
         </Text>
       ))}
       {effectLines.map((line) => (
-        <Text key={`${card.id}-${line}`} color={dimmed ? "gray" : undefined} wrap="truncate-end">
+        <Text key={`${card.id}-${line}`} color={effectColor} dimColor={dimmed} wrap="truncate-end">
           {indent}{line}
         </Text>
       ))}

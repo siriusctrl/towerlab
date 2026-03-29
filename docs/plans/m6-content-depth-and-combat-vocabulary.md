@@ -43,8 +43,9 @@ The following M6 work is already on `main`:
   - name + cost
   - keyword lines
   - effect body
+- combat hands now make affordable vs blocked cards visibly distinct in TTY without adding extra rules text to the cards themselves
 - both current characters have broader first-pass and second-pass card pools than M5 shipped with
-- acts now need deeper route stacks and more meaningful combat-to-utility pacing than the post-M5 map shape provided
+- acts now use deeper route stacks and more meaningful combat-to-utility pacing than the post-M5 map shape provided
 
 This milestone remains active because the full content-depth target is still ahead.
 

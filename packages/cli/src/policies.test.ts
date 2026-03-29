@@ -58,7 +58,7 @@ describe("baseline policies", () => {
   });
 
   it("heuristic prefers the shop route when gold is available", () => {
-    const state = gateMapState(7);
+    const state = gateMapState();
     const action = choosePolicyAction("heuristic", state);
 
     if (action.type !== "choosePath") {
@@ -69,7 +69,7 @@ describe("baseline policies", () => {
   });
 
   it("heuristic removes a starter card in shop before buying", () => {
-    const state = gateShopState(7);
+    const state = gateShopState();
     const action = choosePolicyAction("heuristic", state);
 
     if (action.type !== "removeDeckCard") {
@@ -90,14 +90,8 @@ function firstMapState(seed: number): RunState {
   return state;
 }
 
-function gateMapState(seed: number): RunState {
-  let state = firstMapState(seed);
-  state = applyAction(sampleContent, state, { type: "choosePath", nodeId: getBattleChoiceWithShopFollowUp().id });
-  state = finishCombat(state);
-
-  if (state.phase === "reward") {
-    state = applyAction(sampleContent, state, { type: "skipReward" });
-  }
+function gateMapState(): RunState {
+  const state = findMapStateWithNextKind("shop");
 
   if (state.phase !== "map") {
     throw new Error(`expected map phase, received ${state.phase}`);
@@ -106,9 +100,10 @@ function gateMapState(seed: number): RunState {
   return state;
 }
 
-function gateShopState(seed: number): RunState {
-  const shopNode = getImmediateNextByKind(getBattleChoiceWithShopFollowUp().id, "shop");
-  const state = applyAction(sampleContent, gateMapState(seed), { type: "choosePath", nodeId: shopNode.id });
+function gateShopState(): RunState {
+  const mapState = gateMapState();
+  const shopNode = getImmediateNextByKind(mapState.currentNodeId, "shop");
+  const state = applyAction(sampleContent, mapState, { type: "choosePath", nodeId: shopNode.id });
 
   if (state.phase !== "shop") {
     throw new Error(`expected shop phase, received ${state.phase}`);
@@ -167,23 +162,61 @@ function getOpeningChoiceByKind(kind: string) {
   return node;
 }
 
-function getBattleChoiceWithShopFollowUp() {
-  const openingBattles = firstMapState(7);
-  const observation = observeRun(sampleContent, openingBattles);
+function findMapStateWithNextKind(kind: string): RunState {
+  for (let seed = 1; seed <= 40; seed += 1) {
+    const initialState = advanceOpeningBlessing(createRun(sampleContent, seed));
+    const queue: RunState[] = [initialState];
+    const seen = new Set<string>();
 
-  if (observation.phase !== "map") {
-    throw new Error(`expected map phase, received ${observation.phase}`);
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const observation = observeRun(sampleContent, current);
+      const key = `${seed}:${current.phase}:${current.currentNodeId}:${current.floor}`;
+
+      if (seen.has(key)) {
+        continue;
+      }
+      seen.add(key);
+
+      if (observation.phase === "map" && observation.nextNodes.some((candidate) => candidate.kind === kind)) {
+        return current;
+      }
+
+      if (observation.phase !== "map") {
+        continue;
+      }
+
+      for (const node of observation.nextNodes) {
+        let next = applyAction(sampleContent, current, { type: "choosePath", nodeId: node.id });
+
+        if (next.phase === "combat") {
+          next = finishCombat(next);
+        }
+
+        if (next.phase === "reward") {
+          next = applyAction(sampleContent, next, { type: "skipReward" });
+        }
+
+        if (next.phase === "rest") {
+          const restObservation = observeRun(sampleContent, next);
+
+          if (restObservation.phase === "rest") {
+            next = applyAction(sampleContent, next, { type: "chooseRest", optionId: restObservation.restOptions[0]!.id });
+          }
+        }
+
+        if (next.phase === "shop") {
+          next = applyAction(sampleContent, next, { type: "leaveShop" });
+        }
+
+        if (next.phase === "map") {
+          queue.push(next);
+        }
+      }
+    }
   }
 
-  const node = observation.nextNodes.find(
-    (candidate) => candidate.kind === "battle" && candidate.nextIds.some((nextId) => getNode(nextId).kind === "shop"),
-  );
-
-  if (!node) {
-    throw new Error("missing battle route that leads to a shop");
-  }
-
-  return node;
+  throw new Error(`missing map state with next ${kind} option`);
 }
 
 function advanceOpeningBlessing(state: RunState): RunState {

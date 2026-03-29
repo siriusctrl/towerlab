@@ -97,8 +97,10 @@ describe("App layout", () => {
     expect(frame).toContain("┌");
     expect(frame).toContain("B");
     expect(frame).toContain("Energy 3/3");
+    expect(frame).not.toContain("[READY]");
+    expect(frame).not.toContain("[NO ENERGY]");
     expect(frame).toMatch(/- Gained 30 gold\.|- Moved to Room 1-1 \(elite\)\./);
-    expect(frame).toMatch(/- .*appears\./);
+    expect(frame).toMatch(/Banner Captain|Crusher|Siege Smith|Raider|Sentry|Skirmisher|Ember Adept|Ash Scout|Pike Brute/);
     expect(frame).not.toContain("act1-battle");
   });
 
@@ -107,9 +109,18 @@ describe("App layout", () => {
 
     expect(frame).toContain("┌");
     expect(frame).toContain("B");
+    expect(frame).not.toContain("[可打]");
+    expect(frame).not.toContain("[能量不足]");
     expect(frame).toMatch(/获得 30 金币|前往 房间 1-1（精英）/);
-    expect(frame).toMatch(/袭掠者出现|哨卫出现|游击者出现|余烬术士出现|灰烬斥候出现|长枪暴徒出现|军旗队长出现|攻城铁匠出现|粉碎者出现/);
+    expect(frame).toMatch(/袭掠者|哨卫|游击者|余烬术士|灰烬斥候|长枪暴徒|军旗队长|攻城铁匠|粉碎者/);
     expect(frame).not.toContain("act1-battle");
+  });
+
+  test("marks spent-out combat cards as no-energy after spending the turn budget", async () => {
+    const frame = await renderFrame({ columns: 120, rows: 28, inputs: ["1", "1", "1", "1", "1"] });
+
+    expect(frame).toContain("Energy 0/3");
+    expect(frame).not.toContain("[NO ENERGY]");
   });
 
   test("shows current status with deck and relic sections during combat", async () => {
