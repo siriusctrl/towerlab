@@ -1,38 +1,9 @@
 import type { CardDefinition } from "@towerlab/core";
 
 import { cards as allCards } from "../../cards.js";
+import { hunterCardIds as ids } from "../../cards/hunter.js";
 
-export const hunterCardIds = [
-  "slice",
-  "dodge",
-  "neutralize",
-  "survivor",
-  "poisonedStab",
-  "deadlyPoison",
-  "backstab",
-  "daggerThrow",
-  "acrobatics",
-  "escapePlan",
-  "flyingKnee",
-  "quickSlash",
-  "backflip",
-  "deflect",
-  "suckerPunch",
-  "terror",
-  "outmaneuver",
-  "legSweep",
-  "dash",
-  "predator",
-  "cripplingCloud",
-  "catalyst",
-  "piercingWail",
-  "bouncingFlask",
-  "heelHook",
-  "deadlyTactics",
-  "glassKnife",
-  "adrenaline",
-  "finisher",
-] as const;
+export const hunterCardIds = ids;
 
 export const cards: Record<string, CardDefinition> = hunterCardIds.reduce((acc, cardId) => {
   acc[cardId] = allCards[cardId];
