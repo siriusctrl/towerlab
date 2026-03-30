@@ -53,6 +53,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const [combatHandPage, setCombatHandPage] = useState(0);
   const [shopBuyPage, setShopBuyPage] = useState(0);
   const [shopRemovePage, setShopRemovePage] = useState(0);
+  const [quitConfirming, setQuitConfirming] = useState(false);
   const stateRef = useRef(state);
   const contentRef = useRef(content);
   const actionsRef = useRef(actions);
@@ -109,6 +110,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setCombatHandPage(0);
     setShopBuyPage(0);
     setShopRemovePage(0);
+    setQuitConfirming(false);
     setCharacterSelectMode("choose");
     setCharacterSelectIndex(nextIndex);
   };
@@ -126,6 +128,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
       setState(nextState);
       setActions(nextActions);
       setError(null);
+      setQuitConfirming(false);
     } catch (actionError) {
       setError(getErrorMessage(actionError, locale));
     }
@@ -152,6 +155,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setCombatHandPage(0);
     setShopBuyPage(0);
     setShopRemovePage(0);
+    setQuitConfirming(false);
   };
 
   useEffect(() => {
@@ -196,8 +200,18 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   };
 
   useInput((input, key) => {
-    if ((key.ctrl && input === "c") || input === "q") {
+    if (key.ctrl && input === "c") {
       exit();
+      return;
+    }
+
+    if (quitConfirming) {
+      if (key.escape) {
+        exit();
+        return;
+      }
+
+      setQuitConfirming(false);
       return;
     }
 
@@ -214,13 +228,18 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
         return;
       }
 
-      if (characterSelectMode === "library") {
-        if (key.escape) {
+      if (key.escape) {
+        if (characterSelectMode === "library") {
           setCharacterSelectMode("choose");
           setReferenceScrollOffset(0);
           return;
         }
 
+        exit();
+        return;
+      }
+
+      if (characterSelectMode === "library") {
         if (input === "[" || key.leftArrow) {
           setLibrarySectionIndex((current) => (current - 1 + LIBRARY_SECTION_COUNT) % LIBRARY_SECTION_COUNT);
           setReferenceScrollOffset(0);
@@ -261,11 +280,13 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     }
 
     if (input === "d") {
+      setQuitConfirming(false);
       toggleReference("status");
       return;
     }
 
     if (input === "l") {
+      setQuitConfirming(false);
       toggleReference("library");
       return;
     }
@@ -310,6 +331,11 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
       return;
     }
 
+    if (key.escape) {
+      setQuitConfirming(true);
+      return;
+    }
+
     if (view.phase === "combat") {
       const totalPages = Math.max(1, Math.ceil(view.hand.length / COMBAT_HAND_PAGE_SIZE));
       const currentPage = Math.min(combatHandPage, totalPages - 1);
@@ -330,7 +356,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
         return;
       }
 
-      if (input === "e") {
+      if (input === " ") {
         runAction({ type: "endTurn" });
         return;
       }
@@ -631,6 +657,11 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
           combatHandPageCount={view.phase === "combat" ? Math.max(1, Math.ceil(view.hand.length / COMBAT_HAND_PAGE_SIZE)) : 1}
         />
         <ReferenceControls locale={locale} referenceMode={referenceMode} />
+        {quitConfirming ? (
+          <Text color="yellow" wrap="truncate-end">
+            {text(locale, "quitConfirm")}
+          </Text>
+        ) : null}
         {error ? (
           <Text color="red" wrap="truncate-end">
             {text(locale, "inputError")}: {error}

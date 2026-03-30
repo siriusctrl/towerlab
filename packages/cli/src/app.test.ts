@@ -106,6 +106,14 @@ describe("App layout", () => {
     expect(frame).not.toContain("act1-battle");
   });
 
+  test("uses esc for quitting and space for ending turns in combat controls", async () => {
+    const frame = await renderFrame({ columns: 100, rows: 24, inputs: ["1", "1"] });
+
+    expect(frame).toContain("space end turn");
+    expect(frame).toContain("esc quit");
+    expect(frame).not.toContain("q quit");
+  });
+
   test("keeps the zh combat sidebar readable and localized", async () => {
     const frame = await renderFrame({ columns: 100, rows: 24, locale: "zh", inputs: ["1", "1"] });
 
@@ -123,6 +131,20 @@ describe("App layout", () => {
 
     expect(frame).toContain("Energy 0/3");
     expect(frame).not.toContain("[NO ENERGY]");
+  });
+
+  test("ends the turn with space", async () => {
+    const frame = await renderFrame({ columns: 120, rows: 28, inputs: ["1", "1", "1", "1", "1", " "] });
+
+    expect(frame).toContain("Energy 3/3");
+    expect(frame).not.toContain("Energy 0/3");
+  });
+
+  test("shows an in-run quit confirmation on first escape", async () => {
+    const frame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["1", "1", "\u001b"] });
+
+    expect(frame).toContain("再次按 esc 退出本局。");
+    expect(frame).toContain("战斗");
   });
 
   test("shows current status with deck and relic sections during combat", async () => {
