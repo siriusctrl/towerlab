@@ -81,7 +81,11 @@ function validatePools(content: RunContent): void {
     getRelic(content, relicId);
   }
 
-  for (const cardId of content.character.blessingCards) {
+  for (const cardId of [
+    ...content.character.blessingCardPools.act1,
+    ...content.character.blessingCardPools.act2,
+    ...content.character.blessingCardPools.act3,
+  ]) {
     getCard(content, cardId);
   }
 

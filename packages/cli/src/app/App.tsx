@@ -10,6 +10,8 @@ import {
   CharacterSelectScreen,
   Controls,
   COMBAT_HAND_PAGE_SIZE,
+  getCharacterSelectLibraryMaxScroll,
+  getReferencePanelMaxScroll,
   LIBRARY_SECTION_COUNT,
   MapTreeView,
   RestDeckUpgradeCard,
@@ -83,11 +85,25 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const recentLogLimit = rows >= 30 ? 6 : rows >= 26 ? 5 : 4;
   const hpBarWidth = Math.min(20, Math.max(10, Math.floor(columns * 0.15)));
   const referenceHeight = Math.max(8, rows - (compactMapPhase ? 6 : 9));
+  const characterSelectLibraryHeight = Math.max(8, rows - 9);
   const mainPaneWidth = Math.max(32, columns - (showInspectorSidebar ? inspectorWidth + 4 : 2));
   const shopBuyPageCount = view?.phase === "shop" ? Math.max(1, Math.ceil(view.forSale.length / SHOP_BUY_PAGE_SIZE)) : 1;
   const shopRemovePageCount = view?.phase === "shop" ? Math.max(1, Math.ceil(view.removableDeckCards.length / SHOP_REMOVE_PAGE_SIZE)) : 1;
   const resolvedShopBuyPage = view?.phase === "shop" ? Math.min(Math.max(shopBuyPage, 0), shopBuyPageCount - 1) : 0;
   const resolvedShopRemovePage = view?.phase === "shop" ? Math.min(Math.max(shopRemovePage, 0), shopRemovePageCount - 1) : 0;
+  const referenceMaxScroll =
+    content && state && referenceMode !== "hidden"
+      ? getReferencePanelMaxScroll(content, state, locale, referenceMode, statusSectionIndex, librarySectionIndex, referenceHeight)
+      : 0;
+  const characterSelectLibraryMaxScroll =
+    !view && characterSelectMode === "library"
+      ? getCharacterSelectLibraryMaxScroll(
+          characterLibraryContents[characterSelectIndex] ?? characterLibraryContents[0]!,
+          locale,
+          librarySectionIndex,
+          characterSelectLibraryHeight,
+        )
+      : 0;
 
   const startCharacterRun = (nextCharacterId: CharacterId, nextIndex: number) => {
     const nextContent = createSeededContent(seed, nextCharacterId);
@@ -185,6 +201,10 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setRestUpgradePage(0);
   }, [view]);
 
+  useEffect(() => {
+    setReferenceScrollOffset((current) => Math.min(current, view ? referenceMaxScroll : characterSelectLibraryMaxScroll));
+  }, [view, referenceMaxScroll, characterSelectLibraryMaxScroll]);
+
   const toggleReference = (nextMode: Exclude<ReferenceMode, "hidden">) => {
     setReferenceMode((current) => {
       const resolved = current === nextMode ? "hidden" : nextMode;
@@ -253,7 +273,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
         }
 
         if (input === "j" || key.downArrow) {
-          setReferenceScrollOffset((current) => current + 1);
+          setReferenceScrollOffset((current) => Math.min(current + 1, characterSelectLibraryMaxScroll));
           return;
         }
 
@@ -319,7 +339,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
       }
 
       if (input === "j" || key.downArrow) {
-        setReferenceScrollOffset((current) => current + 1);
+        setReferenceScrollOffset((current) => Math.min(current + 1, referenceMaxScroll));
         return;
       }
 
@@ -530,7 +550,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
           characters={characters}
           contents={characterLibraryContents}
           locale={locale}
-          libraryHeight={Math.max(8, rows - 9)}
+          libraryHeight={characterSelectLibraryHeight}
           showLibrary={characterSelectMode === "library"}
           selectedCharacterIndex={characterSelectIndex}
           librarySectionIndex={librarySectionIndex}

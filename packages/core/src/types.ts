@@ -22,6 +22,12 @@ export interface CharacterRelicPools {
   boss: string[];
 }
 
+export interface BlessingCardPools {
+  act1: string[];
+  act2: string[];
+  act3: string[];
+}
+
 export interface CharacterDefinition {
   id: string;
   name: string;
@@ -30,7 +36,7 @@ export interface CharacterDefinition {
   startGold: number;
   starterDeck: string[];
   startingRelicId: string;
-  blessingCards: [string, string, string];
+  blessingCardPools: BlessingCardPools;
   rewardCardPools: CardRarityBuckets;
   shopCardPools: CardRarityBuckets;
   relicPools: CharacterRelicPools;
@@ -49,6 +55,7 @@ export interface BlessingDefinition {
   kind: BlessingKind;
   value?: number;
   cardId?: string;
+  upgraded?: boolean;
 }
 
 export interface TowerAct {

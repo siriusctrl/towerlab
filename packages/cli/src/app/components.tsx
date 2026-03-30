@@ -55,6 +55,12 @@ type ReferenceLine = {
   dim?: boolean;
   color?: string;
 };
+type ReferenceEntry = ReferenceLine[];
+type ReferenceSection<Key extends string> = {
+  key: Key;
+  title: string;
+  entries: ReferenceEntry[];
+};
 
 const LIBRARY_SECTIONS: LibrarySection[] = ["starter", "common", "rare", "epic", "relics"];
 const STATUS_SECTIONS: StatusSection[] = ["deck", "relics"];
@@ -63,6 +69,35 @@ export const LIBRARY_SECTION_COUNT = LIBRARY_SECTIONS.length;
 export const STATUS_SECTION_COUNT = STATUS_SECTIONS.length;
 export const COMBAT_HAND_PAGE_SIZE = 9;
 export const REST_UPGRADE_PAGE_SIZE = 9;
+
+export function getReferencePanelMaxScroll(
+  content: RunContent,
+  state: RunState,
+  locale: Locale,
+  referenceMode: Exclude<ReferenceMode, "hidden">,
+  statusSectionIndex: number,
+  librarySectionIndex: number,
+  height: number,
+): number {
+  const section =
+    referenceMode === "status"
+      ? buildStatusSection(content, state, locale, STATUS_SECTIONS[statusSectionIndex] ?? STATUS_SECTIONS[0]!)
+      : buildLibrarySection(content, locale, LIBRARY_SECTIONS[librarySectionIndex] ?? LIBRARY_SECTIONS[0]!);
+  const headerLines = 4;
+  const bodyHeight = Math.max(4, height - headerLines);
+  return getMaxReferenceEntryScroll(section.entries, bodyHeight);
+}
+
+export function getCharacterSelectLibraryMaxScroll(
+  content: RunContent,
+  locale: Locale,
+  librarySectionIndex: number,
+  height: number,
+): number {
+  const section = buildLibrarySection(content, locale, LIBRARY_SECTIONS[librarySectionIndex] ?? LIBRARY_SECTIONS[0]!);
+  const bodyHeight = Math.max(4, height - 4);
+  return getMaxReferenceEntryScroll(section.entries, bodyHeight);
+}
 
 export function StatusBar({
   observation,
@@ -636,11 +671,12 @@ export function ReferencePanel({
   const characterName = localizeCharacterName(content.character.id, locale);
   const headerLines = 4;
   const bodyHeight = Math.max(4, height - headerLines);
-  const maxScroll = Math.max(0, section.lines.length - bodyHeight);
+  const maxScroll = getMaxReferenceEntryScroll(section.entries, bodyHeight);
   const clampedScroll = Math.min(scrollOffset, maxScroll);
-  const visibleLines = section.lines.slice(clampedScroll, clampedScroll + bodyHeight);
-  const start = section.lines.length === 0 ? 0 : clampedScroll + 1;
-  const end = clampedScroll + visibleLines.length;
+  const visibleEntries = getVisibleReferenceEntries(section.entries, clampedScroll, bodyHeight);
+  const visibleLines = visibleEntries.flat();
+  const start = section.entries.length === 0 ? 0 : clampedScroll + 1;
+  const end = section.entries.length === 0 ? 0 : Math.min(section.entries.length, clampedScroll + visibleEntries.length);
 
   return (
     <Box flexDirection="column" overflow="hidden">
@@ -661,7 +697,7 @@ export function ReferencePanel({
         ))}
       </Text>
       <Text dimColor wrap="truncate-end">
-        {formatText(locale, "referenceScrollStatus", { start, end, total: section.lines.length })}
+        {formatText(locale, "referenceScrollStatus", { start, end, total: section.entries.length })}
       </Text>
       {visibleLines.length > 0 ? (
         visibleLines.map((line, index) => (
@@ -683,28 +719,28 @@ function buildStatusSection(
   state: RunState,
   locale: Locale,
   section: StatusSection,
-): { key: StatusSection; title: string; lines: ReferenceLine[] } {
+): ReferenceSection<StatusSection> {
   if (section === "deck") {
     return {
       key: section,
       title: formatText(locale, "deckSize", { count: state.deck.length }),
-      lines: formatCardCollectionLines(state.deck, content, locale),
+      entries: formatCardCollectionEntries(state.deck, content, locale),
     };
   }
 
   return {
     key: section,
     title: formatText(locale, "relicCount", { count: state.relics.length }),
-    lines: formatRelicCollectionLines(state.relics, content, locale),
+    entries: formatRelicCollectionEntries(state.relics, content, locale),
   };
 }
 
-function buildLibrarySection(content: RunContent, locale: Locale, section: LibrarySection): { key: LibrarySection; title: string; lines: ReferenceLine[] } {
+function buildLibrarySection(content: RunContent, locale: Locale, section: LibrarySection): ReferenceSection<LibrarySection> {
   if (section === "starter") {
     return {
       key: section,
       title: text(locale, "starterDeckSection"),
-      lines: formatCardCollectionLines(content.character.starterDeck, content, locale),
+      entries: formatCardCollectionEntries(content.character.starterDeck, content, locale),
     };
   }
 
@@ -712,7 +748,7 @@ function buildLibrarySection(content: RunContent, locale: Locale, section: Libra
     return {
       key: section,
       title: librarySectionLabel(locale, section),
-      lines: formatCardCollectionLines(content.character.rewardCardPools[section], content, locale),
+      entries: formatCardCollectionEntries(content.character.rewardCardPools[section], content, locale),
     };
   }
 
@@ -727,13 +763,13 @@ function buildLibrarySection(content: RunContent, locale: Locale, section: Libra
   return {
     key: section,
     title: text(locale, "relicLibrarySection"),
-    lines: [
-      { text: text(locale, "starterRelic"), bold: true, dim: true },
-      ...(startingRelic ? [formatRelicLine(startingRelic, locale)] : []),
-      { text: text(locale, "eliteRelicsSection"), bold: true, dim: true },
-      ...eliteRelics.map((relic) => formatRelicLine(relic, locale)),
-      { text: text(locale, "bossRelicsSection"), bold: true, dim: true },
-      ...bossRelics.map((relic) => formatRelicLine(relic, locale)),
+    entries: [
+      [{ text: text(locale, "starterRelic"), bold: true, dim: true }],
+      ...(startingRelic ? [formatRelicEntry(startingRelic, locale)] : []),
+      [{ text: text(locale, "eliteRelicsSection"), bold: true, dim: true }],
+      ...eliteRelics.map((relic) => formatRelicEntry(relic, locale)),
+      [{ text: text(locale, "bossRelicsSection"), bold: true, dim: true }],
+      ...bossRelics.map((relic) => formatRelicEntry(relic, locale)),
     ],
   };
 }
@@ -751,11 +787,11 @@ function statusSectionLabel(locale: Locale, section: StatusSection): string {
   return text(locale, "currentRelics");
 }
 
-function formatCardCollectionLines(
+function formatCardCollectionEntries(
   cardIds: ReadonlyArray<string | CardLike | { cardId: string; upgraded: boolean; instanceId: string }>,
   content: RunContent,
   locale: Locale,
-): ReferenceLine[] {
+): ReferenceEntry[] {
   const counts = new Map<string, { card: CliCardDefinition; count: number }>();
 
   for (const entry of cardIds) {
@@ -779,7 +815,7 @@ function formatCardCollectionLines(
     }
   }
 
-  return [...counts.values()].flatMap(({ card, count }) =>
+  return [...counts.values()].map(({ card, count }) =>
     buildCardReferenceLines(card, locale, `${count > 1 ? `${count}x ` : ""}`, "  "),
   );
 }
@@ -831,7 +867,7 @@ function CardBlock({
   );
 }
 
-function buildCardReferenceLines(card: CliCardDefinition, locale: Locale, namePrefix: string, indent: string): ReferenceLine[] {
+function buildCardReferenceLines(card: CliCardDefinition, locale: Locale, namePrefix: string, indent: string): ReferenceEntry {
   const lines: ReferenceLine[] = [
     { text: `${namePrefix}${card.name} [${card.cost}]`, bold: true },
   ];
@@ -851,16 +887,16 @@ function buildCardReferenceLines(card: CliCardDefinition, locale: Locale, namePr
   return lines;
 }
 
-function formatRelicLine(relic: NonNullable<RunContent["relics"][string]>, locale: Locale): ReferenceLine {
+function formatRelicEntry(relic: NonNullable<RunContent["relics"][string]>, locale: Locale): ReferenceEntry {
   const localized = localizeRelicDefinition(relic, locale);
-  return { text: `${localized.name} - ${localized.description}` };
+  return [{ text: `${localized.name} - ${localized.description}` }];
 }
 
-function formatRelicCollectionLines(relicIds: string[], content: RunContent, locale: Locale): ReferenceLine[] {
+function formatRelicCollectionEntries(relicIds: string[], content: RunContent, locale: Locale): ReferenceEntry[] {
   return relicIds
     .map((relicId) => content.relics[relicId])
     .filter((relic): relic is NonNullable<RunContent["relics"][string]> => relic !== undefined)
-    .map((relic) => formatRelicLine(relic, locale));
+    .map((relic) => formatRelicEntry(relic, locale));
 }
 
 export function RecentLogPanel({ entries, locale, limit }: { entries: string[]; locale: Locale; limit: number }) {
@@ -956,11 +992,12 @@ function CharacterSelectLibraryPanel({
   const section = buildLibrarySection(content, locale, LIBRARY_SECTIONS[librarySectionIndex] ?? LIBRARY_SECTIONS[0]!);
   const characterName = localizeCharacterName(content.character.id, locale);
   const bodyHeight = Math.max(4, height - 4);
-  const maxScroll = Math.max(0, section.lines.length - bodyHeight);
+  const maxScroll = getMaxReferenceEntryScroll(section.entries, bodyHeight);
   const clampedScroll = Math.min(scrollOffset, maxScroll);
-  const visibleLines = section.lines.slice(clampedScroll, clampedScroll + bodyHeight);
-  const start = section.lines.length === 0 ? 0 : clampedScroll + 1;
-  const end = clampedScroll + visibleLines.length;
+  const visibleEntries = getVisibleReferenceEntries(section.entries, clampedScroll, bodyHeight);
+  const visibleLines = visibleEntries.flat();
+  const start = section.entries.length === 0 ? 0 : clampedScroll + 1;
+  const end = section.entries.length === 0 ? 0 : Math.min(section.entries.length, clampedScroll + visibleEntries.length);
 
   return (
     <Box marginTop={1} flexDirection="column" overflow="hidden">
@@ -977,7 +1014,7 @@ function CharacterSelectLibraryPanel({
         ))}
       </Text>
       <Text dimColor wrap="truncate-end">
-        {formatText(locale, "referenceScrollStatus", { start, end, total: section.lines.length })}
+        {formatText(locale, "referenceScrollStatus", { start, end, total: section.entries.length })}
       </Text>
       {visibleLines.length > 0 ? (
         visibleLines.map((line, index) => (
@@ -992,4 +1029,40 @@ function CharacterSelectLibraryPanel({
       )}
     </Box>
   );
+}
+
+function getVisibleReferenceEntries(entries: ReferenceEntry[], startIndex: number, bodyHeight: number): ReferenceEntry[] {
+  const visibleEntries: ReferenceEntry[] = [];
+  let usedLines = 0;
+
+  for (let index = startIndex; index < entries.length; index += 1) {
+    const entry = entries[index]!;
+    if (visibleEntries.length > 0 && usedLines + entry.length > bodyHeight) {
+      break;
+    }
+    visibleEntries.push(entry);
+    usedLines += entry.length;
+    if (usedLines >= bodyHeight) {
+      break;
+    }
+  }
+
+  return visibleEntries;
+}
+
+function getMaxReferenceEntryScroll(entries: ReferenceEntry[], bodyHeight: number): number {
+  if (entries.length === 0) {
+    return 0;
+  }
+
+  let usedLines = 0;
+
+  for (let index = entries.length - 1; index >= 0; index -= 1) {
+    usedLines += entries[index]!.length;
+    if (usedLines >= bodyHeight) {
+      return index;
+    }
+  }
+
+  return 0;
 }

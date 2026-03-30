@@ -1173,7 +1173,7 @@ function createCharacter(
     startGold: 0,
     starterDeck,
     startingRelicId,
-    blessingCards: [blessingCard, blessingCard, blessingCard],
+    blessingCardPools: { act1: [blessingCard], act2: [blessingCard], act3: [blessingCard] },
     rewardCardPools: { common: rewardPool, rare: [], epic: [] },
     shopCardPools: { common: shopPool, rare: [], epic: [] },
     relicPools: { elite: [], boss: [] },

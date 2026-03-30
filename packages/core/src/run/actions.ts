@@ -554,7 +554,7 @@ function applyBlessing(content: RunContent, state: RunState, blessing: BlessingD
       throw new Error(`blessing ${blessing.id} must define cardId`);
     }
 
-    const cardInstance = createCardInstance(cardId, state.nextCardInstanceId);
+    const cardInstance = createCardInstance(cardId, state.nextCardInstanceId, blessing.upgraded === true);
 
     return appendLog(
       {

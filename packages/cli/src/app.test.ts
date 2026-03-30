@@ -44,6 +44,8 @@ describe("App layout", () => {
     expect(rareFrame).toContain("稀有卡");
     expect(rareFrame).toContain("上勾拳");
     expect(rareFrame).toContain("战斗狂潮 [0]");
+    expect(rareFrame).toContain("共 12");
+    expect(rareFrame).not.toContain("共 30");
     expect(rareFrame).toContain("消耗");
     const battleTranceLine = rareFrame.split("\n").findIndex((line) => line.includes("战斗狂潮 [0]"));
     expect(battleTranceLine).toBeGreaterThanOrEqual(0);
@@ -101,7 +103,7 @@ describe("App layout", () => {
     expect(frame).toContain("Energy 3/3");
     expect(frame).not.toContain("[READY]");
     expect(frame).not.toContain("[NO ENERGY]");
-    expect(frame).toMatch(/- Gained 30 gold\.|- Moved to Room 1-1 \(elite\)\./);
+    expect(frame).toMatch(/- Gained \d+ gold\.|- Moved to Room 1-1 \((battle|elite)\)\./);
     expect(frame).toMatch(/Banner Captain|Crusher|Siege Smith|Raider|Sentry|Skirmisher|Ember Adept|Ash Scout|Pike Brute/);
     expect(frame).not.toContain("act1-battle");
   });
@@ -121,7 +123,7 @@ describe("App layout", () => {
     expect(frame).toContain("B");
     expect(frame).not.toContain("[可打]");
     expect(frame).not.toContain("[能量不足]");
-    expect(frame).toMatch(/获得 30 金币|前往 房间 1-1（精英）/);
+    expect(frame).toMatch(/获得 \d+ 金币|前往 房间 1-1（战斗）|前往 房间 1-1（精英）/);
     expect(frame).toMatch(/袭掠者|哨卫|游击者|余烬术士|灰烬斥候|长枪暴徒|军旗队长|攻城铁匠|粉碎者/);
     expect(frame).not.toContain("act1-battle");
   });
@@ -168,8 +170,8 @@ describe("App layout", () => {
   test("renders blessing options without spacer gaps between choices", async () => {
     const frame = await renderFrame({ columns: 80, rows: 24, locale: "zh" });
 
-    expect(frame).toMatch(/获得 30 金币。\n\s*2\. 强健/u);
-    expect(frame).toMatch(/获得 6 点最大生命并回复 6 点生命。\n\s*3\. 获得卡牌：愤怒/u);
+    expect(frame).toMatch(/获得 \d+ 金币。\n\s*2\./u);
+    expect(frame).toContain("获得卡牌：");
   });
 
   test("paginates campfire upgrade choices beyond nine cards", async () => {
@@ -519,8 +521,7 @@ describe("App layout", () => {
       expect(startFrame).toContain("1. ");
       expect(startFrame).toContain("2. ");
       expect(startFrame).toContain("3. ");
-      expect(startFrame).toContain("获得卡牌：愤怒");
-      expect(startFrame).toContain("造成 4 点伤害。");
+      expect(startFrame).toContain("获得卡牌：");
       expect(startFrame).not.toContain("：:");
       expect(startFrame).not.toContain("::");
       expect(mapFrame).toContain("路径： 1.");

@@ -8,6 +8,7 @@ export type {
   CardNumbers,
   CardRarity,
   CardRarityBuckets,
+  BlessingCardPools,
   CharacterDefinition,
   CharacterRelicPools,
   CombatObservation,

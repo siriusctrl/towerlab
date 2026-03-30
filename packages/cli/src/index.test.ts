@@ -34,10 +34,9 @@ describe("headless CLI", () => {
     expect(snapshot).toContain("层: 1/3");
     expect(snapshot).toContain("节点: 岔路口 (起点)");
     expect(snapshot).toContain("祝福:");
-    expect(snapshot).toContain("1. 厚赏");
-    expect(snapshot).toContain("2. 强健");
-    expect(snapshot).toContain("3. 获得卡牌：愤怒");
-    expect(snapshot).toContain("造成 4 点伤害。");
+    expect(snapshot).toContain("1. ");
+    expect(snapshot).toContain("2. 获得卡牌：");
+    expect(snapshot).toContain("3. 获得卡牌：");
     expect(snapshot).toContain("- 来到入口。请选择第一条路径。");
     expect(snapshot).toContain("最近事件:");
   });

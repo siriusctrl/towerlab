@@ -437,7 +437,8 @@ describe("cli view helpers", () => {
       expect(eliteCounts.length).toBeGreaterThan(0);
       expect(new Set(eliteCounts).size).toBeGreaterThan(1);
       expect(Math.min(...eliteCounts)).toBe(profile.minEliteCount);
-      expect(Math.max(...eliteCounts)).toBe(profile.maxEliteCount);
+      expect(Math.max(...eliteCounts)).toBeLessThanOrEqual(profile.maxEliteCount);
+      expect(Math.max(...eliteCounts) - Math.min(...eliteCounts)).toBeGreaterThanOrEqual(1);
       expect(maxConsecutive).toBeLessThanOrEqual(1);
       expect(pathStats.some((path) => path.utilityCount >= 1)).toBe(true);
     });

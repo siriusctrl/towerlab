@@ -2,7 +2,7 @@ import type { CharacterDefinition } from "@towerlab/core";
 
 export const hunterStarter: Pick<
   CharacterDefinition,
-  "maxHp" | "startGold" | "starterDeck" | "startingRelicId" | "blessingCards"
+  "maxHp" | "startGold" | "starterDeck" | "startingRelicId"
 > = {
   maxHp: 72,
   startGold: 12,
@@ -19,7 +19,6 @@ export const hunterStarter: Pick<
     "survivor",
   ],
   startingRelicId: "ringOfTheSnake",
-  blessingCards: ["deadlyPoison", "backflip", "outmaneuver"],
 };
 
 export const hunterIdentity: Pick<CharacterDefinition, "id" | "name" | "summary"> = {

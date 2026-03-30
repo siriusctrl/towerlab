@@ -1,4 +1,5 @@
 export const ACT_COUNT = 3;
+export const MAX_ACT_GENERATION_ATTEMPTS = 1024;
 
 export type RegularNodeKind = "battle" | "elite" | "rest" | "shop";
 
@@ -37,6 +38,7 @@ export const MID_KIND_POOL: RegularNodeKind[] = ["battle", "battle", "battle", "
 export const LATE_KIND_POOL: RegularNodeKind[] = ["battle", "battle", "battle", "elite", "elite", "rest", "shop"];
 
 export const TRANSITION_STYLES: TransitionStyle[] = ["left", "center", "right"];
+export const EXTRA_CROSS_LINKS_PER_TRANSITION = 1;
 
 export const ACT_PATH_CONSTRAINTS: ActPathConstraint[] = [
   {

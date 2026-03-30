@@ -2,7 +2,7 @@ import type { CharacterDefinition } from "@towerlab/core";
 
 export const warriorStarter: Pick<
   CharacterDefinition,
-  "maxHp" | "startGold" | "starterDeck" | "startingRelicId" | "blessingCards"
+  "maxHp" | "startGold" | "starterDeck" | "startingRelicId"
 > = {
   maxHp: 82,
   startGold: 0,
@@ -19,7 +19,6 @@ export const warriorStarter: Pick<
     "pommelStrike",
   ],
   startingRelicId: "burningBlood",
-  blessingCards: ["anger", "shrugItOff", "carnage"],
 };
 
 export const warriorIdentity: Pick<CharacterDefinition, "id" | "name" | "summary"> = {

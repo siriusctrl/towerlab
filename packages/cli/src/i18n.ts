@@ -355,8 +355,10 @@ export function formatBlessingName(content: RunContent, blessing: BlessingDefini
     return text(locale, "blessingMaxHpName");
   }
 
-  const cardName = blessing.cardId ? readCardName(content, blessing.cardId) : text(locale, "reward");
-  return localizeCardName(cardName, locale);
+  const localizedCard = blessing.cardId
+    ? localizeCardDefinition({ id: blessing.cardId, upgraded: blessing.upgraded }, locale, content)
+    : null;
+  return localizedCard?.name ?? text(locale, "reward");
 }
 
 export function formatBlessingDescription(content: RunContent, blessing: BlessingDefinition, locale: Locale): string {
@@ -376,7 +378,7 @@ export function formatBlessingDescription(content: RunContent, blessing: Blessin
     return "";
   }
 
-  const resolvedCard = resolveCardDefinition({ id: blessing.cardId }, content);
+  const resolvedCard = resolveCardDefinition({ id: blessing.cardId, upgraded: blessing.upgraded }, content);
   return formatStructuredDescription(resolvedCard, locale);
 }
 

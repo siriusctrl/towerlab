@@ -3,6 +3,8 @@ import type { CharacterDefinition, MapNode, TowerAct } from "@towerlab/core";
 import {
   ACT_CONFIGS,
   ACT_PATH_CONSTRAINTS,
+  EXTRA_CROSS_LINKS_PER_TRANSITION,
+  MAX_ACT_GENERATION_ATTEMPTS,
   REGULAR_ROW_PATTERNS,
   EARLY_KIND_POOL,
   LATE_KIND_POOL,
@@ -30,6 +32,12 @@ type PathStats = {
 type PathConstraintEvaluation = {
   valid: boolean;
   score: number;
+};
+
+type BlessingUtilityTemplate = {
+  id: string;
+  kind: "heal" | "gold" | "maxHp";
+  value: number;
 };
 
 export function generateActs(seed: number, character: CharacterDefinition): TowerAct[] {
@@ -61,12 +69,13 @@ function generateAct(
   let bestDraft: {
     rows: GeneratedNode[][];
     rng: number;
+    blessings: TowerAct["blessings"];
     relicCandidates: { elite: string[]; boss: string };
     valid: boolean;
     score: number;
   } | null = null;
 
-  for (let attempt = 0; attempt < 256; attempt += 1) {
+  for (let attempt = 0; attempt < MAX_ACT_GENERATION_ATTEMPTS; attempt += 1) {
     const attemptEliteRelics = new Set(usedEliteRelics);
     const attemptBossRelics = new Set(usedBossRelics);
     const patternPick = pickFrom(REGULAR_ROW_PATTERNS, rng);
@@ -134,9 +143,12 @@ function generateAct(
 
     const stats = computePathStats(rows);
     const evaluation = evaluatePathConstraints(stats, constraints);
+    const blessingResult = createActBlessings(actNumber, character, draftRng);
+    draftRng = blessingResult.rng;
     const draft = {
       rows,
       rng: draftRng,
+      blessings: blessingResult.blessings,
       relicCandidates: {
         elite: Array.from(attemptEliteRelics).filter((relic) => !usedEliteRelicOrder.includes(relic)),
         boss: bossRelicPick.value,
@@ -152,7 +164,7 @@ function generateAct(
         act: {
           id: `act-${actNumber}`,
           map: rows.flat().map(({ row, position, ...node }) => node),
-          blessings: createActBlessings(actNumber, character),
+          blessings: draft.blessings,
         },
         rng,
       };
@@ -173,38 +185,47 @@ function generateAct(
         act: {
           id: `act-${actNumber}`,
           map: bestDraft.rows.flat().map(({ row, position, ...node }) => node),
-          blessings: createActBlessings(actNumber, character),
+          blessings: bestDraft.blessings,
         },
         rng: bestDraft.rng,
       };
     }
   }
 
-  throw new Error(`Failed to build act ${actNumber} layout after 256 attempts`);
+  throw new Error(`Failed to build act ${actNumber} layout after ${MAX_ACT_GENERATION_ATTEMPTS} attempts`);
 }
 
-function createActBlessings(actNumber: number, character: CharacterDefinition): TowerAct["blessings"] {
-  if (actNumber === 1) {
-    return [
-      { id: `act${actNumber}-gold`, kind: "gold", value: 30 },
-      { id: `act${actNumber}-maxhp`, kind: "maxHp", value: 6 },
-      { id: `act${actNumber}-card`, kind: "card", cardId: character.blessingCards[0] },
-    ];
-  }
+function createActBlessings(actNumber: number, character: CharacterDefinition, seed: number): { blessings: TowerAct["blessings"]; rng: number } {
+  const utilityPick = pickFrom(getActBlessingUtilities(actNumber), seed);
+  const utility = utilityPick.value;
+  const cardPool = getBlessingCardPoolForAct(character, actNumber);
+  const shuffledCards = shuffle(cardPool, utilityPick.rng);
+  const firstCardId = shuffledCards.items[0]!;
+  const secondCardId = shuffledCards.items[1] ?? shuffledCards.items[0]!;
+  const upgradedFlags = actNumber === 1 ? [false, false] : actNumber === 2 ? [false, true] : [true, true];
 
-  if (actNumber === 2) {
-    return [
-      { id: `act${actNumber}-heal`, kind: "heal", value: 18 },
-      { id: `act${actNumber}-gold`, kind: "gold", value: 40 },
-      { id: `act${actNumber}-card`, kind: "card", cardId: character.blessingCards[1] },
-    ];
-  }
-
-  return [
-    { id: `act${actNumber}-heal`, kind: "heal", value: 24 },
-    { id: `act${actNumber}-maxhp`, kind: "maxHp", value: 8 },
-    { id: `act${actNumber}-card`, kind: "card", cardId: character.blessingCards[2] },
-  ];
+  return {
+    blessings: [
+      {
+        id: `act${actNumber}-${utility.id}`,
+        kind: utility.kind,
+        value: utility.value,
+      },
+      {
+        id: `act${actNumber}-card-${firstCardId}${upgradedFlags[0] ? "-up" : ""}`,
+        kind: "card",
+        cardId: firstCardId,
+        upgraded: upgradedFlags[0],
+      },
+      {
+        id: `act${actNumber}-card-${secondCardId}${upgradedFlags[1] ? "-up" : ""}`,
+        kind: "card",
+        cardId: secondCardId,
+        upgraded: upgradedFlags[1],
+      },
+    ],
+    rng: shuffledCards.rng,
+  };
 }
 
 function buildRegularRow(
@@ -365,7 +386,7 @@ function evaluatePathConstraints(stats: PathStats[], constraints: ActPathConstra
   }
 
   return {
-    valid: consecutiveOkay && eliteBoundsOkay && spreadOkay && easyPaths.length > 0 && hardPaths.length > 0 && uniqueEliteCounts.size >= 2,
+    valid: consecutiveOkay && eliteBoundsOkay && spreadOkay && uniqueEliteCounts.size >= 2,
     score,
   };
 }
@@ -455,6 +476,7 @@ function connectRows(previousRow: GeneratedNode[], nextRow: GeneratedNode[], see
   const stylePick = pickFrom(TRANSITION_STYLES, seed);
   const style = stylePick.value;
   const edgeSet = new Set<string>();
+  let rng = stylePick.rng;
 
   for (let index = 0; index < previousRow.length; index++) {
     const targetIndex = projectIndex(index, previousRow.length, nextRow.length, style);
@@ -466,7 +488,23 @@ function connectRows(previousRow: GeneratedNode[], nextRow: GeneratedNode[], see
     addEdge(previousRow[sourceIndex]!, nextRow[index]!, edgeSet);
   }
 
-  return stylePick.rng;
+  const extraCandidates = buildExtraTransitionCandidates(previousRow, nextRow, style, edgeSet);
+
+  if (
+    previousRow.length >= 4
+    && nextRow.length >= 4
+    && extraCandidates.length > 0
+    && EXTRA_CROSS_LINKS_PER_TRANSITION > 0
+  ) {
+    const shuffled = shuffle(extraCandidates, rng);
+    rng = shuffled.rng;
+
+    for (const candidate of shuffled.items.slice(0, EXTRA_CROSS_LINKS_PER_TRANSITION)) {
+      addEdge(candidate.from, candidate.to, edgeSet);
+    }
+  }
+
+  return rng;
 }
 
 function addEdge(from: GeneratedNode, to: GeneratedNode, edgeSet: Set<string>): void {
@@ -498,4 +536,71 @@ function projectIndex(index: number, fromCount: number, toCount: number, style: 
 
 function clampIndex(index: number, count: number): number {
   return Math.max(0, Math.min(count - 1, index));
+}
+
+function getActBlessingUtilities(actNumber: number): BlessingUtilityTemplate[] {
+  if (actNumber === 1) {
+    return [
+      { id: "gold", kind: "gold", value: 35 },
+      { id: "maxhp", kind: "maxHp", value: 7 },
+      { id: "gold-big", kind: "gold", value: 45 },
+    ];
+  }
+
+  if (actNumber === 2) {
+    return [
+      { id: "heal", kind: "heal", value: 18 },
+      { id: "gold", kind: "gold", value: 45 },
+      { id: "maxhp", kind: "maxHp", value: 6 },
+    ];
+  }
+
+  return [
+    { id: "heal", kind: "heal", value: 22 },
+    { id: "gold", kind: "gold", value: 60 },
+    { id: "maxhp", kind: "maxHp", value: 8 },
+  ];
+}
+
+function getBlessingCardPoolForAct(character: CharacterDefinition, actNumber: number): string[] {
+  if (actNumber === 1) {
+    return character.blessingCardPools.act1;
+  }
+
+  if (actNumber === 2) {
+    return character.blessingCardPools.act2;
+  }
+
+  return character.blessingCardPools.act3;
+}
+
+function buildExtraTransitionCandidates(
+  previousRow: GeneratedNode[],
+  nextRow: GeneratedNode[],
+  style: TransitionStyle,
+  edgeSet: Set<string>,
+): Array<{ from: GeneratedNode; to: GeneratedNode }> {
+  const candidates: Array<{ from: GeneratedNode; to: GeneratedNode }> = [];
+
+  for (let index = 0; index < previousRow.length; index += 1) {
+    const from = previousRow[index]!;
+    const primaryTarget = projectIndex(index, previousRow.length, nextRow.length, style);
+
+    for (const offset of [-1, 1]) {
+      const targetIndex = primaryTarget + offset;
+
+      if (targetIndex < 0 || targetIndex >= nextRow.length) {
+        continue;
+      }
+
+      const to = nextRow[targetIndex]!;
+      const key = `${from.id}->${to.id}`;
+
+      if (!edgeSet.has(key)) {
+        candidates.push({ from, to });
+      }
+    }
+  }
+
+  return candidates;
 }

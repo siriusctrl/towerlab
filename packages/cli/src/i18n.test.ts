@@ -8,7 +8,7 @@ describe("i18n log localization", () => {
   test("formats every current core log event template in zh", () => {
     const firstBlessing = sampleContent.acts[0]!.blessings[0]!;
     const rewardCardId = sampleContent.character.rewardCardPools.common[0]!;
-    const blessingCardId = sampleContent.character.blessingCards[0]!;
+    const blessingCardId = sampleContent.character.blessingCardPools.act1[0]!;
 
     const events: LogEvent[] = [
       { type: "actStarted", act: 2 },
@@ -81,13 +81,15 @@ describe("i18n log localization", () => {
 
   test("shows card blessing names directly and includes card effects", () => {
     const blessing = sampleContent.acts[0]!.blessings[2]!;
+    const localizedEn = localizeCardDefinition({ id: blessing.cardId!, upgraded: blessing.upgraded }, "en", sampleContent);
+    const localizedZh = localizeCardDefinition({ id: blessing.cardId!, upgraded: blessing.upgraded }, "zh", sampleContent);
 
-    expect(formatBlessingName(sampleContent, blessing, "en")).toBe("Anger");
+    expect(formatBlessingName(sampleContent, blessing, "en")).toBe(localizedEn.name);
     expect(formatBlessingAcquisition(blessing, "en")).toBe("Add to deck");
-    expect(formatBlessingDescription(sampleContent, blessing, "en")).toBe("Deal 4 damage.");
-    expect(formatBlessingName(sampleContent, blessing, "zh")).toBe("愤怒");
+    expect(formatBlessingDescription(sampleContent, blessing, "en")).toBe(localizedEn.description);
+    expect(formatBlessingName(sampleContent, blessing, "zh")).toBe(localizedZh.name);
     expect(formatBlessingAcquisition(blessing, "zh")).toBe("加入牌组");
-    expect(formatBlessingDescription(sampleContent, blessing, "zh")).toBe("造成 4 点伤害。");
+    expect(formatBlessingDescription(sampleContent, blessing, "zh")).toBe(localizedZh.description);
   });
 
   test("formats draw/energy/heal/exhaust card effects in both locales", () => {
