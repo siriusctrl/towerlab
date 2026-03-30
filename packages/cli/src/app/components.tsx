@@ -280,9 +280,11 @@ export function PhaseBody({
         <Text wrap="truncate-end">{text(locale, "chooseBlessing")}</Text>
         {observation.blessings.map((blessing, index) => {
           const description = formatBlessingDescription(content, blessing, locale);
-          const blessingCard = blessing.cardId ? localizeCardDefinition(content.cards[blessing.cardId]!, locale, content) : null;
+          const blessingCard = blessing.cardId
+            ? localizeCardDefinition({ id: blessing.cardId, upgraded: blessing.upgraded }, locale, content)
+            : null;
           const title = blessingCard
-            ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}${formatBlessingName(content, blessing, locale)}`
+            ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}[${blessingCard.cost}] ${formatBlessingName(content, blessing, locale)}`
             : formatBlessingName(content, blessing, locale);
 
           return (

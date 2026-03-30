@@ -86,9 +86,11 @@ function renderObservation(content: RunContent, observation: Observation, locale
     lines.push(`${text(locale, "blessing")}:`);
 
     for (const [index, blessing] of observation.blessings.entries()) {
-      const blessingCard = blessing.cardId ? localizeCardDefinition(content.cards[blessing.cardId]!, locale, content) : null;
+      const blessingCard = blessing.cardId
+        ? localizeCardDefinition({ id: blessing.cardId, upgraded: blessing.upgraded }, locale, content)
+        : null;
       const title = blessingCard
-        ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}${formatBlessingName(content, blessing, locale)}`
+        ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}[${blessingCard.cost}] ${formatBlessingName(content, blessing, locale)}`
         : formatBlessingName(content, blessing, locale);
       lines.push(`${index + 1}. ${title}`);
       if (blessingCard) {
