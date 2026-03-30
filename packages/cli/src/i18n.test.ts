@@ -166,8 +166,7 @@ describe("i18n log localization", () => {
     );
 
     expect(formatCardEffectLines(card, "en")).toEqual([
-      "Draw 1 card.",
-      "Gain 1 energy.",
+      "Draw 1 card. Gain 1 energy.",
     ]);
   });
 
@@ -186,8 +185,7 @@ describe("i18n log localization", () => {
     );
 
     expect(formatCardEffectLines(card, "en")).toEqual([
-      "Gain 6 block.",
-      "Draw 1 card.",
+      "Gain 6 block. Draw 1 card.",
     ]);
   });
 
@@ -208,8 +206,7 @@ describe("i18n log localization", () => {
     );
 
     expect(formatCardEffectLines(card, "en")).toEqual([
-      "Gain 6 block.",
-      "Draw 1 card.",
+      "Gain 6 block. Draw 1 card.",
     ]);
   });
 

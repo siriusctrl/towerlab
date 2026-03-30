@@ -554,7 +554,12 @@ export function formatCardEffectLines(card: CliCardDefinition, locale: Locale): 
     return fallbackLines;
   }
 
-  const structuredSignatures = new Set(structuredLines.map((line) => normalizeComparableText(line)));
+  const structuredSignatures = new Set(
+    structuredLines.flatMap((line) => [
+      normalizeComparableText(line),
+      ...buildFallbackEffectLines(line, locale).map((clause) => normalizeComparableText(clause)),
+    ]),
+  );
   const keywordSignatures = new Set(
     (card.keywords ?? []).map((keyword) => normalizeComparableText(localizeCardKeyword(keyword, locale))),
   );
@@ -585,44 +590,49 @@ export function formatCardEffectLines(card: CliCardDefinition, locale: Locale): 
 }
 
 function buildStructuredEffectLines(card: CliCardDefinition, locale: Locale): string[] {
-  const lines: string[] = [];
+  const sentences: string[] = [];
 
   if (card.damage != null && card.damage !== 0) {
-    lines.push(locale === "zh" ? `造成 ${card.damage} 点伤害。` : `Deal ${card.damage} damage.`);
+    sentences.push(locale === "zh" ? `造成 ${card.damage} 点伤害。` : `Deal ${card.damage} damage.`);
   }
 
   if (card.block != null && card.block !== 0) {
-    lines.push(locale === "zh" ? `获得 ${card.block} 点格挡。` : `Gain ${card.block} block.`);
+    sentences.push(locale === "zh" ? `获得 ${card.block} 点格挡。` : `Gain ${card.block} block.`);
   }
 
   if (card.draw != null && card.draw !== 0) {
-    lines.push(locale === "zh" ? `抽 ${card.draw} 张牌。` : `Draw ${card.draw} card${card.draw === 1 ? "" : "s"}.`);
+    sentences.push(locale === "zh" ? `抽 ${card.draw} 张牌。` : `Draw ${card.draw} card${card.draw === 1 ? "" : "s"}.`);
   }
 
   if (card.energy != null && card.energy !== 0) {
-    lines.push(locale === "zh" ? `获得 ${card.energy} 点能量。` : `Gain ${card.energy} energy.`);
+    sentences.push(locale === "zh" ? `获得 ${card.energy} 点能量。` : `Gain ${card.energy} energy.`);
   }
 
   if (card.heal != null && card.heal !== 0) {
-    lines.push(locale === "zh" ? `恢复 ${card.heal} 点生命。` : `Recover ${card.heal} HP.`);
+    sentences.push(locale === "zh" ? `恢复 ${card.heal} 点生命。` : `Recover ${card.heal} HP.`);
   }
 
   if (card.weak != null && card.weak !== 0) {
-    lines.push(locale === "zh" ? `施加 ${card.weak} 层虚弱。` : `Apply ${card.weak} Weak.`);
+    sentences.push(locale === "zh" ? `施加 ${card.weak} 层虚弱。` : `Apply ${card.weak} Weak.`);
   }
 
   if (card.vulnerable != null && card.vulnerable !== 0) {
-    lines.push(locale === "zh" ? `施加 ${card.vulnerable} 层易伤。` : `Apply ${card.vulnerable} Vulnerable.`);
+    sentences.push(locale === "zh" ? `施加 ${card.vulnerable} 层易伤。` : `Apply ${card.vulnerable} Vulnerable.`);
   }
 
   if (card.poison != null && card.poison !== 0) {
-    lines.push(locale === "zh" ? `施加 ${card.poison} 层中毒。` : `Apply ${card.poison} Poison.`);
+    sentences.push(locale === "zh" ? `施加 ${card.poison} 层中毒。` : `Apply ${card.poison} Poison.`);
   }
 
   if (card.poisonMultiplier != null && card.poisonMultiplier !== 1) {
-    lines.push(locale === "zh" ? "将中毒层数翻倍。" : "Multiply Poison by 2.");
+    sentences.push(locale === "zh" ? "将中毒层数翻倍。" : "Multiply Poison by 2.");
   }
-  return lines;
+
+  if (sentences.length === 0) {
+    return [];
+  }
+
+  return [sentences.join(locale === "zh" ? "" : " ")];
 }
 
 function buildFallbackEffectLines(description: string, locale: Locale): string[] {
