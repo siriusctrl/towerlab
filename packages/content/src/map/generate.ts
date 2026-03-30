@@ -2,6 +2,7 @@ import type { CharacterDefinition, MapNode, TowerAct } from "@towerlab/core";
 
 import {
   ACT_CONFIGS,
+  ACT_PATH_CONSTRAINTS,
   REGULAR_ROW_PATTERNS,
   EARLY_KIND_POOL,
   LATE_KIND_POOL,
@@ -9,6 +10,7 @@ import {
   OPENING_KINDS,
   TRANSITION_STYLES,
   type ActGenerationConfig,
+  type ActPathConstraint,
   type RegularNodeKind,
   type TransitionStyle,
 } from "./config.js";
@@ -17,6 +19,17 @@ import { nextSeed, normalizeSeed, pickFrom, shuffle } from "./rng.js";
 type GeneratedNode = MapNode & {
   row: number;
   position: number;
+};
+
+type PathStats = {
+  eliteCount: number;
+  utilityCount: number;
+  maxConsecutiveElite: number;
+};
+
+type PathConstraintEvaluation = {
+  valid: boolean;
+  score: number;
 };
 
 export function generateActs(seed: number, character: CharacterDefinition): TowerAct[] {
@@ -39,69 +52,135 @@ function generateAct(
   usedEliteRelics: Set<string>,
   usedBossRelics: Set<string>,
 ): { act: TowerAct; rng: number } {
-  let rng = seed;
-  const patternPick = pickFrom(REGULAR_ROW_PATTERNS, rng);
-  rng = patternPick.rng;
-
-  const rows: GeneratedNode[][] = [];
-  rows.push([
-    {
-      id: `act${actNumber}-start-r0`,
-      kind: "start",
-      nextIds: [],
-      row: 0,
-      position: 1,
-    },
-  ]);
-
-  patternPick.value.forEach((count, rowIndex) => {
-    const rowNumber = rowIndex + 1;
-    const builtRow = buildRegularRow(actNumber, rowNumber, count, character, config, rng, usedEliteRelics);
-    rng = builtRow.rng;
-    rows.push(builtRow.nodes);
-  });
-
-  const bossPick = pickFrom(config.bossPool, rng);
-  rng = bossPick.rng;
-  const bossRelicPick = pickUniqueFromPool(character.relicPools.boss, rng, usedBossRelics);
-  rng = bossRelicPick.rng;
-  rows.push([
-    {
-      id: `act${actNumber}-boss-r${rows.length}`,
-      kind: "boss",
-      encounterId: bossPick.value,
-      relicReward: bossRelicPick.value,
-      nextIds: [],
-      row: rows.length,
-      position: 1,
-    },
-  ]);
-
-  for (let rowIndex = 0; rowIndex < rows.length - 1; rowIndex++) {
-    rng = connectRows(rows[rowIndex]!, rows[rowIndex + 1]!, rng);
+  const constraints = config.pathConstraints ?? ACT_PATH_CONSTRAINTS[actNumber - 1];
+  if (!constraints) {
+    throw new Error(`Missing path constraints for act ${actNumber}`);
   }
 
-  const nodeById = new Map(rows.flat().map((node) => [node.id, node]));
-  for (const row of rows) {
-    for (const node of row) {
-      node.nextIds.sort((leftId, rightId) => {
-        const left = nodeById.get(leftId);
-        const right = nodeById.get(rightId);
-        if (!left || !right) return leftId.localeCompare(rightId);
-        if (left.row !== right.row) return left.row - right.row;
-        return left.position - right.position;
-      });
+  let rng = seed;
+  let bestDraft: {
+    rows: GeneratedNode[][];
+    rng: number;
+    relicCandidates: { elite: string[]; boss: string };
+    valid: boolean;
+    score: number;
+  } | null = null;
+
+  for (let attempt = 0; attempt < 256; attempt += 1) {
+    const attemptEliteRelics = new Set(usedEliteRelics);
+    const attemptBossRelics = new Set(usedBossRelics);
+    const patternPick = pickFrom(REGULAR_ROW_PATTERNS, rng);
+    let draftRng = patternPick.rng;
+    const rows: GeneratedNode[][] = [];
+    const usedEliteRelicOrder = Array.from(attemptEliteRelics);
+
+    rows.push([
+      {
+        id: `act${actNumber}-start-r0`,
+        kind: "start",
+        nextIds: [],
+        row: 0,
+        position: 1,
+      },
+    ]);
+
+    for (let rowIndex = 0; rowIndex < patternPick.value.length; rowIndex += 1) {
+      const rowNumber = rowIndex + 1;
+      const builtRow = buildRegularRow(
+        actNumber,
+        rowNumber,
+        patternPick.value[rowIndex]!,
+        character,
+        config,
+        draftRng,
+        attemptEliteRelics,
+      );
+      draftRng = builtRow.rng;
+      rows.push(builtRow.nodes);
+    }
+
+    const bossPick = pickFrom(config.bossPool, draftRng);
+    draftRng = bossPick.rng;
+    const bossRelicPick = pickUniqueFromPool(character.relicPools.boss, draftRng, attemptBossRelics);
+    draftRng = bossRelicPick.rng;
+    rows.push([
+      {
+        id: `act${actNumber}-boss-r${rows.length}`,
+        kind: "boss",
+        encounterId: bossPick.value,
+        relicReward: bossRelicPick.value,
+        nextIds: [],
+        row: rows.length,
+        position: 1,
+      },
+    ]);
+
+    for (let rowIndex = 0; rowIndex < rows.length - 1; rowIndex += 1) {
+      draftRng = connectRows(rows[rowIndex]!, rows[rowIndex + 1]!, draftRng);
+    }
+
+    const nodeById = new Map(rows.flat().map((node) => [node.id, node]));
+    for (const row of rows) {
+      for (const node of row) {
+        node.nextIds.sort((leftId, rightId) => {
+          const left = nodeById.get(leftId);
+          const right = nodeById.get(rightId);
+          if (!left || !right) return leftId.localeCompare(rightId);
+          if (left.row !== right.row) return left.row - right.row;
+          return left.position - right.position;
+        });
+      }
+    }
+
+    const stats = computePathStats(rows);
+    const evaluation = evaluatePathConstraints(stats, constraints);
+    const draft = {
+      rows,
+      rng: draftRng,
+      relicCandidates: {
+        elite: Array.from(attemptEliteRelics).filter((relic) => !usedEliteRelicOrder.includes(relic)),
+        boss: bossRelicPick.value,
+      },
+      valid: evaluation.valid,
+      score: evaluation.score,
+    };
+    if (evaluation.valid) {
+      applyRelicUsageFromAttempt(draft.relicCandidates, usedEliteRelics, usedBossRelics);
+      rng = draft.rng;
+
+      return {
+        act: {
+          id: `act-${actNumber}`,
+          map: rows.flat().map(({ row, position, ...node }) => node),
+          blessings: createActBlessings(actNumber, character),
+        },
+        rng,
+      };
+    }
+
+    if (bestDraft === null || draft.score < bestDraft.score) {
+      bestDraft = draft;
+    }
+
+    draftRng = nextSeed(draftRng);
+    rng = draftRng;
+  }
+
+  if (bestDraft) {
+    if (bestDraft.valid) {
+      applyRelicUsageFromAttempt(bestDraft.relicCandidates, usedEliteRelics, usedBossRelics);
+      return {
+        act: {
+          id: `act-${actNumber}`,
+          map: bestDraft.rows.flat().map(({ row, position, ...node }) => node),
+          blessings: createActBlessings(actNumber, character),
+        },
+        rng: bestDraft.rng,
+      };
     }
   }
 
-  return {
-    act: {
-      id: `act-${actNumber}`,
-      map: rows.flat().map(({ row, position, ...node }) => node),
-      blessings: createActBlessings(actNumber, character),
-    },
-    rng,
-  };
+  throw new Error(`Failed to build act ${actNumber} layout after 256 attempts`);
 }
 
 function createActBlessings(actNumber: number, character: CharacterDefinition): TowerAct["blessings"] {
@@ -163,13 +242,131 @@ function buildRowKinds(rowNumber: number, count: number, seed: number): { kinds:
     kinds[kinds.length - 1] = requiredUtility;
   }
 
-  if (rowNumber <= 7 && !kinds.includes("elite")) {
-    kinds[0] = "elite";
-  }
-
   return {
     kinds,
     rng: shuffled.rng,
+  };
+}
+
+function applyRelicUsageFromAttempt(
+  attemptRelics: { elite: string[]; boss: string },
+  usedEliteRelics: Set<string>,
+  usedBossRelics: Set<string>,
+): void {
+  for (const relicId of attemptRelics.elite) {
+    usedEliteRelics.add(relicId);
+  }
+  usedBossRelics.add(attemptRelics.boss);
+}
+
+function computePathStats(rows: GeneratedNode[][]): PathStats[] {
+  const nodeById = new Map(rows.flat().map((node) => [node.id, node]));
+  const start = rows[0]?.[0];
+  const boss = rows.at(-1)?.[0];
+
+  if (!start || !boss) {
+    return [];
+  }
+
+  const pathStats: PathStats[] = [];
+  const stack: Array<{ node: GeneratedNode; eliteCount: number; utilityCount: number; currentConsecutiveElite: number; maxConsecutiveElite: number }> = [
+    {
+      node: start,
+      eliteCount: 0,
+      utilityCount: 0,
+      currentConsecutiveElite: 0,
+      maxConsecutiveElite: 0,
+    },
+  ];
+
+  while (stack.length > 0) {
+    const state = stack.pop();
+    if (!state) continue;
+
+    if (state.node.id === boss.id) {
+      pathStats.push({
+        eliteCount: state.eliteCount,
+        utilityCount: state.utilityCount,
+        maxConsecutiveElite: state.maxConsecutiveElite,
+      });
+      continue;
+    }
+
+    for (const nextId of state.node.nextIds) {
+      const next = nodeById.get(nextId);
+      if (!next) continue;
+
+      const nextIsElite = next.kind === "elite";
+      const nextIsUtility = next.kind === "rest" || next.kind === "shop";
+      const nextConsecutiveElite = nextIsElite ? state.currentConsecutiveElite + 1 : 0;
+      stack.push({
+        node: next,
+        eliteCount: state.eliteCount + (nextIsElite ? 1 : 0),
+        utilityCount: state.utilityCount + (nextIsUtility ? 1 : 0),
+        currentConsecutiveElite: nextConsecutiveElite,
+        maxConsecutiveElite: Math.max(state.maxConsecutiveElite, nextConsecutiveElite),
+      });
+    }
+  }
+
+  return pathStats;
+}
+
+function evaluatePathConstraints(stats: PathStats[], constraints: ActPathConstraint): PathConstraintEvaluation {
+  if (stats.length === 0) {
+    return { valid: false, score: Number.POSITIVE_INFINITY };
+  }
+
+  const eliteCounts = stats.map((path) => path.eliteCount);
+  const utilityCounts = stats.map((path) => path.utilityCount);
+  const minEliteCount = Math.min(...eliteCounts);
+  const maxEliteCount = Math.max(...eliteCounts);
+  const minUtilityCount = Math.min(...utilityCounts);
+  const maxUtilityCount = Math.max(...utilityCounts);
+  const uniqueEliteCounts = new Set(eliteCounts);
+  const easyPaths = stats.filter((path) => path.eliteCount === constraints.easyEliteCount);
+  const hardPaths = stats.filter((path) => path.eliteCount === constraints.hardEliteCount);
+  const easyUtilityMax = easyPaths.length > 0 ? Math.max(...easyPaths.map((path) => path.utilityCount)) : 0;
+  const hardUtilityMin = hardPaths.length > 0 ? Math.min(...hardPaths.map((path) => path.utilityCount)) : maxUtilityCount;
+  const consecutiveOkay = stats.every((path) => path.maxConsecutiveElite <= constraints.maxConsecutiveElite);
+  const eliteBoundsOkay = minEliteCount >= constraints.minEliteCount && maxEliteCount <= constraints.maxEliteCount;
+  const spreadOkay = maxEliteCount - minEliteCount <= constraints.maxEliteSpread;
+
+  let score = 0;
+
+  score += Math.abs(minEliteCount - constraints.easyEliteCount) * 100;
+  score += Math.abs(maxEliteCount - constraints.hardEliteCount) * 100;
+  score += Math.max(0, maxEliteCount - minEliteCount - constraints.maxEliteSpread) * 100;
+  score += Math.max(0, constraints.minEliteCount - minEliteCount) * 100;
+  score += Math.max(0, maxEliteCount - constraints.maxEliteCount) * 100;
+
+  if (uniqueEliteCounts.size < 2) {
+    score += 50;
+  }
+
+  if (easyPaths.length === 0) {
+    score += 75;
+  }
+
+  if (hardPaths.length === 0) {
+    score += 75;
+  }
+
+  score += Math.max(0, 2 - easyUtilityMax) * 10;
+  score += Math.max(0, hardUtilityMin - 2) * 5;
+  score += Math.max(0, maxUtilityCount - minUtilityCount - 3) * 5;
+
+  if (easyUtilityMax <= hardUtilityMin) {
+    score += 25;
+  }
+
+  if (!consecutiveOkay) {
+    score += 500;
+  }
+
+  return {
+    valid: consecutiveOkay && eliteBoundsOkay && spreadOkay && easyPaths.length > 0 && hardPaths.length > 0 && uniqueEliteCounts.size >= 2,
+    score,
   };
 }
 

@@ -4,11 +4,12 @@ import { Box, Text, useApp, useInput, useStdout } from "ink";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { DEFAULT_LOCALE, formatLogEntries, localizeCharacterName, localizeObservation, text, type Locale } from "../i18n.js";
-import { readShopAction, type ShopMenuMode } from "../shop.js";
+import { readShopAction, SHOP_BUY_PAGE_SIZE, SHOP_REMOVE_PAGE_SIZE, type ShopMenuMode } from "../shop.js";
 import { getMapCompactLegendLine } from "../view.js";
 import {
   CharacterSelectScreen,
   Controls,
+  COMBAT_HAND_PAGE_SIZE,
   LIBRARY_SECTION_COUNT,
   MapTreeView,
   RestDeckUpgradeCard,
@@ -16,6 +17,7 @@ import {
   RecentLogPanel,
   ReferenceControls,
   ReferencePanel,
+  REST_UPGRADE_PAGE_SIZE,
   STATUS_SECTION_COUNT,
   StatusBar,
 } from "./components.js";
@@ -47,6 +49,10 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const [librarySectionIndex, setLibrarySectionIndex] = useState(0);
   const [referenceScrollOffset, setReferenceScrollOffset] = useState(0);
   const [restMode, setRestMode] = useState<"options" | "upgrade">("options");
+  const [restUpgradePage, setRestUpgradePage] = useState(0);
+  const [combatHandPage, setCombatHandPage] = useState(0);
+  const [shopBuyPage, setShopBuyPage] = useState(0);
+  const [shopRemovePage, setShopRemovePage] = useState(0);
   const stateRef = useRef(state);
   const contentRef = useRef(content);
   const actionsRef = useRef(actions);
@@ -77,6 +83,10 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const hpBarWidth = Math.min(20, Math.max(10, Math.floor(columns * 0.15)));
   const referenceHeight = Math.max(8, rows - (compactMapPhase ? 6 : 9));
   const mainPaneWidth = Math.max(32, columns - (showInspectorSidebar ? inspectorWidth + 4 : 2));
+  const shopBuyPageCount = view?.phase === "shop" ? Math.max(1, Math.ceil(view.forSale.length / SHOP_BUY_PAGE_SIZE)) : 1;
+  const shopRemovePageCount = view?.phase === "shop" ? Math.max(1, Math.ceil(view.removableDeckCards.length / SHOP_REMOVE_PAGE_SIZE)) : 1;
+  const resolvedShopBuyPage = view?.phase === "shop" ? Math.min(Math.max(shopBuyPage, 0), shopBuyPageCount - 1) : 0;
+  const resolvedShopRemovePage = view?.phase === "shop" ? Math.min(Math.max(shopRemovePage, 0), shopRemovePageCount - 1) : 0;
 
   const startCharacterRun = (nextCharacterId: CharacterId, nextIndex: number) => {
     const nextContent = createSeededContent(seed, nextCharacterId);
@@ -95,6 +105,10 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setLibrarySectionIndex(0);
     setReferenceScrollOffset(0);
     setRestMode("options");
+    setRestUpgradePage(0);
+    setCombatHandPage(0);
+    setShopBuyPage(0);
+    setShopRemovePage(0);
     setCharacterSelectMode("choose");
     setCharacterSelectIndex(nextIndex);
   };
@@ -134,21 +148,37 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     setLibrarySectionIndex(0);
     setReferenceScrollOffset(0);
     setRestMode("options");
+    setRestUpgradePage(0);
+    setCombatHandPage(0);
+    setShopBuyPage(0);
+    setShopRemovePage(0);
   };
 
   useEffect(() => {
     if (view?.phase !== "shop") {
       setShopMenu("top");
+      setShopBuyPage(0);
+      setShopRemovePage(0);
+    }
+  }, [view?.phase]);
+
+  useEffect(() => {
+    if (view?.phase !== "combat") {
+      setCombatHandPage(0);
     }
   }, [view?.phase]);
 
   useEffect(() => {
     if (view?.phase === "rest") {
       setRestMode(view.mode === "upgrade" ? "upgrade" : "options");
+      if (view.mode !== "upgrade") {
+        setRestUpgradePage(0);
+      }
       return;
     }
 
     setRestMode("options");
+    setRestUpgradePage(0);
   }, [view]);
 
   const toggleReference = (nextMode: Exclude<ReferenceMode, "hidden">) => {
@@ -281,14 +311,33 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     }
 
     if (view.phase === "combat") {
+      const totalPages = Math.max(1, Math.ceil(view.hand.length / COMBAT_HAND_PAGE_SIZE));
+      const currentPage = Math.min(combatHandPage, totalPages - 1);
+      const pageStart = currentPage * COMBAT_HAND_PAGE_SIZE;
+      const pageCards = view.hand.slice(pageStart, pageStart + COMBAT_HAND_PAGE_SIZE);
+
+      if (input === "[" || key.leftArrow) {
+        if (totalPages > 1) {
+          setCombatHandPage((page) => (page - 1 + totalPages) % totalPages);
+        }
+        return;
+      }
+
+      if (input === "]" || key.rightArrow) {
+        if (totalPages > 1) {
+          setCombatHandPage((page) => (page + 1) % totalPages);
+        }
+        return;
+      }
+
       if (input === "e") {
         runAction({ type: "endTurn" });
         return;
       }
 
-      const handIndex = readChoiceIndex(input, view.hand.length);
+      const handIndex = readChoiceIndex(input, pageCards.length);
       if (handIndex !== null) {
-        runAction({ type: "playCard", handIndex });
+        runAction({ type: "playCard", handIndex: pageStart + handIndex });
       }
       return;
     }
@@ -313,25 +362,40 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
       const isUpgradeMode = view.mode === "upgrade" || restMode === "upgrade";
 
       if (isUpgradeMode) {
+        const totalPages = Math.max(1, Math.ceil(restUpgradeCards.length / REST_UPGRADE_PAGE_SIZE));
+        const currentPage = Math.min(restUpgradePage, totalPages - 1);
+        const pageStart = currentPage * REST_UPGRADE_PAGE_SIZE;
+        const pageCards = restUpgradeCards.slice(pageStart, pageStart + REST_UPGRADE_PAGE_SIZE);
+
         if (input === "b") {
           setRestMode("options");
+          setRestUpgradePage(0);
           return;
         }
 
-        const cardIndex = readChoiceIndex(input, restUpgradeCards.length);
+        if (input === "[" || key.leftArrow) {
+          if (totalPages > 1) {
+            setRestUpgradePage((page) => (page - 1 + totalPages) % totalPages);
+          }
+          return;
+        }
+
+        if (input === "]" || key.rightArrow) {
+          if (totalPages > 1) {
+            setRestUpgradePage((page) => (page + 1) % totalPages);
+          }
+          return;
+        }
+
+        const cardIndex = readChoiceIndex(input, pageCards.length);
         if (cardIndex !== null) {
-          const deckIndex = restUpgradeCards[cardIndex]?.deckIndex;
+          const deckIndex = pageCards[cardIndex]?.deckIndex;
 
           if (deckIndex !== undefined) {
             runAction({ type: "upgradeRestCard", deckIndex });
           }
         }
 
-        return;
-      }
-
-      if (input === "u" && restUpgradeCards.length > 0) {
-        setRestMode("upgrade");
         return;
       }
 
@@ -356,10 +420,68 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     }
 
     if (view.phase === "shop") {
-      const result = readShopAction(input, view, shopMenu);
+      if (shopMenu === "buy") {
+        const totalPages = shopBuyPageCount;
+
+        if (input === "[" || key.leftArrow) {
+          if (totalPages > 1) {
+            setShopBuyPage((page) => {
+              const normalizedPage = Math.min(Math.max(page, 0), totalPages - 1);
+              return (normalizedPage - 1 + totalPages) % totalPages;
+            });
+          }
+          return;
+        }
+
+        if (input === "]" || key.rightArrow) {
+          if (totalPages > 1) {
+            setShopBuyPage((page) => {
+              const normalizedPage = Math.min(Math.max(page, 0), totalPages - 1);
+              return (normalizedPage + 1) % totalPages;
+            });
+          }
+          return;
+        }
+      }
+
+      if (shopMenu === "remove") {
+        const totalPages = shopRemovePageCount;
+
+        if (input === "[" || key.leftArrow) {
+          if (totalPages > 1) {
+            setShopRemovePage((page) => {
+              const normalizedPage = Math.min(Math.max(page, 0), totalPages - 1);
+              return (normalizedPage - 1 + totalPages) % totalPages;
+            });
+          }
+          return;
+        }
+
+        if (input === "]" || key.rightArrow) {
+          if (totalPages > 1) {
+            setShopRemovePage((page) => {
+              const normalizedPage = Math.min(Math.max(page, 0), totalPages - 1);
+              return (normalizedPage + 1) % totalPages;
+            });
+          }
+          return;
+        }
+      }
+
+      const result = readShopAction(input, view, shopMenu, resolvedShopBuyPage, resolvedShopRemovePage);
 
       if (result) {
         if (result.type === "openMenu") {
+          if (result.menu === "buy") {
+            setShopBuyPage(0);
+          }
+          if (result.menu === "remove") {
+            setShopRemovePage(0);
+          }
+          if (result.menu === "top") {
+            setShopBuyPage(0);
+            setShopRemovePage(0);
+          }
           setShopMenu(result.menu);
           return;
         }
@@ -425,8 +547,12 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
                 observation={view}
                 locale={locale}
                 shopMenu={shopMenu}
+                shopBuyPage={resolvedShopBuyPage}
+                shopRemovePage={resolvedShopRemovePage}
+                combatHandPage={combatHandPage}
                 restMode={restMode}
                 restUpgradeCards={restUpgradeCards}
+                restUpgradePage={restUpgradePage}
                 hpBarWidth={hpBarWidth}
                 compactMapPhase={compactMapPhase}
               />
@@ -492,7 +618,18 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
         </Text>
       ) : null}
       <Box flexDirection="column" flexShrink={0} paddingX={1} overflow="hidden">
-        <Controls observation={view} locale={locale} shopMenu={shopMenu} restMode={restMode} />
+        <Controls
+          observation={view}
+          locale={locale}
+          shopMenu={shopMenu}
+          shopBuyPageCount={view.phase === "shop" ? Math.max(1, Math.ceil(view.forSale.length / SHOP_BUY_PAGE_SIZE)) : 1}
+          shopRemovePageCount={
+            view.phase === "shop" ? Math.max(1, Math.ceil(view.removableDeckCards.length / SHOP_REMOVE_PAGE_SIZE)) : 1
+          }
+          restMode={restMode}
+          restUpgradePageCount={Math.max(1, Math.ceil(restUpgradeCards.length / REST_UPGRADE_PAGE_SIZE))}
+          combatHandPageCount={view.phase === "combat" ? Math.max(1, Math.ceil(view.hand.length / COMBAT_HAND_PAGE_SIZE)) : 1}
+        />
         <ReferenceControls locale={locale} referenceMode={referenceMode} />
         {error ? (
           <Text color="red" wrap="truncate-end">

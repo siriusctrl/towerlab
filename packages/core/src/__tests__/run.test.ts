@@ -734,6 +734,13 @@ describe("shop behavior", () => {
     }
 
     expect(shopView.removeDeckCardCost).toBe(12);
+    expect(shopView.remainingDeckRemovals).toBe(3);
+    expect(shopView.forSale[0]).toEqual(
+      expect.objectContaining({
+        card: expect.objectContaining({ id: expect.any(String) }),
+        price: expect.any(Number),
+      }),
+    );
 
     const initialDeckSize = state.deck.length;
     const initialGold = state.gold;
@@ -741,7 +748,7 @@ describe("shop behavior", () => {
 
     expect(bought.phase).toBe("shop");
     expect(bought.deck.length).toBe(initialDeckSize + 1);
-    expect(bought.gold).toBe(initialGold - 12);
+    expect(bought.gold).toBe(initialGold - shopView.forSale[0]!.price);
 
     const removableView = observeRun(shopContent, bought);
     if (removableView.phase !== "shop") {
@@ -753,6 +760,13 @@ describe("shop behavior", () => {
     expect(removed.deck.length).toBe(initialDeckSize);
     expect(removableView.removableDeckCards.length).toBe(bought.deck.length);
     expect(removed.gold).toBe(bought.gold - removableView.removeDeckCardCost);
+
+    const removedView = observeRun(shopContent, removed);
+    if (removedView.phase !== "shop") {
+      throw new Error(`expected shop phase after removal, received ${removedView.phase}`);
+    }
+    expect(removedView.removeDeckCardCost).toBe(20);
+    expect(removedView.remainingDeckRemovals).toBe(2);
 
     const left = applyAction(shopContent, removed, { type: "leaveShop" });
     expect(left.phase).toBe("victory");

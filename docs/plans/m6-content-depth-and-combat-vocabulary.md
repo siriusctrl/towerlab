@@ -120,6 +120,9 @@ Included:
 - expand or tune encounter variety where card/relic growth makes current enemies too solved
 - keep each act readable while improving pressure diversity
 - deepen act route length so a run cannot skip from blessing to boss through only a handful of meaningful decisions
+- move route generation from row-only balancing to path-profile constraints
+- enforce bounded elite density bands with controlled elite spacing across routes
+- preserve an easy and hard route spread in each act without runaway variance
 
 Focus:
 - pressure patterns that punish one-dimensional decks
@@ -175,6 +178,7 @@ M6 can move to `done` when all of the following are true:
 - relic pools are materially deeper than M5 and produce visibly different run incentives
 - act encounters remain shared across characters and still create pressure against narrow deck shapes
 - map depth and route pacing create more than a handful of consequential choices per act without breaking TTY readability
+- map generation satisfies path-level risk constraints (elite band, spacing, and path variance) on generated maps
 - batch sanity checks across both characters do not show an obviously broken baseline state
 - docs accurately describe the current card rendering, agent-facing card data, and active milestone scope
 

@@ -255,8 +255,8 @@ function chooseGreedyShopAction(content: RunContent, state: RunState, actions: R
 
   if (buyActions.length > 0 && state.shop) {
     return buyActions.reduce((best, action) => {
-      const cardId = state.shop?.forSale[action.saleIndex]!;
-      const bestCardId = state.shop?.forSale[best.saleIndex]!;
+      const cardId = state.shop?.forSale[action.saleIndex]?.cardId!;
+      const bestCardId = state.shop?.forSale[best.saleIndex]?.cardId!;
 
       return scoreRewardCard(content, cardId, content.cards[cardId]?.damage ?? 0, content.cards[cardId]?.block ?? 0, false) >
           scoreRewardCard(content, bestCardId, content.cards[bestCardId]?.damage ?? 0, content.cards[bestCardId]?.block ?? 0, false)
@@ -282,8 +282,8 @@ function chooseHeuristicShopAction(content: RunContent, state: RunState, actions
   }
 
   const bestBuy = buyActions.reduce((best, action) => {
-    const cardId = state.shop?.forSale[action.saleIndex]!;
-    const bestCardId = state.shop?.forSale[best.saleIndex]!;
+    const cardId = state.shop?.forSale[action.saleIndex]?.cardId!;
+    const bestCardId = state.shop?.forSale[best.saleIndex]?.cardId!;
     const score = scoreRewardCard(content, cardId, content.cards[cardId]?.damage ?? 0, content.cards[cardId]?.block ?? 0, true);
     const bestScore = scoreRewardCard(
       content,
@@ -296,7 +296,7 @@ function chooseHeuristicShopAction(content: RunContent, state: RunState, actions
     return score > bestScore ? action : best;
   });
 
-  const bestCardId = state.shop.forSale[bestBuy.saleIndex]!;
+  const bestCardId = state.shop.forSale[bestBuy.saleIndex]?.cardId!;
   const bestScore = scoreRewardCard(
     content,
     bestCardId,

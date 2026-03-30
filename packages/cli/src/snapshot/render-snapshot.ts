@@ -122,11 +122,15 @@ function renderObservation(content: RunContent, observation: Observation, locale
     lines.push(text(locale, "shopBuySection"));
 
     for (const option of shopBindings.buyOptions) {
-      lines.push(`${option.key ?? "·"}. ${option.card.name} [${option.card.cost}]`);
+      lines.push(...formatSnapshotCardLines(option.card, locale, `${option.key ?? "·"}. `, "   "));
+      lines.push(`   ${formatText(locale, "shopPriceLine", { cost: option.price })}`);
     }
 
     if (shopBindings.buyOptions.length > 0 && !shopBindings.buyOptions.some((option) => option.key !== null)) {
       lines.push(text(locale, "shopNoAffordableBuys"));
+    }
+    if (shopBindings.buyOptions.length === 0) {
+      lines.push(text(locale, "shopNoCardsForSale"));
     }
 
     lines.push("");
@@ -139,11 +143,11 @@ function renderObservation(content: RunContent, observation: Observation, locale
     }
 
     if (shopBindings.removeOptions.length > 0 && !shopBindings.removeOptions.some((option) => option.key !== null)) {
-      lines.push(text(locale, "shopNoAffordableRemovals"));
+      lines.push(observation.remainingDeckRemovals === 0 ? text(locale, "shopNoRemainingRemovals") : text(locale, "shopNoAffordableRemovals"));
     }
 
     if (shopBindings.removeOptions.length === 0) {
-      lines.push(text(locale, "noRemovableCards"));
+      lines.push(observation.remainingDeckRemovals === 0 ? text(locale, "shopNoRemainingRemovals") : text(locale, "noRemovableCards"));
     }
 
     lines.push(`${shopBindings.leaveKey}. ${text(locale, "leaveShop")}`);

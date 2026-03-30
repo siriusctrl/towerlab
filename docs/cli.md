@@ -62,10 +62,12 @@ Controls:
   - `2` remove
   - `0` leave
 - shop buy menu:
-  - `1-9` buy the indexed card
+  - `1-9` buy the indexed card on the current page
+  - `[` `]` switch pages when the shop inventory exceeds 9 cards
   - `b` go back
 - shop remove menu:
-  - `a-z` remove the indexed deck card
+  - `1-9` remove the indexed deck card on the current page
+  - `[` `]` switch pages when more than 9 removable cards are shown
   - `b` go back
 - inspection panels:
   - `d` toggle status
@@ -109,10 +111,23 @@ Current keyword behavior:
 - the renderer currently uses this for `Exhaust`, `Retain`, and `Ethereal`
 - keyword semantics come from structured card data, not from parsing card description strings
 
+Card text rendering pipeline:
+- card effects are derived from structured card metadata (`damage`, `block`, `draw`, `energy`, `heal`, statuses, etc.).
+- if structured fields are missing, description strings are split into clauses and translated with a locale-aware clause parser.
+- duplicate clauses that are already represented by structured lines or already-present keywords are dropped.
+- this keeps full-sentence description dictionaries as a fallback-only mechanism instead of the primary localization source.
+
 Campfire upgrade flow:
 - choosing `Upgrade` opens a card-selection subpage
 - each entry shows the current card and the upgraded preview side by side in the same panel
 - the chosen upgrade is applied to one card instance, not to every card sharing that id
+
+Shop behavior:
+- buy offers now carry explicit per-card prices in the observation and renderer
+- buy prices vary by card rarity instead of using one flat shop price
+- remove uses a run-global escalating price
+- remove price does not reset between shops
+- each shop allows at most 3 deck removals
 
 ## Route Tree
 

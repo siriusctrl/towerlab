@@ -1,9 +1,11 @@
 import React from "react";
 import { cleanup, render } from "ink-testing-library";
 import { afterEach, describe, expect, test } from "vitest";
-import { DEFAULT_CHARACTER_ID, type CharacterId } from "@towerlab/content";
+import { DEFAULT_CHARACTER_ID, sampleContent, type CharacterId } from "@towerlab/content";
+import type { RestObservation } from "@towerlab/core";
 
 import { App } from "./app/App.js";
+import { Controls, PhaseBody } from "./app/components.js";
 
 afterEach(() => {
   cleanup();
@@ -146,6 +148,341 @@ describe("App layout", () => {
 
     expect(frame).toMatch(/获得 30 金币。\n\s*2\. 强健/u);
     expect(frame).toMatch(/获得 6 点最大生命并回复 6 点生命。\n\s*3\. 获得卡牌：愤怒/u);
+  });
+
+  test("paginates campfire upgrade choices beyond nine cards", async () => {
+    const restObservation: RestObservation = {
+      seed: 7,
+      characterId: "warrior",
+      act: 1,
+      totalActs: 3,
+      phase: "rest",
+      hp: 35,
+      maxHp: 60,
+      gold: 99,
+      floor: 6,
+      currentNode: { id: "rest-r6-p1", kind: "rest", nextIds: ["battle-r7-p1"] },
+      relics: [],
+      log: [],
+      mode: "upgrade",
+      restOptions: [
+        { id: "recover", label: "Recover", description: "Heal 18 HP." },
+        { id: "upgrade", label: "Upgrade", description: "Upgrade a card in your deck." },
+      ],
+      upgradableDeckCards: Array.from({ length: 12 }, (_, index) => ({
+        deckIndex: index,
+        card: { id: `strike-${index}`, name: `Strike ${index + 1}`, cost: 1, damage: 6 },
+        upgradedCard: { id: `strike-${index}`, name: `Strike ${index + 1}+`, cost: 1, damage: 9, upgraded: true },
+      })),
+      nextNodes: [{ id: "battle-r7-p1", kind: "battle", nextIds: [] }],
+    };
+
+    const firstPage = render(
+      React.createElement(PhaseBody, {
+        content: sampleContent,
+        observation: restObservation,
+        locale: "en",
+        shopMenu: "top",
+        shopBuyPage: 0,
+        shopRemovePage: 0,
+        combatHandPage: 0,
+        restMode: "upgrade",
+        restUpgradeCards: restObservation.upgradableDeckCards,
+        restUpgradePage: 0,
+        hpBarWidth: 12,
+        compactMapPhase: false,
+      }),
+    );
+    const controls = render(
+      React.createElement(Controls, {
+        observation: restObservation,
+        locale: "en",
+        shopMenu: "top",
+        shopBuyPageCount: 1,
+        shopRemovePageCount: 1,
+        restMode: "upgrade",
+        restUpgradePageCount: 2,
+        combatHandPageCount: 1,
+      }),
+    );
+    const secondPage = render(
+      React.createElement(PhaseBody, {
+        content: sampleContent,
+        observation: restObservation,
+        locale: "en",
+        shopMenu: "top",
+        shopBuyPage: 0,
+        shopRemovePage: 0,
+        combatHandPage: 0,
+        restMode: "upgrade",
+        restUpgradeCards: restObservation.upgradableDeckCards,
+        restUpgradePage: 1,
+        hpBarWidth: 12,
+        compactMapPhase: false,
+      }),
+    );
+
+    expect(firstPage.lastFrame()).toContain("Choose one card to upgrade. (Page 1/2)");
+    expect(firstPage.lastFrame()).toContain("1. Strike 1");
+    expect(firstPage.lastFrame()).toContain("9. Strike 9");
+    expect(firstPage.lastFrame()).not.toContain("10. Strike 10");
+    expect(controls.lastFrame()).toContain("[ ] page");
+    expect(secondPage.lastFrame()).toContain("Choose one card to upgrade. (Page 2/2)");
+    expect(secondPage.lastFrame()).toContain("1. Strike 10");
+    expect(secondPage.lastFrame()).toContain("3. Strike 12");
+    expect(secondPage.lastFrame()).not.toContain("4. Strike 13");
+  });
+
+  test("paginates shop removal choices beyond nine cards", async () => {
+    const shopObservation = {
+      seed: 7,
+      characterId: "warrior",
+      act: 1,
+      totalActs: 3,
+      phase: "shop",
+      hp: 35,
+      maxHp: 60,
+      gold: 99,
+      floor: 6,
+      currentNode: { id: "shop-r6-p1", kind: "shop", nextIds: ["battle-r7-p1"] },
+      relics: [],
+      log: [],
+      forSale: [],
+      removableDeckCards: Array.from({ length: 12 }, (_, deckIndex) => ({
+        deckIndex,
+        card: { id: `deck-${deckIndex}`, name: `Card ${deckIndex + 1}`, cost: 1, description: "Test card." },
+      })),
+      removeDeckCardCost: 12,
+      remainingDeckRemovals: 3,
+      nextNodes: [{ id: "battle-r7-p1", kind: "battle", nextIds: [] }],
+    } as const;
+
+    const firstPage = render(
+      React.createElement(PhaseBody, {
+        content: sampleContent,
+        observation: shopObservation,
+        locale: "en",
+        shopMenu: "remove",
+        shopBuyPage: 0,
+        shopRemovePage: 0,
+        combatHandPage: 0,
+        restMode: "options",
+        restUpgradeCards: [],
+        restUpgradePage: 0,
+        hpBarWidth: 12,
+        compactMapPhase: false,
+      }),
+    );
+    const controls = render(
+      React.createElement(Controls, {
+        observation: shopObservation,
+        locale: "en",
+        shopMenu: "remove",
+        shopBuyPageCount: 1,
+        shopRemovePageCount: 2,
+        restMode: "options",
+        combatHandPageCount: 1,
+      }),
+    );
+    const secondPage = render(
+      React.createElement(PhaseBody, {
+        content: sampleContent,
+        observation: shopObservation,
+        locale: "en",
+        shopMenu: "remove",
+        shopBuyPage: 0,
+        shopRemovePage: 1,
+        combatHandPage: 0,
+        restMode: "options",
+        restUpgradeCards: [],
+        restUpgradePage: 0,
+        hpBarWidth: 12,
+        compactMapPhase: false,
+      }),
+    );
+
+    expect(firstPage.lastFrame()).toContain("Remove (next cost 12 gold) (Page 1/2)");
+    expect(firstPage.lastFrame()).toContain("1. Remove Card 1");
+    expect(firstPage.lastFrame()).toContain("9. Remove Card 9");
+    expect(firstPage.lastFrame()).not.toContain("10. Remove Card 10");
+    expect(controls.lastFrame()).toContain("[ ] page");
+    expect(secondPage.lastFrame()).toContain("Remove (next cost 12 gold) (Page 2/2)");
+    expect(secondPage.lastFrame()).toContain("1. Remove Card 10");
+    expect(secondPage.lastFrame()).toContain("2. Remove Card 11");
+  });
+
+  test("paginates combat hands beyond nine cards", async () => {
+    const combatObservation = {
+      seed: 7,
+      characterId: "warrior",
+      act: 1,
+      totalActs: 3,
+      phase: "combat",
+      hp: 35,
+      maxHp: 60,
+      gold: 99,
+      floor: 6,
+      currentNode: { id: "battle-r6-p1", kind: "battle", nextIds: ["rest-r7-p1"] },
+      relics: [],
+      log: [],
+      energy: 3,
+      baseEnergy: 3,
+      block: 0,
+      status: {},
+      hand: Array.from({ length: 12 }, (_, index) => ({
+        id: `strike-${index}`,
+        name: `Strike ${index + 1}`,
+        cost: 1,
+        damage: 6,
+      })),
+      drawPileCount: 10,
+      discardPileCount: 0,
+      exhaustPileCount: 0,
+      enemy: {
+        id: "raider",
+        name: "Raider",
+        hp: 30,
+        maxHp: 30,
+        block: 0,
+        status: {},
+        intent: { kind: "attack", description: "Slash for 6", damage: 6 },
+      },
+    } as const;
+
+    const firstPage = render(
+      React.createElement(PhaseBody, {
+        content: sampleContent,
+        observation: combatObservation,
+        locale: "en",
+        shopMenu: "top",
+        shopBuyPage: 0,
+        shopRemovePage: 0,
+        combatHandPage: 0,
+        restMode: "options",
+        restUpgradeCards: [],
+        restUpgradePage: 0,
+        hpBarWidth: 12,
+        compactMapPhase: false,
+      }),
+    );
+    const controls = render(
+      React.createElement(Controls, {
+        observation: combatObservation,
+        locale: "en",
+        shopMenu: "top",
+        shopBuyPageCount: 1,
+        shopRemovePageCount: 1,
+        restMode: "options",
+        combatHandPageCount: 2,
+      }),
+    );
+    const secondPage = render(
+      React.createElement(PhaseBody, {
+        content: sampleContent,
+        observation: combatObservation,
+        locale: "en",
+        shopMenu: "top",
+        shopBuyPage: 0,
+        shopRemovePage: 0,
+        combatHandPage: 1,
+        restMode: "options",
+        restUpgradeCards: [],
+        restUpgradePage: 0,
+        hpBarWidth: 12,
+        compactMapPhase: false,
+      }),
+    );
+
+    expect(firstPage.lastFrame()).toContain("Combat (Page 1/2)");
+    expect(firstPage.lastFrame()).toContain("1. Strike 1");
+    expect(firstPage.lastFrame()).toContain("9. Strike 9");
+    expect(firstPage.lastFrame()).not.toContain("10. Strike 10");
+    expect(controls.lastFrame()).toContain("[ ] page");
+    expect(secondPage.lastFrame()).toContain("Combat (Page 2/2)");
+    expect(secondPage.lastFrame()).toContain("1. Strike 10");
+    expect(secondPage.lastFrame()).toContain("3. Strike 12");
+  });
+
+  test("paginates shop buy choices beyond nine cards", async () => {
+    const shopObservation = {
+      seed: 7,
+      characterId: "warrior",
+      act: 1,
+      totalActs: 3,
+      phase: "shop",
+      hp: 35,
+      maxHp: 60,
+      gold: 99,
+      floor: 6,
+      currentNode: { id: "shop-r6-p1", kind: "shop", nextIds: ["battle-r7-p1"] },
+      relics: [],
+      log: [],
+      forSale: Array.from({ length: 12 }, (_, saleIndex) => ({
+        card: {
+          id: `sale-${saleIndex}`,
+          name: `Card ${saleIndex + 1}`,
+          cost: 1,
+          description: "Test card.",
+        },
+        price: 12,
+      })),
+      removableDeckCards: [],
+      removeDeckCardCost: 12,
+      remainingDeckRemovals: 3,
+      nextNodes: [{ id: "battle-r7-p1", kind: "battle", nextIds: [] }],
+    } as const;
+
+    const firstPage = render(
+      React.createElement(PhaseBody, {
+        content: sampleContent,
+        observation: shopObservation,
+        locale: "en",
+        shopMenu: "buy",
+        shopBuyPage: 0,
+        shopRemovePage: 0,
+        combatHandPage: 0,
+        restMode: "options",
+        restUpgradeCards: [],
+        restUpgradePage: 0,
+        hpBarWidth: 12,
+        compactMapPhase: false,
+      }),
+    );
+    const controls = render(
+      React.createElement(Controls, {
+        observation: shopObservation,
+        locale: "en",
+        shopMenu: "buy",
+        shopBuyPageCount: 2,
+        shopRemovePageCount: 1,
+        restMode: "options",
+        combatHandPageCount: 1,
+      }),
+    );
+    const secondPage = render(
+      React.createElement(PhaseBody, {
+        content: sampleContent,
+        observation: shopObservation,
+        locale: "en",
+        shopMenu: "buy",
+        shopBuyPage: 1,
+        shopRemovePage: 0,
+        combatHandPage: 0,
+        restMode: "options",
+        restUpgradeCards: [],
+        restUpgradePage: 0,
+        hpBarWidth: 12,
+        compactMapPhase: false,
+      }),
+    );
+
+    expect(firstPage.lastFrame()).toContain("Buy (Page 1/2)");
+    expect(firstPage.lastFrame()).toContain("1. Card 1");
+    expect(firstPage.lastFrame()).toContain("9. Card 9");
+    expect(controls.lastFrame()).toContain("[ ] page");
+    expect(secondPage.lastFrame()).toContain("Buy (Page 2/2)");
+    expect(secondPage.lastFrame()).toContain("1. Card 10");
+    expect(secondPage.lastFrame()).toContain("3. Card 12");
   });
 
   test("keeps opening blessings, compact map, and post-move minimap stable across multiple seeds", async () => {

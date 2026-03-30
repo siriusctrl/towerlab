@@ -1,4 +1,5 @@
-import { REST_HEAL_RATIO, REST_OPTION_IDS, SHOP_CARD_PRICE, SHOP_CARD_REMOVE_PRICE, STARTING_ENERGY } from "../constants.js";
+import { REST_HEAL_RATIO, REST_OPTION_IDS, STARTING_ENERGY } from "../constants.js";
+import { getDeckRemovalPrice, getRemainingDeckRemovals } from "../shop.js";
 import { getAct, getCombat, getCurrentIntent, getNode, getRelicValue, materializeCardDefinition, materializeCardInstance } from "../shared.js";
 import type { Observation, RunAction, RunContent, RunState } from "../types.js";
 import { getCard, getRelic } from "../validate.js";
@@ -118,6 +119,7 @@ export function observeRun(content: RunContent, state: RunState): Observation {
 
   if (state.phase === "shop") {
     const forSale = state.shop?.forSale ?? [];
+    const nextRemoveCost = getDeckRemovalPrice(state.totalDeckRemovals);
     const removableDeckCards = (state.shop?.removableDeckIndices ?? [])
       .filter((index) => index >= 0 && index < state.deck.length)
       .map((deckIndex) => ({ deckIndex, card: materializeCardInstance(content, state.deck[deckIndex]!) }));
@@ -125,9 +127,13 @@ export function observeRun(content: RunContent, state: RunState): Observation {
     return {
       ...base,
       phase: "shop",
-      forSale: forSale.map((cardId) => materializeCardDefinition(getCard(content, cardId), false)),
+      forSale: forSale.map((offer) => ({
+        card: materializeCardDefinition(getCard(content, offer.cardId), false),
+        price: offer.price,
+      })),
       removableDeckCards,
-      removeDeckCardCost: SHOP_CARD_REMOVE_PRICE,
+      removeDeckCardCost: nextRemoveCost,
+      remainingDeckRemovals: getRemainingDeckRemovals(state.shop?.removalsThisShop ?? 0),
       nextNodes,
     };
   }
@@ -182,12 +188,12 @@ export function legalActions(content: RunContent, state: RunState): RunAction[] 
       throw new Error("shop state is missing");
     }
 
-    const cardPrice = Math.max(1, SHOP_CARD_PRICE - getRelicValue(content, state, "shopDiscount"));
-    const cardActions = shop.forSale.flatMap((_, saleIndex): RunAction[] =>
-      state.gold >= cardPrice ? [{ type: "buyShop", saleIndex }] : [],
+    const removeCost = getDeckRemovalPrice(state.totalDeckRemovals);
+    const cardActions = shop.forSale.flatMap((offer, saleIndex): RunAction[] =>
+      state.gold >= offer.price ? [{ type: "buyShop", saleIndex }] : [],
     );
     const removeActions = shop.removableDeckIndices.flatMap((deckIndex): RunAction[] =>
-      state.gold >= SHOP_CARD_REMOVE_PRICE ? [{ type: "removeDeckCard", deckIndex }] : [],
+      state.gold >= removeCost ? [{ type: "removeDeckCard", deckIndex }] : [],
     );
 
     return [...cardActions, ...removeActions, { type: "leaveShop" }];

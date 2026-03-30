@@ -1,8 +1,8 @@
 import { sampleContent } from "@towerlab/content";
-import type { LogEvent } from "@towerlab/core";
+import type { LogEvent, RestObservation } from "@towerlab/core";
 import { describe, expect, test } from "vitest";
 
-import { formatBlessingAcquisition, formatBlessingDescription, formatBlessingName, formatCardEffectLines, formatLogEntries, localizeCardDefinition, localizeCardKeyword } from "./i18n.js";
+import { formatBlessingAcquisition, formatBlessingDescription, formatBlessingName, formatCardEffectLines, formatLogEntries, localizeCardDefinition, localizeCardKeyword, localizeObservation } from "./i18n.js";
 
 describe("i18n log localization", () => {
   test("formats every current core log event template in zh", () => {
@@ -188,6 +188,112 @@ describe("i18n log localization", () => {
     expect(formatCardEffectLines(card, "en")).toEqual([
       "Gain 6 block.",
       "Draw 1 card.",
+    ]);
+  });
+
+  test("does not append fallback lines that are already represented by structured data", () => {
+    const card = localizeCardDefinition(
+      {
+        id: "rally-line",
+        name: "Rally Line",
+        cost: 1,
+        description: "Gain 6 block. Draw 1 card. Exhaust.",
+        block: 6,
+        draw: 1,
+        exhaust: true,
+        keywords: ["exhaust"],
+      },
+      "en",
+      sampleContent,
+    );
+
+    expect(formatCardEffectLines(card, "en")).toEqual([
+      "Gain 6 block.",
+      "Draw 1 card.",
+    ]);
+  });
+
+  test("falls back to parsed description clauses when structured effects are absent", () => {
+    const card = localizeCardDefinition(
+      {
+        id: "legacy-legacy",
+        name: "Legacy Clause",
+        cost: 1,
+        description: "Recover 6 HP. Deal 1 damage. Apply 1 Weak.",
+      },
+      "en",
+      sampleContent,
+    );
+
+    expect(formatCardEffectLines(card, "en")).toEqual([
+      "Recover 6 HP.",
+      "Deal 1 damage.",
+      "Apply 1 Weak.",
+    ]);
+
+    const zhCard = localizeCardDefinition(
+      {
+        id: "legacy-legacy",
+        name: "Legacy Clause",
+        cost: 1,
+        description: "Recover 6 HP. Deal 1 damage. Apply 1 Weak.",
+      },
+      "zh",
+      sampleContent,
+    );
+
+    expect(formatCardEffectLines(zhCard, "zh")).toEqual([
+      "恢复 6 点生命。",
+      "造成 1 点伤害。",
+      "施加 1 层虚弱。",
+    ]);
+  });
+
+  test("localizes newly added card descriptions in zh instead of leaking english", () => {
+    const localized = localizeCardDefinition(
+      {
+        id: "dropkick",
+        name: "Dropkick",
+        cost: 1,
+        description: "Deal 8 damage. Draw 1 card.",
+        damage: 8,
+        draw: 1,
+      },
+      "zh",
+      sampleContent,
+    );
+
+    expect(localized.description).toBe("造成 8 点伤害。抽 1 张牌。");
+  });
+
+  test("localizes dynamic rest option descriptions and upgrade labels in zh", () => {
+    const observation: RestObservation = {
+      seed: 7,
+      characterId: "warrior",
+      act: 1,
+      totalActs: 3,
+      phase: "rest",
+      hp: 28,
+      maxHp: 60,
+      gold: 99,
+      floor: 4,
+      currentNode: { id: "rest-r4-p1", kind: "rest", nextIds: [] },
+      relics: [],
+      log: [],
+      mode: "menu",
+      nextNodes: [],
+      restOptions: [
+        { id: "recover", label: "Recover", description: "Heal 18 HP." },
+        { id: "upgrade", label: "Upgrade", description: "Upgrade a card in your deck." },
+      ],
+      upgradableDeckCards: [],
+    };
+
+    const localized = localizeObservation(observation, "zh", sampleContent) as RestObservation;
+
+    expect(localized.restOptions).toEqual([
+      { id: "recover", label: "恢复", description: "恢复 18 点生命。" },
+      { id: "upgrade", label: "强化", description: "强化你牌组中的一张牌。" },
     ]);
   });
 });

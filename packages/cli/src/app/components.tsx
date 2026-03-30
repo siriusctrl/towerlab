@@ -20,9 +20,11 @@ import {
   type Locale,
 } from "../i18n.js";
 import {
+  SHOP_BUY_PAGE_SIZE,
   SHOP_MENU_BACK_KEY,
   SHOP_MENU_BUY_KEY,
   SHOP_MENU_REMOVE_KEY,
+  SHOP_REMOVE_PAGE_SIZE,
   createShopBindings,
   type ShopMenuMode,
 } from "../shop.js";
@@ -59,6 +61,8 @@ const STATUS_SECTIONS: StatusSection[] = ["deck", "relics"];
 
 export const LIBRARY_SECTION_COUNT = LIBRARY_SECTIONS.length;
 export const STATUS_SECTION_COUNT = STATUS_SECTIONS.length;
+export const COMBAT_HAND_PAGE_SIZE = 9;
+export const REST_UPGRADE_PAGE_SIZE = 9;
 
 export function StatusBar({
   observation,
@@ -194,8 +198,12 @@ export function PhaseBody({
   observation,
   locale,
   shopMenu,
+  shopBuyPage,
+  shopRemovePage,
+  combatHandPage,
   restMode,
   restUpgradeCards,
+  restUpgradePage,
   hpBarWidth,
   compactMapPhase,
 }: {
@@ -203,12 +211,20 @@ export function PhaseBody({
   observation: Observation;
   locale: Locale;
   shopMenu: ShopMenuMode;
+  shopBuyPage: number;
+  shopRemovePage: number;
+  combatHandPage: number;
   restMode: RestMode;
   restUpgradeCards: ReadonlyArray<RestDeckUpgradeCard>;
+  restUpgradePage: number;
   hpBarWidth: number;
   compactMapPhase: boolean;
 }) {
   if (observation.phase === "combat") {
+    const totalPages = Math.max(1, Math.ceil(observation.hand.length / COMBAT_HAND_PAGE_SIZE));
+    const currentPage = Math.min(combatHandPage, totalPages - 1);
+    const pageStart = currentPage * COMBAT_HAND_PAGE_SIZE;
+    const pageCards = observation.hand.slice(pageStart, pageStart + COMBAT_HAND_PAGE_SIZE);
     const enemyHpBar = renderHpBar(observation.enemy.hp, observation.enemy.maxHp, Math.min(15, hpBarWidth));
     const enemyHpColor = getHpColor(observation.enemy.hp, observation.enemy.maxHp);
     const enemyStatus = formatCombatStatus(observation.enemy.status, locale);
@@ -216,7 +232,10 @@ export function PhaseBody({
     return (
       <>
         <Text wrap="truncate-end">
-          <Text bold color="red">{text(locale, "combat")}</Text>
+          <Text bold color="red">
+            {text(locale, "combat")}
+            {totalPages > 1 ? ` ${formatText(locale, "pageStatus", { current: currentPage + 1, total: totalPages })}` : ""}
+          </Text>
           <Text dimColor>{"  "}{text(locale, "draw")} {observation.drawPileCount} {"·"} {text(locale, "discard")} {observation.discardPileCount}</Text>
         </Text>
         <Text wrap="truncate-end">
@@ -234,8 +253,8 @@ export function PhaseBody({
             {text(locale, "status")}: {enemyStatus}
           </Text>
         ) : null}
-        {observation.hand.length > 0 ? (
-          observation.hand.map((card, index) => (
+        {pageCards.length > 0 ? (
+          pageCards.map((card, index) => (
             <CardBlock
               key={`${index}-${card.id}`}
               card={card}
@@ -315,14 +334,22 @@ export function PhaseBody({
 
   if (observation.phase === "rest") {
     if (restMode === "upgrade") {
+      const totalPages = Math.max(1, Math.ceil(restUpgradeCards.length / REST_UPGRADE_PAGE_SIZE));
+      const currentPage = Math.min(restUpgradePage, totalPages - 1);
+      const pageStart = currentPage * REST_UPGRADE_PAGE_SIZE;
+      const pageCards = restUpgradeCards.slice(pageStart, pageStart + REST_UPGRADE_PAGE_SIZE);
+
       return (
         <>
           <Text bold color="yellow">
             {text(locale, "rest")}
           </Text>
-          <Text wrap="truncate-end">{text(locale, "chooseDeckUpgrade")}</Text>
-          {restUpgradeCards.length > 0 ? (
-            restUpgradeCards.map((option, index) => (
+          <Text wrap="truncate-end">
+            {text(locale, "chooseDeckUpgrade")}
+            {totalPages > 1 ? ` ${formatText(locale, "pageStatus", { current: currentPage + 1, total: totalPages })}` : ""}
+          </Text>
+          {pageCards.length > 0 ? (
+            pageCards.map((option, index) => (
               <Box key={`${option.deckIndex}-${option.card.id}`} flexDirection="column">
                 <Text dimColor wrap="truncate-end">
                   {index + 1}. {option.card.name} → {option.upgradedCard.name}
@@ -385,28 +412,43 @@ export function PhaseBody({
     const submenuBindings = createShopBindings(
       observation,
       shopMenu === "buy" ? "buy" : shopMenu === "remove" ? "remove" : "flat",
+      shopBuyPage,
+      shopRemovePage,
     );
     const canBuyAny = topBindings.buyOptions.some((option) => option.key !== null);
     const canRemoveAny = topBindings.removeOptions.some((option) => option.key !== null);
+    const canBuyOnPage = submenuBindings.buyOptions.some((option) => option.key !== null);
+    const canRemoveOnPage = submenuBindings.removeOptions.some((option) => option.key !== null);
 
     if (shopMenu === "buy") {
+      const totalPages = Math.max(1, Math.ceil(observation.forSale.length / SHOP_BUY_PAGE_SIZE));
+      const currentPage = Math.min(shopBuyPage, totalPages - 1);
+
       return (
         <>
           <Text bold color="yellow">
             {text(locale, "shop")}
           </Text>
-          <Text bold>{text(locale, "shopBuySection")}</Text>
+          <Text bold wrap="truncate-end">
+            {text(locale, "shopBuySection")}
+            {totalPages > 1 ? ` ${formatText(locale, "pageStatus", { current: currentPage + 1, total: totalPages })}` : ""}
+          </Text>
           {submenuBindings.buyOptions.map((option) => (
-            <Text key={option.card.id} color={option.key ? undefined : "gray"} wrap="truncate-end">
-              {option.key ? `${option.key}. ` : "· "}
-              {option.card.name} [{option.card.cost}]
-            </Text>
+            <CardBlock
+              key={`${option.saleIndex}-${option.card.id}`}
+              card={option.card}
+              locale={locale}
+              namePrefix={option.key ? `${option.key}. ` : "· "}
+              indent="   "
+              detailLines={[formatText(locale, "shopPriceLine", { cost: option.price })]}
+            />
           ))}
-          {submenuBindings.buyOptions.length > 0 && !canBuyAny ? (
+          {submenuBindings.buyOptions.length > 0 && !canBuyOnPage ? (
             <Text dimColor wrap="truncate-end">
               {text(locale, "shopNoAffordableBuys")}
             </Text>
           ) : null}
+          {submenuBindings.buyOptions.length === 0 ? <Text dimColor wrap="truncate-end">{text(locale, "shopNoCardsForSale")}</Text> : null}
           <Text dimColor wrap="truncate-end">
             {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
           </Text>
@@ -418,12 +460,18 @@ export function PhaseBody({
     }
 
     if (shopMenu === "remove") {
+      const totalPages = Math.max(1, Math.ceil(observation.removableDeckCards.length / SHOP_REMOVE_PAGE_SIZE));
+      const currentPage = Math.min(shopRemovePage, totalPages - 1);
+
       return (
         <>
           <Text bold color="yellow">
             {text(locale, "shop")}
           </Text>
-          <Text bold>{formatText(locale, "shopRemoveSection", { cost: observation.removeDeckCardCost })}</Text>
+          <Text bold wrap="truncate-end">
+            {formatText(locale, "shopRemoveSection", { cost: observation.removeDeckCardCost })}
+            {totalPages > 1 ? ` ${formatText(locale, "pageStatus", { current: currentPage + 1, total: totalPages })}` : ""}
+          </Text>
           {submenuBindings.removeOptions.map((option) => (
             <Text
               key={`${option.deckIndex}-${option.card.id}`}
@@ -434,12 +482,16 @@ export function PhaseBody({
               {text(locale, "remove")} {option.card.name} {formatText(locale, "shopDeckSlot", { index: option.deckIndex + 1 })}
             </Text>
           ))}
-          {submenuBindings.removeOptions.length > 0 && !canRemoveAny ? (
+          {submenuBindings.removeOptions.length > 0 && !canRemoveOnPage ? (
             <Text dimColor wrap="truncate-end">
-              {text(locale, "shopNoAffordableRemovals")}
+              {observation.remainingDeckRemovals === 0 ? text(locale, "shopNoRemainingRemovals") : text(locale, "shopNoAffordableRemovals")}
             </Text>
           ) : null}
-          {submenuBindings.removeOptions.length === 0 ? <Text dimColor wrap="truncate-end">{text(locale, "noRemovableCards")}</Text> : null}
+          {submenuBindings.removeOptions.length === 0 ? (
+            <Text dimColor wrap="truncate-end">
+              {observation.remainingDeckRemovals === 0 ? text(locale, "shopNoRemainingRemovals") : text(locale, "noRemovableCards")}
+            </Text>
+          ) : null}
           <Text dimColor wrap="truncate-end">
             {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
           </Text>
@@ -462,15 +514,20 @@ export function PhaseBody({
             {text(locale, "shopNoAffordableBuys")}
           </Text>
         ) : null}
+        {topBindings.buyOptions.length === 0 ? <Text dimColor wrap="truncate-end">{text(locale, "shopNoCardsForSale")}</Text> : null}
         <Text bold color={canRemoveAny ? undefined : "gray"}>
           {SHOP_MENU_REMOVE_KEY}. {formatText(locale, "shopRemoveSection", { cost: observation.removeDeckCardCost })}
         </Text>
         {!canRemoveAny && topBindings.removeOptions.length > 0 ? (
           <Text dimColor wrap="truncate-end">
-            {text(locale, "shopNoAffordableRemovals")}
+            {observation.remainingDeckRemovals === 0 ? text(locale, "shopNoRemainingRemovals") : text(locale, "shopNoAffordableRemovals")}
           </Text>
         ) : null}
-        {topBindings.removeOptions.length === 0 ? <Text dimColor wrap="truncate-end">{text(locale, "noRemovableCards")}</Text> : null}
+        {topBindings.removeOptions.length === 0 ? (
+          <Text dimColor wrap="truncate-end">
+            {observation.remainingDeckRemovals === 0 ? text(locale, "shopNoRemainingRemovals") : text(locale, "noRemovableCards")}
+          </Text>
+        ) : null}
         <Text dimColor wrap="truncate-end">
           {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
         </Text>
@@ -496,31 +553,47 @@ export function Controls({
   observation,
   locale,
   shopMenu,
+  shopBuyPageCount = 1,
+  shopRemovePageCount = 1,
   restMode,
+  restUpgradePageCount = 1,
+  combatHandPageCount = 1,
 }: {
   observation: Observation;
   locale: Locale;
   shopMenu: ShopMenuMode;
+  shopBuyPageCount?: number;
+  shopRemovePageCount?: number;
   restMode: RestMode;
+  restUpgradePageCount?: number;
+  combatHandPageCount?: number;
 }) {
   const baseControls =
     observation.phase === "blessing"
       ? text(locale, "controlsBlessing")
       : observation.phase === "combat"
-        ? text(locale, "controlsCombat")
+        ? combatHandPageCount > 1
+          ? text(locale, "controlsCombatPaged")
+          : text(locale, "controlsCombat")
         : observation.phase === "map"
           ? text(locale, "controlsMap")
           : observation.phase === "rest"
             ? restMode === "upgrade"
-              ? text(locale, "controlsRestUpgrade")
+              ? restUpgradePageCount > 1
+                ? text(locale, "controlsRestUpgradePaged")
+                : text(locale, "controlsRestUpgrade")
               : text(locale, "controlsRest")
             : observation.phase === "reward"
               ? text(locale, "controlsReward")
               : observation.phase === "shop"
                 ? shopMenu === "buy"
-                  ? text(locale, "controlsShopBuy")
+                  ? shopBuyPageCount > 1
+                    ? text(locale, "controlsShopBuyPaged")
+                    : text(locale, "controlsShopBuy")
                   : shopMenu === "remove"
-                    ? text(locale, "controlsShopRemove")
+                    ? shopRemovePageCount > 1
+                      ? text(locale, "controlsShopRemovePaged")
+                      : text(locale, "controlsShopRemove")
                     : text(locale, "controlsShop")
                 : text(locale, "controlsEnd");
 
@@ -714,28 +787,36 @@ function CardBlock({
   locale,
   namePrefix,
   indent,
+  detailLines,
   playable,
 }: {
   card: CliCardDefinition;
   locale: Locale;
   namePrefix: string;
   indent: string;
+  detailLines?: string[];
   playable?: boolean;
 }) {
   const effectLines = formatCardEffectLines(card, locale);
   const dimmed = playable === false;
-  const titleColor = playable === false ? "gray" : "green";
-  const costColor = playable === false ? "red" : "yellow";
-  const keywordColor = playable === false ? "gray" : "yellow";
-  const effectColor = playable === false ? "gray" : undefined;
+  const emphasizedPlayable = playable === true;
+  const titleColor = emphasizedPlayable ? "green" : dimmed ? "gray" : undefined;
+  const costColor = dimmed ? "red" : "yellow";
+  const keywordColor = dimmed ? "gray" : "yellow";
+  const effectColor = dimmed ? "gray" : undefined;
 
   return (
     <Box flexDirection="column">
-      <Text color={titleColor} bold={!dimmed} dimColor={dimmed} wrap="truncate-end">
+      <Text color={titleColor} bold wrap="truncate-end" dimColor={dimmed}>
         {namePrefix}{card.name} <Text color={costColor}>[{card.cost}]</Text>
       </Text>
+      {detailLines?.map((line) => (
+        <Text key={`${card.id}-detail-${line}`} dimColor wrap="truncate-end">
+          {indent}{line}
+        </Text>
+      ))}
       {card.keywords?.map((keyword) => (
-        <Text key={`${card.id}-${keyword}`} color={keywordColor} bold={!dimmed} dimColor={dimmed} wrap="truncate-end">
+        <Text key={`${card.id}-${keyword}`} color={keywordColor} bold wrap="truncate-end" dimColor={dimmed}>
           {indent}{localizeCardKeyword(keyword, locale)}
         </Text>
       ))}

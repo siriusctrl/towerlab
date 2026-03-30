@@ -179,9 +179,8 @@ describe("headless CLI", () => {
       .map((act: { map: Array<{ kind: string; relicReward?: string }> }) => act.map.find((node) => node.kind === "boss")?.relicReward)
       .filter(Boolean);
 
-    const uniquePreviewCount = sampleContent.character.relicPools.elite.length;
-
-    expect(new Set(actOneEliteRelics.slice(0, uniquePreviewCount)).size).toBe(uniquePreviewCount);
+    expect(new Set(actOneEliteRelics).size).toBe(actOneEliteRelics.length);
+    expect(actOneEliteRelics.length).toBeLessThanOrEqual(sampleContent.character.relicPools.elite.length);
     expect(new Set(bossRelics).size).toBe(bossRelics.length);
   });
 

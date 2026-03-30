@@ -153,6 +153,10 @@ describe("legalActions", () => {
     let state = createRun(content, 5);
     state = winCurrentCombat(content, state);
     state = applyAction(content, state, { type: "skipReward" });
+    state = {
+      ...state,
+      relics: ["starterCharm", "merchantTag"],
+    };
     state = applyAction(content, state, { type: "choosePath", nodeId: "market" });
 
     if (state.phase !== "shop") {
@@ -162,7 +166,6 @@ describe("legalActions", () => {
     const discountedState: RunState = {
       ...state,
       gold: 11,
-      relics: ["starterCharm", "merchantTag"],
     };
 
     expect(legalActions(content, discountedState)).toEqual([

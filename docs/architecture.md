@@ -34,6 +34,7 @@ Responsibilities:
 - per-character starter decks, blessing pools, reward pools, and shop pools
 - per-character relic pools
 - act configuration and seeded tower map generation
+- path-profile constraints for elite risk pacing across complete start-to-boss routes
 
 ### `packages/cli`
 
@@ -50,6 +51,8 @@ Responsibilities:
 - expose deterministic headless JSON mode for agents and batch tooling
 - host simple baseline policies and batch evaluation helpers
 - localize structured state into human-facing strings without becoming the source of truth
+- render card text from structured fields first, with structured fallback only when card fields cannot express an effect
+- keep fallback rendering limited to unmatched description clauses (including keyword-safe filtering) and prefer locale-aware parsers over full-sentence translation tables
 
 ## Dependency rules
 

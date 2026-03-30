@@ -1,17 +1,20 @@
 import type { RunAction, ShopObservation } from "@towerlab/core";
 
 export const SHOP_BUY_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
-export const SHOP_REMOVE_KEYS = "abcdefghijklmnopqrstuvwxyz".split("") as string[];
+export const SHOP_REMOVE_KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"] as const;
 export const SHOP_LEAVE_KEY = "0";
 export const SHOP_MENU_BUY_KEY = "1";
 export const SHOP_MENU_REMOVE_KEY = "2";
 export const SHOP_MENU_BACK_KEY = "b";
+export const SHOP_BUY_PAGE_SIZE = 9;
+export const SHOP_REMOVE_PAGE_SIZE = 9;
 
 export interface ShopBuyOption {
   key: string | null;
   saleIndex: number;
   affordable: boolean;
-  card: ShopObservation["forSale"][number];
+  card: ShopObservation["forSale"][number]["card"];
+  price: number;
 }
 
 export interface ShopRemoveOption {
@@ -43,20 +46,45 @@ export interface ShopReadRunAction {
 
 export type ShopReadAction = ShopReadMenuAction | ShopReadRunAction;
 
-export function createShopBindings(observation: ShopObservation, mode: ShopBindingMode = "flat"): ShopBindings {
+export function createShopBindings(
+  observation: ShopObservation,
+  mode: ShopBindingMode = "flat",
+  buyPage = 0,
+  removePage = 0,
+): ShopBindings {
   const canAffordRemove = observation.gold >= observation.removeDeckCardCost;
   const bindBuy = mode === "flat" || mode === "buy";
   const bindRemove = mode === "flat" || mode === "remove";
+  const clampedBuyPage = Math.max(0, Math.min(buyPage, Math.max(0, Math.ceil(observation.forSale.length / SHOP_BUY_PAGE_SIZE) - 1)));
+  const clampedRemovePage = Math.max(
+    0,
+    Math.min(removePage, Math.max(0, Math.ceil(observation.removableDeckCards.length / SHOP_REMOVE_PAGE_SIZE) - 1)),
+  );
+  const pagedBuys =
+    mode === "buy"
+      ? observation.forSale.slice(
+          clampedBuyPage * SHOP_BUY_PAGE_SIZE,
+          clampedBuyPage * SHOP_BUY_PAGE_SIZE + SHOP_BUY_PAGE_SIZE,
+        )
+      : observation.forSale;
+  const pagedRemovals =
+    mode === "remove"
+      ? observation.removableDeckCards.slice(
+          clampedRemovePage * SHOP_REMOVE_PAGE_SIZE,
+          clampedRemovePage * SHOP_REMOVE_PAGE_SIZE + SHOP_REMOVE_PAGE_SIZE,
+        )
+      : observation.removableDeckCards;
 
   return {
-    buyOptions: observation.forSale.map((card, saleIndex) => ({
+    buyOptions: pagedBuys.map((offer, index) => ({
       key:
-        bindBuy && observation.gold >= card.cost && saleIndex < SHOP_BUY_KEYS.length ? SHOP_BUY_KEYS[saleIndex]! : null,
-      saleIndex,
-      affordable: observation.gold >= card.cost,
-      card,
+        bindBuy && observation.gold >= offer.price && index < SHOP_BUY_KEYS.length ? SHOP_BUY_KEYS[index]! : null,
+      saleIndex: mode === "buy" ? clampedBuyPage * SHOP_BUY_PAGE_SIZE + index : index,
+      affordable: observation.gold >= offer.price,
+      card: offer.card,
+      price: offer.price,
     })),
-    removeOptions: observation.removableDeckCards.map((entry, index) => ({
+    removeOptions: pagedRemovals.map((entry, index) => ({
       key: bindRemove && canAffordRemove && index < SHOP_REMOVE_KEYS.length ? SHOP_REMOVE_KEYS[index]! : null,
       deckIndex: entry.deckIndex,
       affordable: canAffordRemove,
@@ -66,7 +94,17 @@ export function createShopBindings(observation: ShopObservation, mode: ShopBindi
   };
 }
 
-export function readShopAction(input: string, observation: ShopObservation, menu: ShopMenuMode): ShopReadAction | null {
+export function readShopAction(
+  input: string,
+  observation: ShopObservation,
+  menu: ShopMenuMode,
+  buyPage = 0,
+  removePage = 0,
+): ShopReadAction | null {
+  const buyPageCount = Math.max(1, Math.ceil(observation.forSale.length / SHOP_BUY_PAGE_SIZE));
+  const removePageCount = Math.max(1, Math.ceil(observation.removableDeckCards.length / SHOP_REMOVE_PAGE_SIZE));
+  const safeBuyPage = Math.min(Math.max(buyPage, 0), buyPageCount - 1);
+  const safeRemovePage = Math.min(Math.max(removePage, 0), removePageCount - 1);
   const bindings = createShopBindings(observation);
   const canBuy = bindings.buyOptions.some((option) => option.key !== null);
   const canRemove = bindings.removeOptions.some((option) => option.key !== null);
@@ -91,7 +129,12 @@ export function readShopAction(input: string, observation: ShopObservation, menu
     return { type: "openMenu", menu: "top" };
   }
 
-  const scopedBindings = createShopBindings(observation, menu === "buy" ? "buy" : "remove");
+  const scopedBindings = createShopBindings(
+    observation,
+    menu === "buy" ? "buy" : "remove",
+    safeBuyPage,
+    safeRemovePage,
+  );
 
   const buy = scopedBindings.buyOptions.find((option) => option.key === input);
   if (buy) {

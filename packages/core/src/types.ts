@@ -211,9 +211,15 @@ export interface RewardState {
   cardChoices: string[];
 }
 
+export interface ShopCardOfferState {
+  cardId: string;
+  price: number;
+}
+
 export interface ShopState {
-  forSale: string[];
+  forSale: ShopCardOfferState[];
   removableDeckIndices: number[];
+  removalsThisShop: number;
 }
 
 export interface RestState {
@@ -233,6 +239,7 @@ export interface RunState {
   floor: number;
   currentNodeId: string;
   nextCardInstanceId: number;
+  totalDeckRemovals: number;
   deck: CardInstance[];
   relics: string[];
   combat?: CombatState;
@@ -313,9 +320,10 @@ export interface RewardObservation extends ObservationBase {
 
 export interface ShopObservation extends ObservationBase {
   phase: "shop";
-  forSale: ResolvedCard[];
+  forSale: { card: ResolvedCard; price: number }[];
   removableDeckCards: { deckIndex: number; card: ResolvedCard }[];
   removeDeckCardCost: number;
+  remainingDeckRemovals: number;
   nextNodes: MapNode[];
 }
 

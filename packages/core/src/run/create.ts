@@ -27,6 +27,7 @@ export function createRun(content: RunContent, seed: number): RunState {
     floor: 1,
     currentNodeId: firstNode.id,
     nextCardInstanceId: starterDeck.nextCardInstanceId,
+    totalDeckRemovals: 0,
     deck: starterDeck.deck,
     relics: [content.character.startingRelicId],
     log: [],

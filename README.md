@@ -19,6 +19,7 @@ The current playable slice is small, but no longer toy-sized:
 - combat hands now use stronger color contrast between playable and blocked cards
 - three acts, each starting with a blessing choice before route navigation
 - acts now use deeper room stacks with more route decisions before each boss
+- map generation now enforces per-path elite density bands so most routes stay in a controlled risk band while still leaving distinct easy/hard routes
 - deterministic combat, rewards, shop, relics, and branching map routing
 - TUI status and library panels for inspecting current run state and character content
 - headless JSON mode for replay, policy evaluation, and agent control
@@ -92,7 +93,9 @@ Key controls:
 - combat: `1-9` play the indexed card, `e` end turn
 - reward: `s` skip reward
 - shop top menu: `1` buy, `2` remove, `0` leave
-- shop buy/remove submenus: `b` go back
+- shop buy/remove submenus: `1-9` choose current page, `[` `]` page, `b` go back
+- shop card prices vary by rarity
+- deck removal cost increases across the whole run, does not reset between shops, and each shop allows at most 3 removals
 - inspection panels: `d` status, `l` library, `[` `]` switch sections, `j/k` or arrow keys scroll, `esc` close
 - `q` quit
 - `r` restart after victory or defeat
@@ -144,6 +147,9 @@ The current structured card vocabulary includes:
 - `vulnerable`
 - `poison`
 - `keywords`
+
+Card descriptions are now rendered from these structured fields first in both CLI and snapshots.  
+Fallback translation now runs only on unmatched description clauses for non-structured cards.
 
 The structured keywords currently in use are:
 - `exhaust`

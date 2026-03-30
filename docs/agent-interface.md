@@ -59,6 +59,8 @@ Important properties of the current contract:
 - observed card objects also include `upgraded`, and rest observations expose both the current card and upgraded preview for each upgradable deck entry
 - keyword-bearing cards should be read through `keywords`, not inferred from localized prose
 - combat observations expose both current `energy` and turn-base `baseEnergy`
+- shop observations expose `forSale` as structured offers with `{ card, price }`, not bare card objects
+- `removeDeckCardCost` is the next removal price, and `remainingDeckRemovals` is the remaining removal budget in the current shop
 
 Agent rule:
 - treat card metadata as structured data

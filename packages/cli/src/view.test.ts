@@ -418,6 +418,31 @@ describe("cli view helpers", () => {
     expect(highlightedConnectors.length).toBeGreaterThan(0);
   });
 
+  test.each([7, 11, 17, 23])("path-level elite constraints stay bounded for generated acts at seed %s", (seed) => {
+    const content = createSeededContent(seed, "warrior");
+    const expected = [
+      { minEliteCount: 0, maxEliteCount: 2 },
+      { minEliteCount: 1, maxEliteCount: 2 },
+      { minEliteCount: 1, maxEliteCount: 3 },
+    ];
+
+    content.acts.forEach((act, index) => {
+      const profile = expected[index];
+      const pathStats = collectMapPathStats(act.map);
+      const eliteCounts = pathStats.map((path) => path.eliteCount);
+      const easyPaths = pathStats.filter((path) => path.eliteCount === profile.minEliteCount);
+      const hardPaths = pathStats.filter((path) => path.eliteCount === profile.maxEliteCount);
+      const maxConsecutive = Math.max(...pathStats.map((path) => path.maxConsecutiveElite));
+
+      expect(eliteCounts.length).toBeGreaterThan(0);
+      expect(new Set(eliteCounts).size).toBeGreaterThan(1);
+      expect(Math.min(...eliteCounts)).toBe(profile.minEliteCount);
+      expect(Math.max(...eliteCounts)).toBe(profile.maxEliteCount);
+      expect(maxConsecutive).toBeLessThanOrEqual(1);
+      expect(pathStats.some((path) => path.utilityCount >= 1)).toBe(true);
+    });
+  });
+
   test("recent log view truncates older entries and reports hidden count", () => {
     const view = getRecentLogView(["a", "b", "c", "d", "e", "f"], 4);
 
@@ -469,6 +494,64 @@ function getNextNodes(map: MapNode[], currentNode: MapNode): MapNode[] {
 
 function expandRowCells(row: ReturnType<typeof createMapFloorRows>[number]) {
   return row.flatMap((cell) => [...cell.text].map((text) => ({ text, status: cell.status })));
+}
+
+function collectMapPathStats(map: MapNode[]): Array<{ eliteCount: number; utilityCount: number; maxConsecutiveElite: number }> {
+  const nodeById = new Map(map.map((node) => [node.id, node]));
+  const start = map.find((node) => node.kind === "start");
+  const boss = map.find((node) => node.kind === "boss");
+  if (!start || !boss) {
+    return [];
+  }
+
+  const stats: Array<{ eliteCount: number; utilityCount: number; maxConsecutiveElite: number }> = [];
+  const stack: Array<{
+    node: MapNode;
+    eliteCount: number;
+    utilityCount: number;
+    currentConsecutiveElite: number;
+    maxConsecutiveElite: number;
+  }> = [
+    {
+      node: start,
+      eliteCount: 0,
+      utilityCount: 0,
+      currentConsecutiveElite: 0,
+      maxConsecutiveElite: 0,
+    },
+  ];
+
+  while (stack.length > 0) {
+    const state = stack.pop();
+    if (!state) continue;
+
+    if (state.node.id === boss.id) {
+      stats.push({
+        eliteCount: state.eliteCount,
+        utilityCount: state.utilityCount,
+        maxConsecutiveElite: state.maxConsecutiveElite,
+      });
+      continue;
+    }
+
+    for (const nextId of state.node.nextIds) {
+      const nextNode = nodeById.get(nextId);
+      if (!nextNode) continue;
+      const nextIsElite = nextNode.kind === "elite";
+      const nextIsUtility = nextNode.kind === "rest" || nextNode.kind === "shop";
+      const nextConsecutiveElite = nextIsElite ? state.currentConsecutiveElite + 1 : 0;
+
+      stack.push({
+        node: nextNode,
+        eliteCount: state.eliteCount + (nextIsElite ? 1 : 0),
+        utilityCount: state.utilityCount + (nextIsUtility ? 1 : 0),
+        currentConsecutiveElite: nextConsecutiveElite,
+        maxConsecutiveElite: Math.max(state.maxConsecutiveElite, nextConsecutiveElite),
+      });
+    }
+  }
+
+  return stats;
 }
 
 const sampleMap = sampleContent.acts[0]!.map;

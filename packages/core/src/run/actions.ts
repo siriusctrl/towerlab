@@ -1,14 +1,14 @@
-import { REST_HEAL_RATIO, SHOP_CARD_PRICE, SHOP_CARD_REMOVE_PRICE } from "../constants.js";
+import { REST_HEAL_RATIO } from "../constants.js";
 import { finishCombat, resolveEnemyTurn, startPlayerTurn } from "../combat.js";
 import { enterNode } from "../node.js";
 import { finishNode } from "../progression.js";
 import { drawCards } from "../rng.js";
+import { buildShopRemovableDeckIndices, getDeckRemovalPrice } from "../shop.js";
 import {
   applyDamageToEnemy,
   applyStatus,
   appendLog,
   assertNever,
-  buildRemovableDeckIndices,
   buildUpgradableDeckIndices,
   computeAttackDamage,
   createCardInstance,
@@ -417,13 +417,14 @@ function buyShop(content: RunContent, state: RunState, saleIndex: number): RunSt
     throw new Error("shop state is missing");
   }
 
-  const cardId = shop.forSale[saleIndex];
+  const offer = shop.forSale[saleIndex];
+  const cardId = offer?.cardId;
 
   if (!cardId) {
     throw new Error(`shop card index ${saleIndex} is not available`);
   }
 
-  const price = Math.max(1, SHOP_CARD_PRICE - getRelicValue(content, state, "shopDiscount"));
+  const price = offer.price;
 
   if (state.gold < price) {
     throw new Error(`Need ${price} gold to buy ${getCard(content, cardId).name}`);
@@ -441,7 +442,7 @@ function buyShop(content: RunContent, state: RunState, saleIndex: number): RunSt
       shop: {
         ...shop,
         forSale: shop.forSale.filter((_, index) => index !== saleIndex),
-        removableDeckIndices: buildRemovableDeckIndices(nextDeck),
+        removableDeckIndices: buildShopRemovableDeckIndices(nextDeck, shop.removalsThisShop),
       },
     },
     { type: "shopCardBought", cardId, gold: price },
@@ -469,8 +470,10 @@ function removeDeckCard(content: RunContent, state: RunState, deckIndex: number)
     throw new Error(`deck index ${deckIndex} cannot be removed now`);
   }
 
-  if (state.gold < SHOP_CARD_REMOVE_PRICE) {
-    throw new Error(`Need ${SHOP_CARD_REMOVE_PRICE} gold to remove ${getCard(content, deckCard.cardId).name}`);
+  const removeCost = getDeckRemovalPrice(state.totalDeckRemovals);
+
+  if (state.gold < removeCost) {
+    throw new Error(`Need ${removeCost} gold to remove ${getCard(content, deckCard.cardId).name}`);
   }
 
   const nextDeck = [...state.deck];
@@ -486,13 +489,15 @@ function removeDeckCard(content: RunContent, state: RunState, deckIndex: number)
     {
       ...state,
       deck: nextDeck,
-      gold: state.gold - SHOP_CARD_REMOVE_PRICE,
+      gold: state.gold - removeCost,
+      totalDeckRemovals: state.totalDeckRemovals + 1,
       shop: {
         ...shop,
-        removableDeckIndices: buildRemovableDeckIndices(nextDeck),
+        removableDeckIndices: buildShopRemovableDeckIndices(nextDeck, shop.removalsThisShop + 1),
+        removalsThisShop: shop.removalsThisShop + 1,
       },
     },
-    { type: "deckCardRemoved", cardId: removedCard.cardId, upgraded: removedCard.upgraded, gold: SHOP_CARD_REMOVE_PRICE },
+    { type: "deckCardRemoved", cardId: removedCard.cardId, upgraded: removedCard.upgraded, gold: removeCost },
   );
 }
 

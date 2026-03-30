@@ -18,7 +18,6 @@ import type {
 } from "@towerlab/core";
 
 import {
-  cardDescriptions,
   cardKeywords,
   cardNames,
   characterNames,
@@ -122,7 +121,10 @@ export function localizeObservation(
     return {
       ...shopObservation,
       relics,
-      forSale: localizeObservedCards(shopObservation.forSale as (string | CardLike)[], locale, content),
+      forSale: shopObservation.forSale.map((offer) => ({
+        ...offer,
+        card: localizeCardDefinition(offer.card as CardLike, locale, content),
+      })),
       removableDeckCards: shopObservation.removableDeckCards.map((entry) => ({
         ...entry,
         card: localizeCardDefinition(entry.card as CardLike, locale, content),
@@ -370,8 +372,12 @@ export function formatBlessingDescription(content: RunContent, blessing: Blessin
     return formatText(locale, "blessingMaxHpDescription", { amount: blessing.value ?? 0 });
   }
 
-  const cardDescription = blessing.cardId ? readCardDescription(content, blessing.cardId) : null;
-  return cardDescription ? localizeCardDescription(cardDescription, locale) : "";
+  if (!blessing.cardId) {
+    return "";
+  }
+
+  const resolvedCard = resolveCardDefinition({ id: blessing.cardId }, content);
+  return formatStructuredDescription(resolvedCard, locale);
 }
 
 export function formatBlessingAcquisition(blessing: BlessingDefinition, locale: Locale): string | null {
@@ -525,9 +531,7 @@ export function localizeCardDefinition(
 
   const localizedName = locale === "en" ? resolved.name : localizeCardName(resolved.name, locale);
   const suffixName = resolved.upgraded && !/[+＋]$/.test(localizedName) ? `${localizedName}+` : localizedName;
-  const localizedDescription = locale === "en"
-    ? resolved.description
-    : localizeCardDescription(resolved.description, locale);
+  const localizedDescription = formatStructuredDescription(resolved, locale);
 
   return {
     ...resolved,
@@ -540,6 +544,47 @@ export function localizeCardDefinition(
 }
 
 export function formatCardEffectLines(card: CliCardDefinition, locale: Locale): string[] {
+  const structuredLines = buildStructuredEffectLines(card, locale);
+  const fallbackLines = buildFallbackEffectLines(card.description, locale);
+  if (fallbackLines.length === 0) {
+    return structuredLines;
+  }
+
+  if (structuredLines.length === 0) {
+    return fallbackLines;
+  }
+
+  const structuredSignatures = new Set(structuredLines.map((line) => normalizeComparableText(line)));
+  const keywordSignatures = new Set(
+    (card.keywords ?? []).map((keyword) => normalizeComparableText(localizeCardKeyword(keyword, locale))),
+  );
+  const deduplicatedFallback: string[] = [];
+
+  for (const fallbackLine of fallbackLines) {
+    const normalizedFallback = normalizeComparableText(fallbackLine);
+    if (!normalizedFallback) {
+      continue;
+    }
+
+    if (structuredSignatures.has(normalizedFallback)) {
+      continue;
+    }
+
+    if (keywordSignatures.has(normalizedFallback)) {
+      continue;
+    }
+
+    deduplicatedFallback.push(fallbackLine);
+  }
+
+  if (deduplicatedFallback.length > 0) {
+    return [...structuredLines, ...deduplicatedFallback];
+  }
+
+  return structuredLines;
+}
+
+function buildStructuredEffectLines(card: CliCardDefinition, locale: Locale): string[] {
   const lines: string[] = [];
 
   if (card.damage != null && card.damage !== 0) {
@@ -577,19 +622,56 @@ export function formatCardEffectLines(card: CliCardDefinition, locale: Locale): 
   if (card.poisonMultiplier != null && card.poisonMultiplier !== 1) {
     lines.push(locale === "zh" ? "将中毒层数翻倍。" : "Multiply Poison by 2.");
   }
+  return lines;
+}
 
-  if (lines.length > 0) {
-    const normalizedDescription = normalizeComparableText(card.description);
-    const normalizedLines = normalizeComparableText(lines.join(" "));
-
-    if (normalizedDescription.length > 0 && normalizedDescription !== normalizedLines) {
-      lines.push(card.description);
-    }
-
-    return lines;
+function buildFallbackEffectLines(description: string, locale: Locale): string[] {
+  if (!description) {
+    return [];
   }
 
-  return card.description ? [card.description] : [];
+  const clauses = description
+    .split(/[.!?。！？；;]+/u)
+    .map((clause) => clause.trim())
+    .filter(Boolean);
+
+  if (clauses.length === 0) {
+    return [];
+  }
+
+  if (locale === "en") {
+    return clauses.map((clause) => `${clause}.`);
+  }
+
+  return clauses.map(translateEnglishClauseToChinese);
+}
+
+function translateEnglishClauseToChinese(clause: string): string {
+  const normalized = clause.replace(/\s+/gu, " ").trim();
+
+  const patterns: Array<[RegExp, (value: string) => string]> = [
+    [/^Deal (\d+) damage$/iu, (value) => `造成 ${value} 点伤害。`],
+    [/^Gain (\d+) block$/iu, (value) => `获得 ${value} 点格挡。`],
+    [/^Draw (\d+) card[s]?$/iu, (value) => `抽 ${value} 张牌。`],
+    [/^Gain (\d+) energy$/iu, (value) => `获得 ${value} 点能量。`],
+    [/^Recover (\d+) HP$/iu, (value) => `恢复 ${value} 点生命。`],
+    [/^Apply (\d+) Weak$/iu, (value) => `施加 ${value} 层虚弱。`],
+    [/^Apply (\d+) Vulnerable$/iu, (value) => `施加 ${value} 层易伤。`],
+    [/^Apply (\d+) Poison$/iu, (value) => `施加 ${value} 层中毒。`],
+    [/^Multiply Poison by 2$/iu, () => "将中毒层数翻倍。"],
+    [/^Exhaust$/iu, () => "消耗。"],
+    [/^Retain$/iu, () => "保留。"],
+    [/^Ethereal$/iu, () => "虚无。"],
+  ];
+
+  for (const [pattern, render] of patterns) {
+    const match = normalized.match(pattern);
+    if (match) {
+      return render(match[1] ?? "");
+    }
+  }
+
+  return `${normalized}。`;
 }
 
 export function localizeObservedCards<T extends readonly (string | CardLike)[]>(
@@ -670,8 +752,9 @@ function localizeCardName(name: string, locale: Locale): string {
   return cardNames[name] ?? name;
 }
 
-function localizeCardDescription(description: string, locale: Locale): string {
-  return locale === "zh" ? (cardDescriptions[description] ?? description) : description;
+function formatStructuredDescription(card: CardLike, locale: Locale): string {
+  const lines = formatCardEffectLines(card as CliCardDefinition, locale);
+  return joinCardTextLines(lines, locale);
 }
 
 function localizeEnemyName(name: string, locale: Locale): string {
@@ -695,7 +778,16 @@ function localizeRestOptionLabel(label: string, locale: Locale): string {
 }
 
 function localizeRestOptionDescription(description: string, locale: Locale): string {
-  return locale === "zh" ? (restOptionDescriptions[description] ?? description) : description;
+  if (locale !== "zh") {
+    return description;
+  }
+
+  const healMatch = description.match(/^Heal (\d+) HP\.$/u);
+  if (healMatch) {
+    return `恢复 ${healMatch[1]} 点生命。`;
+  }
+
+  return restOptionDescriptions[description] ?? description;
 }
 
 function formatLogEffects(effects: LogEffect[], locale: Locale): string[] {
@@ -837,10 +929,6 @@ function resolveCardKeywords(card: CardLike): CardKeyword[] {
 }
 
 
-function readCardDescription(content: RunContent, cardId: string): string | null {
-  return content.cards[cardId]?.description ?? content.cards[cardId]?.base.description ?? null;
-}
-
 function normalizeText(value: string): string {
   return value
     .replace(/\s+/gu, " ")
@@ -849,7 +937,11 @@ function normalizeText(value: string): string {
 }
 
 function normalizeComparableText(value: string): string {
-  return normalizeText(value).replace(/\s+/gu, "");
+  return normalizeText(value).replace(/\./gu, "").replace(/\s+/gu, "");
+}
+
+function joinCardTextLines(lines: string[], locale: Locale): string {
+  return lines.join(locale === "zh" ? "" : " ");
 }
 
 function readEnemyName(content: RunContent, enemyId: string): string {
