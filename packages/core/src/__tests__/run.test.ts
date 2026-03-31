@@ -77,6 +77,13 @@ const content: RunContent = {
       kind: "maxHp",
       value: 1,
     },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
   },
   character: createCharacter(
     ["strike", "strike", "strike", "defend", "defend", "defend", "surge", "surge", "heavy", "heavy"],
@@ -127,12 +134,19 @@ describe("card effects", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
       },
       character: createCharacter(["drawShift", "drawShift", "drawShift", "drawShift", "drawShift"]),
       acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
@@ -170,12 +184,19 @@ describe("card effects", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
       },
       character: createCharacter(["charge", "charge", "charge", "charge", "charge"]),
       acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
@@ -212,12 +233,19 @@ describe("card effects", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
       },
       character: createCharacter(["medicate", "medicate", "medicate", "medicate", "medicate"]),
       acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
@@ -253,12 +281,19 @@ describe("card effects", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
       },
       character: createCharacter(["burn", "burn", "burn", "burn", "burn"]),
       acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
@@ -305,12 +340,19 @@ describe("card effects", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
       },
       character: createCharacter(["hold", "strike", "strike", "strike", "strike", "strike"]),
       acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
@@ -364,12 +406,19 @@ describe("card effects", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
       },
       character: createCharacter(["flare", "strike", "strike", "strike", "strike"]),
       acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
@@ -414,12 +463,19 @@ describe("card effects", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
       },
       character: createCharacter(["venom", "strike", "strike", "strike", "strike"]),
       acts: [createAct([{ id: "gate", kind: "battle", encounterId: "drone", nextIds: [] }])],
@@ -500,12 +556,19 @@ describe("run progression", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
       },
       enemies: {
         guard: {
@@ -613,12 +676,19 @@ describe("post-combat rewards", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
       },
       enemies: {
         patrol: {
@@ -664,12 +734,19 @@ describe("post-combat rewards", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
       },
       enemies: {
         patrol: {
@@ -722,12 +799,19 @@ describe("shop behavior", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
       },
       enemies: {
         vendor: {
@@ -803,12 +887,19 @@ describe("relic systems", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
         bucklerFrame: {
           id: "bucklerFrame",
           name: "Buckler Frame",
@@ -860,12 +951,19 @@ describe("relic systems", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
         reinforcedFrame: {
           id: "reinforcedFrame",
           name: "Reinforced Frame",
@@ -903,12 +1001,19 @@ describe("relic systems", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
         combatFocus: {
           id: "combatFocus",
           name: "Combat Focus",
@@ -963,6 +1068,13 @@ describe("relic systems", () => {
           kind: "combatStartDraw",
           value: 2,
         },
+        openingToken: {
+          id: "openingToken",
+          name: "Opening Token",
+          description: "Test blessing relic.",
+          kind: "restHealBonus",
+          value: 1,
+        },
       },
       enemies: {
         sentinel: {
@@ -1002,6 +1114,13 @@ describe("relic systems", () => {
           kind: "combatStartPoison",
           value: 2,
         },
+        openingToken: {
+          id: "openingToken",
+          name: "Opening Token",
+          description: "Test blessing relic.",
+          kind: "restHealBonus",
+          value: 1,
+        },
       },
       enemies: {
         sentinel: {
@@ -1023,7 +1142,7 @@ describe("relic systems", () => {
     expect(state.combat?.enemy.status.poison).toBe(2);
 
     state = winCurrentCombat(relicContent, state);
-    expect(state.hp).toBe(65);
+    expect(state.hp).toBe(64);
   });
 
   it("applies rest healing bonus and shop discount through relics", () => {
@@ -1033,12 +1152,19 @@ describe("relic systems", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
         medicinePack: {
           id: "medicinePack",
           name: "Medicine Pack",
@@ -1069,7 +1195,7 @@ describe("relic systems", () => {
     restRun = applyAction(restContent, restRun, { type: "choosePath", nodeId: "camp" });
     restRun = { ...restRun, hp: 10 };
     restRun = applyAction(restContent, restRun, { type: "chooseRest", optionId: "recover" });
-    expect(restRun.hp).toBe(37);
+    expect(restRun.hp).toBe(38);
 
     const discountContent: RunContent = {
       cards: {
@@ -1077,12 +1203,19 @@ describe("relic systems", () => {
       },
       relics: {
         starterCharm: {
-          id: "starterCharm",
-          name: "Starter Charm",
-          description: "Starting relic for tests.",
-          kind: "maxHp",
-          value: 1,
-        },
+      id: "starterCharm",
+      name: "Starter Charm",
+      description: "Starting relic for tests.",
+      kind: "maxHp",
+      value: 1,
+    },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
         merchantTag: {
           id: "merchantTag",
           name: "Merchant Tag",
@@ -1118,6 +1251,22 @@ describe("relic systems", () => {
 
     const bought = applyAction(discountContent, shopRun, { type: "buyShop", saleIndex: 0 });
     expect(bought.gold).toBe(shopRun.gold - 11);
+  });
+
+  it("validates blessing relic pools even when the current seed does not roll the bad entry", () => {
+    const invalidContent: RunContent = {
+      ...content,
+      character: {
+        ...content.character,
+        blessingRelicPools: {
+          act1: ["openingToken", "missingBlessingRelic"],
+          act2: ["openingToken"],
+          act3: ["openingToken"],
+        },
+      },
+    };
+
+    expect(() => createRun(invalidContent, 7)).toThrow("unknown relic: missingBlessingRelic");
   });
 });
 
@@ -1227,7 +1376,7 @@ function createAct(map: MapNode[]) {
   return {
     id: "act-1",
     map: [{ id: "start", kind: "start", nextIds: [map[0]!.id] }, ...map],
-    blessings: [{ id: "act-1-heal", kind: "heal" as const, value: 1 }],
+    blessings: [{ id: "act-1-heal", kind: "relic" as const, relicId: "openingToken" }],
   };
 }
 
@@ -1248,6 +1397,7 @@ function createCharacter(
     starterDeck,
     startingRelicId,
     blessingCardPools: { act1: [blessingCard], act2: [blessingCard], act3: [blessingCard] },
+    blessingRelicPools: { act1: ["openingToken"], act2: ["openingToken"], act3: ["openingToken"] },
     rewardCardPools: { common: rewardPool, rare: [], epic: [] },
     shopCardPools: { common: shopPool, rare: [], epic: [] },
     relicPools: { elite: [], boss: [] },

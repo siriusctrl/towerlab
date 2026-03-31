@@ -7,6 +7,7 @@ import {
   formatCardEffectLines,
   formatCombatStatus,
   formatNodeLabel,
+  formatPassiveEffect,
   formatText,
   type CliCardDefinition,
   localizeCardDefinition,
@@ -120,6 +121,43 @@ export function StatusBar({
         </Text>
       ) : null}
     </Box>
+  );
+}
+
+export function CombatEffectsPanel({
+  effects,
+  locale,
+}: {
+  effects: ReadonlyArray<{ kind: string; value: number }>;
+  locale: Locale;
+}) {
+  if (effects.length === 0) {
+    return null;
+  }
+
+  return (
+    <Text>
+      <Text bold color="yellow">{text(locale, "powers")}: </Text>
+      <Text dimColor>{effects.map((effect) => formatPassiveEffect(effect as never, locale)).join(" · ")}</Text>
+    </Text>
+  );
+}
+
+export function CombatEffectsSummary({
+  effects,
+  locale,
+}: {
+  effects: ReadonlyArray<{ kind: string; value: number }>;
+  locale: Locale;
+}) {
+  if (effects.length === 0) {
+    return null;
+  }
+
+  return (
+    <Text dimColor>
+      {text(locale, "powers")}: {effects.map((effect) => formatPassiveEffect(effect as never, locale)).join(" · ")}
+    </Text>
   );
 }
 
@@ -274,9 +312,12 @@ export function PhaseBody({
           const blessingCard = blessing.cardId
             ? formatBlessingCard(content, blessing.cardId, blessing.upgraded, locale)
             : null;
+          const blessingRelic = blessing.relicId ? content.relics[blessing.relicId] : null;
           const title = blessingCard
             ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}${localizeCardRarityBadge(blessingCard.rarity, locale)} [${blessingCard.cost}] ${formatBlessingName(content, blessing, locale)}`
-            : formatBlessingName(content, blessing, locale);
+            : blessingRelic
+              ? `${text(locale, "blessingRelicTitleLabel")}${labelSuffix}${formatBlessingName(content, blessing, locale)}`
+              : formatBlessingName(content, blessing, locale);
 
           return (
             <Box key={blessing.id} flexDirection="column">

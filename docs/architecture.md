@@ -15,6 +15,7 @@ Responsibilities:
 - blessing, combat, map, rest, reward, shop, victory, and defeat transitions
 - stable per-copy card instances and card-upgrade transitions
 - relic application and deterministic effects
+- deterministic combat passives from cards and relics
 - structured `LogEvent[]` recording for state and observation
 - pure observation shaping
 - replay from seed plus ordered action history
@@ -28,10 +29,11 @@ Responsibilities:
 - card definitions
 - per-character typed data modules for starter decks, pools, cards, and relics
 - structured card keywords and effect metadata
+- structured passive-effect metadata for build-defining cards and blessing relics
 - upgraded card stats and per-copy upgrade previews
 - relic definitions
 - enemy definitions
-- per-character starter decks, blessing pools, reward pools, and shop pools
+- per-character starter decks, blessing card pools, blessing relic pools, reward pools, and shop pools
 - per-character relic pools
 - act configuration and seeded tower map generation
 - path-profile constraints for elite risk pacing across complete start-to-boss routes

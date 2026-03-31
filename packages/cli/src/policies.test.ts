@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { sampleContent } from "@towerlab/content";
-import { applyAction, createRun, legalActions, observeRun, type RunAction, type RunState } from "@towerlab/core";
+import { applyAction, createRun, legalActions, observeRun, type RunAction, type RunContent, type RunState } from "@towerlab/core";
 
 import { BASELINE_POLICY_NAMES, choosePolicyAction, getBaselinePolicy } from "./policies.js";
 
@@ -57,6 +57,14 @@ describe("baseline policies", () => {
     expect(state.phase).toBe("blessing");
   });
 
+  it("heuristic can prefer a relic blessing over weak card blessings", () => {
+    const content = createBlessingPolicyContent();
+    const state = createRun(content, 7);
+    const action = choosePolicyAction("heuristic", state, content);
+
+    expect(action).toEqual({ type: "chooseBlessing", blessingId: "opening-relic" });
+  });
+
   it("heuristic prefers the shop route when gold is available", () => {
     const state = gateMapState();
     const action = choosePolicyAction("heuristic", state);
@@ -69,7 +77,7 @@ describe("baseline policies", () => {
   });
 
   it("heuristic removes a starter card in shop before buying", () => {
-    const state = gateShopState();
+    const state = { ...gateShopState(), gold: 12 };
     const action = choosePolicyAction("heuristic", state);
 
     if (action.type !== "removeDeckCard") {
@@ -217,6 +225,66 @@ function findMapStateWithNextKind(kind: string): RunState {
   }
 
   throw new Error(`missing map state with next ${kind} option`);
+}
+
+function createBlessingPolicyContent(): RunContent {
+  return {
+    cards: {
+      strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
+      shrug: { id: "shrug", name: "Shrug", cost: 1, description: "Gain 4 block.", block: 4 },
+      tap: { id: "tap", name: "Tap", cost: 1, description: "Deal 3 damage.", damage: 3 },
+    },
+    relics: {
+      starterCharm: {
+        id: "starterCharm",
+        name: "Starter Charm",
+        description: "Gain 1 max HP.",
+        kind: "maxHp",
+        value: 1,
+      },
+      forgeSigil: {
+        id: "forgeSigil",
+        name: "Forge Sigil",
+        description: "Strike cards deal 2 more damage.",
+        kind: "strikeBonusDamage",
+        value: 2,
+      },
+    },
+    enemies: {
+      scout: {
+        id: "scout",
+        name: "Scout",
+        maxHp: 10,
+        goldReward: 10,
+        intents: [{ kind: "attack", description: "Poke for 2", damage: 2 }],
+      },
+    },
+    character: {
+      id: "test",
+      name: "Test",
+      summary: "Test character.",
+      maxHp: 70,
+      startGold: 0,
+      starterDeck: ["strike", "strike", "strike", "shrug"],
+      startingRelicId: "starterCharm",
+      blessingCardPools: { act1: ["shrug", "tap"], act2: ["shrug"], act3: ["tap"] },
+      blessingRelicPools: { act1: ["forgeSigil"], act2: ["forgeSigil"], act3: ["forgeSigil"] },
+      rewardCardPools: { common: ["shrug"], rare: [], epic: [] },
+      shopCardPools: { common: ["shrug"], rare: [], epic: [] },
+      relicPools: { elite: [], boss: [] },
+    },
+    acts: [
+      {
+        id: "act-1",
+        map: [{ id: "start", kind: "start", nextIds: [] }],
+        blessings: [
+          { id: "opening-relic", kind: "relic", relicId: "forgeSigil" },
+          { id: "opening-card-1", kind: "card", cardId: "shrug" },
+          { id: "opening-card-2", kind: "card", cardId: "tap" },
+        ],
+      },
+    ],
+  };
 }
 
 function advanceOpeningBlessing(state: RunState): RunState {

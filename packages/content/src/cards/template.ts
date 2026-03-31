@@ -1,3 +1,5 @@
+import type { CardKeyword, PassiveEffect } from "@towerlab/core";
+
 export type CardRarity = "common" | "rare" | "epic";
 
 export type CardTemplate = {
@@ -5,7 +7,8 @@ export type CardTemplate = {
   name: string;
   cost: number;
   description: string;
-  keywords?: Array<"exhaust" | "retain" | "ethereal">;
+  keywords?: CardKeyword[];
+  passives?: PassiveEffect[];
   damage?: number;
   block?: number;
   draw?: number;

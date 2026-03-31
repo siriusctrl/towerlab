@@ -34,11 +34,6 @@ type PathConstraintEvaluation = {
   score: number;
 };
 
-type BlessingUtilityTemplate = {
-  id: string;
-  kind: "heal" | "gold" | "maxHp";
-  value: number;
-};
 
 export function generateActs(seed: number, character: CharacterDefinition): TowerAct[] {
   let rng = normalizeSeed(seed);
@@ -196,10 +191,10 @@ function generateAct(
 }
 
 function createActBlessings(actNumber: number, character: CharacterDefinition, seed: number): { blessings: TowerAct["blessings"]; rng: number } {
-  const utilityPick = pickFrom(getActBlessingUtilities(actNumber), seed);
-  const utility = utilityPick.value;
+  const relicPool = getBlessingRelicPoolForAct(character, actNumber);
+  const relicPick = pickFrom(relicPool, seed);
   const cardPool = getBlessingCardPoolForAct(character, actNumber);
-  const shuffledCards = shuffle(cardPool, utilityPick.rng);
+  const shuffledCards = shuffle(cardPool, relicPick.rng);
   const firstCardId = shuffledCards.items[0]!;
   const secondCardId = shuffledCards.items[1] ?? shuffledCards.items[0]!;
   const upgradedFlags = actNumber === 1 ? [false, false] : actNumber === 2 ? [false, true] : [true, true];
@@ -207,9 +202,9 @@ function createActBlessings(actNumber: number, character: CharacterDefinition, s
   return {
     blessings: [
       {
-        id: `act${actNumber}-${utility.id}`,
-        kind: utility.kind,
-        value: utility.value,
+        id: `act${actNumber}-relic-${relicPick.value}`,
+        kind: "relic",
+        relicId: relicPick.value,
       },
       {
         id: `act${actNumber}-card-${firstCardId}${upgradedFlags[0] ? "-up" : ""}`,
@@ -538,30 +533,6 @@ function clampIndex(index: number, count: number): number {
   return Math.max(0, Math.min(count - 1, index));
 }
 
-function getActBlessingUtilities(actNumber: number): BlessingUtilityTemplate[] {
-  if (actNumber === 1) {
-    return [
-      { id: "gold", kind: "gold", value: 35 },
-      { id: "maxhp", kind: "maxHp", value: 7 },
-      { id: "gold-big", kind: "gold", value: 45 },
-    ];
-  }
-
-  if (actNumber === 2) {
-    return [
-      { id: "heal", kind: "heal", value: 18 },
-      { id: "gold", kind: "gold", value: 45 },
-      { id: "maxhp", kind: "maxHp", value: 6 },
-    ];
-  }
-
-  return [
-    { id: "heal", kind: "heal", value: 22 },
-    { id: "gold", kind: "gold", value: 60 },
-    { id: "maxhp", kind: "maxHp", value: 8 },
-  ];
-}
-
 function getBlessingCardPoolForAct(character: CharacterDefinition, actNumber: number): string[] {
   if (actNumber === 1) {
     return character.blessingCardPools.act1;
@@ -572,6 +543,18 @@ function getBlessingCardPoolForAct(character: CharacterDefinition, actNumber: nu
   }
 
   return character.blessingCardPools.act3;
+}
+
+function getBlessingRelicPoolForAct(character: CharacterDefinition, actNumber: number): string[] {
+  if (actNumber === 1) {
+    return character.blessingRelicPools.act1;
+  }
+
+  if (actNumber === 2) {
+    return character.blessingRelicPools.act2;
+  }
+
+  return character.blessingRelicPools.act3;
 }
 
 function buildExtraTransitionCandidates(

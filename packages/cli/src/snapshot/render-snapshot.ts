@@ -8,6 +8,7 @@ import {
   formatCardEffectLines,
   formatCombatStatus,
   formatNodeLabel,
+  formatPassiveEffects,
   formatText,
   formatLogEntries,
   localizeCardDefinition,
@@ -75,6 +76,10 @@ function renderObservation(content: RunContent, observation: Observation, locale
       lines.push(`${text(locale, "status")}: ${playerStatus}`);
     }
 
+    if (observation.activePassives.length > 0) {
+      lines.push(`${text(locale, "powers")}: ${formatPassiveEffects(observation.activePassives, locale)}`);
+    }
+
     if (enemyStatus) {
       lines.push(`${text(locale, "enemy")} ${text(locale, "status")}: ${enemyStatus}`);
     }
@@ -90,9 +95,12 @@ function renderObservation(content: RunContent, observation: Observation, locale
       const blessingCard = blessing.cardId
         ? localizeCardDefinition({ id: blessing.cardId, upgraded: blessing.upgraded }, locale, content)
         : null;
+      const blessingRelic = blessing.relicId ? content.relics[blessing.relicId] : null;
       const title = blessingCard
         ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}${localizeCardRarityBadge(blessingCard.rarity, locale)} [${blessingCard.cost}] ${formatBlessingName(content, blessing, locale)}`
-        : formatBlessingName(content, blessing, locale);
+        : blessingRelic
+          ? `${text(locale, "blessingRelicTitleLabel")}${labelSuffix}${formatBlessingName(content, blessing, locale)}`
+          : formatBlessingName(content, blessing, locale);
       lines.push(`${index + 1}. ${title}`);
       if (blessingCard) {
         lines.push(...formatSnapshotKeywordLines(blessingCard, locale, "   "));

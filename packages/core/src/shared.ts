@@ -9,6 +9,8 @@ import type {
   CombatStatus,
   EnemyIntent,
   EnemyState,
+  PassiveEffect,
+  PassiveEffectKind,
   LogEvent,
   MapNode,
   RelicKind,
@@ -135,6 +137,7 @@ export function getCardNumbers(card: CardDefinition, upgraded: boolean): CardNum
     vulnerable: card.vulnerable,
     poison: card.poison,
     poisonMultiplier: card.poisonMultiplier,
+    passives: card.passives,
     exhaust: card.exhaust,
     retain: card.retain,
   };
@@ -156,6 +159,47 @@ export function materializeCardDefinition(card: CardDefinition, upgraded: boolea
     ...getCardNumbers(card, upgraded),
   };
 }
+
+export function addPassiveEffects(base: PassiveEffect[], extra: PassiveEffect[] = []): PassiveEffect[] {
+  const totals = new Map<PassiveEffectKind, number>();
+
+  for (const effect of [...base, ...extra]) {
+    totals.set(effect.kind, (totals.get(effect.kind) ?? 0) + effect.value);
+  }
+
+  return [...totals.entries()]
+    .filter(([, value]) => value !== 0)
+    .map(([kind, value]) => ({ kind, value }));
+}
+
+export function getPassiveEffectValue(effects: PassiveEffect[], kind: PassiveEffectKind): number {
+  return effects.reduce((total, effect) => total + (effect.kind === kind ? effect.value : 0), 0);
+}
+
+export function getCombatPassiveValue(state: RunState, kind: PassiveEffectKind): number {
+  return state.combat ? getPassiveEffectValue(state.combat.passives, kind) : 0;
+}
+
+export function getTotalPassiveValue(content: RunContent, state: RunState, kind: PassiveEffectKind): number {
+  return getRelicValue(content, state, kind) + getCombatPassiveValue(state, kind);
+}
+
+const COMBAT_PASSIVE_KINDS: PassiveEffectKind[] = [
+  "retainBlock",
+  "strikeBonusDamage",
+  "exhaustBlock",
+  "attackPoison",
+  "debuffBonusDamage",
+  "debuffDraw",
+];
+
+export function listActiveCombatPassives(content: RunContent, state: RunState): PassiveEffect[] {
+  return COMBAT_PASSIVE_KINDS.flatMap((kind) => {
+    const value = getTotalPassiveValue(content, state, kind);
+    return value > 0 ? [{ kind, value }] : [];
+  });
+}
+
 
 export function materializeCardInstance(content: RunContent, instance: CardInstance): ResolvedCard {
   return materializeCardDefinition(getCard(content, instance.cardId), instance.upgraded, instance.instanceId);

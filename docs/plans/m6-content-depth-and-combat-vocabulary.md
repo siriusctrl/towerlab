@@ -39,6 +39,8 @@ The following M6 work is already on `main`:
 - campfires now present `Recover` or `Upgrade`, with recovery based on max-HP percentage rather than a flat amount
 - character content is split into per-character typed data modules instead of one large mixed content file
 - upgrade previews now expose the strengthened card directly in the campfire inspection flow
+- blessings now skew toward relic buffs and archetype-starting cards instead of flat gold / max-HP picks
+- build-defining cards and blessing relics can establish structured combat passives that show up in the active combat UI
 - cards render as:
   - name + cost
   - keyword lines
@@ -81,7 +83,6 @@ Already landed:
 - `keywords: ["retain"]`
 
 Planned next candidates, in order of pressure:
-- `ethereal`
 - lightweight discard interactions
 - heavier persistent or conditional effects only if the content pressure justifies the state cost
 
@@ -100,6 +101,7 @@ Included relic work:
 - broaden character-specific relics
 - broaden boss relic choices
 - extend relic effect kinds only when they express real gameplay differences
+- allow blessing relics to act as early run-shaping archetype starters rather than only late-run reward items
 
 Expected effect areas:
 - combat start economy

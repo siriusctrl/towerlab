@@ -2,8 +2,28 @@ export type NodeKind = "battle" | "elite" | "rest" | "shop" | "boss" | "start";
 export type RunPhase = "blessing" | "combat" | "map" | "rest" | "reward" | "shop" | "victory" | "defeat";
 export type RestOptionId = "recover" | "upgrade";
 export type CardRarity = "common" | "rare" | "epic";
-export type BlessingKind = "heal" | "gold" | "maxHp" | "card";
+export type BlessingKind = "relic" | "card";
 export type CardKeyword = "exhaust" | "retain" | "ethereal";
+export type PassiveEffectKind =
+  | "combatEnergy"
+  | "combatStartDraw"
+  | "combatStartBlock"
+  | "combatStartPoison"
+  | "maxHp"
+  | "postCombatHeal"
+  | "restHealBonus"
+  | "shopDiscount"
+  | "retainBlock"
+  | "strikeBonusDamage"
+  | "exhaustBlock"
+  | "attackPoison"
+  | "debuffBonusDamage"
+  | "debuffDraw";
+
+export interface PassiveEffect {
+  kind: PassiveEffectKind;
+  value: number;
+}
 
 export interface CombatStatus {
   weak: number;
@@ -28,6 +48,12 @@ export interface BlessingCardPools {
   act3: string[];
 }
 
+export interface BlessingRelicPools {
+  act1: string[];
+  act2: string[];
+  act3: string[];
+}
+
 export interface CharacterDefinition {
   id: string;
   name: string;
@@ -37,6 +63,7 @@ export interface CharacterDefinition {
   starterDeck: string[];
   startingRelicId: string;
   blessingCardPools: BlessingCardPools;
+  blessingRelicPools: BlessingRelicPools;
   rewardCardPools: CardRarityBuckets;
   shopCardPools: CardRarityBuckets;
   relicPools: CharacterRelicPools;
@@ -53,7 +80,7 @@ export interface MapNode {
 export interface BlessingDefinition {
   id: string;
   kind: BlessingKind;
-  value?: number;
+  relicId?: string;
   cardId?: string;
   upgraded?: boolean;
 }
@@ -68,6 +95,7 @@ export interface CardNumbers {
   cost: number;
   description: string;
   keywords?: CardKeyword[];
+  passives?: PassiveEffect[];
   damage?: number;
   block?: number;
   draw?: number;
@@ -123,6 +151,7 @@ export type LogEffect =
   | { type: "weak"; amount: number }
   | { type: "vulnerable"; amount: number }
   | { type: "poison"; amount: number }
+  | { type: "passive"; kind: PassiveEffectKind; value: number }
   | { type: "exhaust" };
 
 export type LogEvent =
@@ -164,15 +193,7 @@ export interface EnemyDefinition {
   intents: EnemyIntent[];
 }
 
-export type RelicKind =
-  | "combatEnergy"
-  | "combatStartDraw"
-  | "combatStartBlock"
-  | "combatStartPoison"
-  | "maxHp"
-  | "postCombatHeal"
-  | "restHealBonus"
-  | "shopDiscount";
+export type RelicKind = PassiveEffectKind;
 
 export interface RelicDefinition {
   id: string;
@@ -212,6 +233,7 @@ export interface CombatState {
   block: number;
   status: CombatStatus;
   turn: number;
+  passives: PassiveEffect[];
 }
 
 export interface RewardState {
@@ -320,6 +342,7 @@ export interface CombatObservation extends ObservationBase {
   baseEnergy: number;
   block: number;
   status: CombatStatus;
+  activePassives: PassiveEffect[];
   hand: ResolvedCard[];
   drawPileCount: number;
   discardPileCount: number;

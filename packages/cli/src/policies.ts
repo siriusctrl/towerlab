@@ -188,7 +188,7 @@ function chooseBestMapAction(
 function chooseBestBlessingAction(
   content: RunContent,
   state: RunState,
-  blessings: Array<{ id: string; kind: string; value?: number; cardId?: string }>,
+  blessings: Array<{ id: string; kind: string; value?: number; cardId?: string; relicId?: string }>,
   actions: RunAction[],
   preferSafety: boolean,
 ): RunAction {
@@ -391,7 +391,7 @@ function isStarterCard(content: RunContent, cardId: string): boolean {
 function scoreBlessing(
   content: RunContent,
   state: RunState,
-  blessing: { kind: string; value?: number; cardId?: string },
+  blessing: { kind: string; value?: number; cardId?: string; relicId?: string },
   preferSafety: boolean,
 ): number {
   if (blessing.kind === "card" && blessing.cardId) {
@@ -402,6 +402,10 @@ function scoreBlessing(
     }
 
     return scoreRewardCard(content, card.id, card.damage ?? 0, card.block ?? 0, preferSafety) + 30;
+  }
+
+  if (blessing.kind === "relic" && blessing.relicId) {
+    return scoreRelic(content, blessing.relicId, preferSafety) + 30;
   }
 
   if (blessing.kind === "maxHp") {
@@ -419,6 +423,47 @@ function scoreBlessing(
   }
 
   return 0;
+}
+
+function scoreRelic(content: RunContent, relicId: string, preferSafety: boolean): number {
+  const relic = content.relics[relicId];
+
+  if (!relic) {
+    return 0;
+  }
+
+  switch (relic.kind) {
+    case "combatEnergy":
+      return 80 + relic.value * 12;
+    case "combatStartDraw":
+      return 64 + relic.value * 10;
+    case "combatStartBlock":
+      return (preferSafety ? 56 : 44) + relic.value * 6;
+    case "combatStartPoison":
+      return 58 + relic.value * 7;
+    case "maxHp":
+      return 48 + relic.value * 4;
+    case "postCombatHeal":
+      return (preferSafety ? 54 : 38) + relic.value * 5;
+    case "restHealBonus":
+      return (preferSafety ? 42 : 26) + relic.value * 4;
+    case "shopDiscount":
+      return 28 + relic.value * 5;
+    case "retainBlock":
+      return (preferSafety ? 62 : 50) + relic.value * 9;
+    case "strikeBonusDamage":
+      return 66 + relic.value * 8;
+    case "exhaustBlock":
+      return (preferSafety ? 60 : 52) + relic.value * 8;
+    case "attackPoison":
+      return 64 + relic.value * 8;
+    case "debuffBonusDamage":
+      return 68 + relic.value * 8;
+    case "debuffDraw":
+      return 74 + relic.value * 10;
+    default:
+      return 0;
+  }
 }
 
 function scoreUpgrade(

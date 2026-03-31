@@ -89,6 +89,14 @@ function validatePools(content: RunContent): void {
     getCard(content, cardId);
   }
 
+  for (const relicId of [
+    ...content.character.blessingRelicPools.act1,
+    ...content.character.blessingRelicPools.act2,
+    ...content.character.blessingRelicPools.act3,
+  ]) {
+    getRelic(content, relicId);
+  }
+
   for (const act of content.acts) {
     if (act.blessings.length === 0) {
       throw new Error(`act ${act.id} must define at least one blessing`);
@@ -104,14 +112,22 @@ function validatePools(content: RunContent): void {
         continue;
       }
 
-      if (!blessing.value || blessing.value <= 0) {
-        throw new Error(`blessing ${blessing.id} must define a positive value`);
+      if (!blessing.relicId) {
+        throw new Error(`blessing ${blessing.id} must define relicId`);
       }
+
+      getRelic(content, blessing.relicId);
     }
   }
 }
 
 const VALID_RELIC_KINDS: ReadonlySet<RelicKind> = new Set([
+  "retainBlock",
+  "strikeBonusDamage",
+  "exhaustBlock",
+  "attackPoison",
+  "debuffBonusDamage",
+  "debuffDraw",
   "combatEnergy",
   "combatStartDraw",
   "combatStartBlock",

@@ -35,6 +35,9 @@ export const warriorCardIds = [
   "burningBanner",
   "warSpoils",
   "reaper",
+  "forgeDoctrine",
+  "cinderRitual",
+  "bastion",
 ] as const;
 
 export const warriorCardTemplates: Record<string, CardTemplate> = {
@@ -309,4 +312,31 @@ export const warriorCardTemplates: Record<string, CardTemplate> = {
     damage: 10,
     heal: 6,
   },
-};
+  forgeDoctrine: {
+    id: "forgeDoctrine",
+    name: "Forge Doctrine",
+    cost: 1,
+    description: "Your Strike cards deal 4 more damage this combat.",
+    keywords: ["exhaust"],
+    passives: [{ kind: "strikeBonusDamage", value: 4 }],
+    exhaust: true,
+  },
+  cinderRitual: {
+    id: "cinderRitual",
+    name: "Cinder Ritual",
+    cost: 1,
+    description: "Whenever you exhaust a card this combat, gain 4 block.",
+    keywords: ["exhaust"],
+    passives: [{ kind: "exhaustBlock", value: 4 }],
+    exhaust: true,
+  },
+  bastion: {
+    id: "bastion",
+    name: "Bastion",
+    cost: 2,
+    description: "Your block is not removed at end of turn this combat.",
+    keywords: ["exhaust"],
+    passives: [{ kind: "retainBlock", value: 1 }],
+    exhaust: true,
+  },
+  };

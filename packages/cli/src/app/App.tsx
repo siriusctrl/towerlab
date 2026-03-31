@@ -7,6 +7,8 @@ import { DEFAULT_LOCALE, formatLogEntries, localizeCharacterName, localizeObserv
 import { readShopAction, SHOP_BUY_PAGE_SIZE, SHOP_REMOVE_PAGE_SIZE, type ShopMenuMode } from "../shop.js";
 import { getMapCompactLegendLine } from "../view.js";
 import {
+  CombatEffectsPanel,
+  CombatEffectsSummary,
   CharacterSelectScreen,
   Controls,
   COMBAT_HAND_PAGE_SIZE,
@@ -72,7 +74,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const characterName = selectedCharacterId ? localizeCharacterName(selectedCharacterId, locale) : "";
   const compactLegendLine = getMapCompactLegendLine(locale);
   const defaultSidebarWidth = Math.max(32, Math.min(52, Math.max(getTerminalTextWidth(compactLegendLine) + 4, Math.floor(columns * 0.35))));
-  const combatSidebarWidth = Math.max(28, Math.min(40, Math.max(getTerminalTextWidth(compactLegendLine) + 2, Math.floor(columns * 0.28))));
+  const combatSidebarWidth = Math.max(34, Math.min(44, Math.max(getTerminalTextWidth(compactLegendLine) + 4, Math.floor(columns * 0.32))));
   const sidebarWidth = view?.phase === "combat" ? combatSidebarWidth : defaultSidebarWidth;
   const compactMapPhase = view?.phase === "map" && rows <= 24;
   const showSidebar = view ? view.phase !== "map" && rows >= 24 && columns - sidebarWidth >= 48 : false;
@@ -576,6 +578,9 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     <Box flexDirection="column" width={columns} height={rows} overflow="hidden">
       <Box flexDirection="column" flexShrink={0} paddingX={1} overflow="hidden">
         <StatusBar observation={view} locale={locale} characterName={characterName} relicNames={relicNames} hpBarWidth={hpBarWidth} compact={compactMapPhase} />
+        {!showSidebar && view.phase === "combat" ? (
+          <CombatEffectsSummary effects={view.activePassives ?? []} locale={locale} />
+        ) : null}
       </Box>
       {!compactMapPhase ? (
         <Text dimColor wrap="truncate-end">
@@ -663,10 +668,24 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
             paddingLeft={1}
             overflow="hidden"
           >
-            <MapTreeView map={currentMap} observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
-            <Box marginTop={1} flexDirection="column" overflow="hidden">
-              <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
-            </Box>
+            {view.phase === "combat" ? (
+              <>
+                <CombatEffectsPanel effects={view.activePassives ?? []} locale={locale} />
+                <Box marginTop={1} flexDirection="column" overflow="hidden">
+                  <MapTreeView map={currentMap} observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
+                </Box>
+                <Box marginTop={1} flexDirection="column" overflow="hidden">
+                  <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
+                </Box>
+              </>
+            ) : (
+              <>
+                <MapTreeView map={currentMap} observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
+                <Box marginTop={1} flexDirection="column" overflow="hidden">
+                  <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
+                </Box>
+              </>
+            )}
           </Box>
         ) : null}
       </Box>

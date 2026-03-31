@@ -30,6 +30,10 @@ export const hunterCardIds = [
   "glassKnife",
   "adrenaline",
   "finisher",
+  "markedShot",
+  "nightbrew",
+  "markedQuarry",
+  "cruelTutelage",
 ] as const;
 
 export const hunterCardTemplates: Record<string, CardTemplate> = {
@@ -265,4 +269,39 @@ export const hunterCardTemplates: Record<string, CardTemplate> = {
     description: "Deal 16 damage.",
     damage: 16,
   },
-};
+  markedShot: {
+    id: "markedShot",
+    name: "Marked Shot",
+    cost: 1,
+    description: "Deal 6 damage. Apply 1 Vulnerable.",
+    damage: 6,
+    vulnerable: 1,
+  },
+  nightbrew: {
+    id: "nightbrew",
+    name: "Nightbrew",
+    cost: 1,
+    description: "Your attacks apply 2 Poison this combat.",
+    keywords: ["exhaust"],
+    passives: [{ kind: "attackPoison", value: 2 }],
+    exhaust: true,
+  },
+  markedQuarry: {
+    id: "markedQuarry",
+    name: "Marked Quarry",
+    cost: 1,
+    description: "Your attacks deal 4 more damage to debuffed enemies this combat.",
+    keywords: ["exhaust"],
+    passives: [{ kind: "debuffBonusDamage", value: 4 }],
+    exhaust: true,
+  },
+  cruelTutelage: {
+    id: "cruelTutelage",
+    name: "Cruel Tutelage",
+    cost: 1,
+    description: "Whenever you apply Weak, Vulnerable, or Poison this combat, draw 1 card.",
+    keywords: ["exhaust"],
+    passives: [{ kind: "debuffDraw", value: 1 }],
+    exhaust: true,
+  },
+  };

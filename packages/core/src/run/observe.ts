@@ -1,6 +1,6 @@
 import { REST_HEAL_RATIO, REST_OPTION_IDS, STARTING_ENERGY } from "../constants.js";
 import { getDeckRemovalPrice, getRemainingDeckRemovals } from "../shop.js";
-import { getAct, getCombat, getCurrentIntent, getNode, getRelicValue, materializeCardDefinition, materializeCardInstance } from "../shared.js";
+import { getAct, getCombat, getCurrentIntent, getNode, getRelicValue, listActiveCombatPassives, materializeCardDefinition, materializeCardInstance } from "../shared.js";
 import type { Observation, RewardItemObservation, RunAction, RunContent, RunState } from "../types.js";
 import { getCard, getRelic } from "../validate.js";
 
@@ -32,6 +32,7 @@ export function observeRun(content: RunContent, state: RunState): Observation {
       baseEnergy: STARTING_ENERGY + getRelicValue(content, state, "combatEnergy"),
       block: combat.block,
       status: combat.status,
+      activePassives: listActiveCombatPassives(content, state),
       hand: combat.hand.map((card) => materializeCardInstance(content, card)),
       drawPileCount: combat.drawPile.length,
       discardPileCount: combat.discardPile.length,

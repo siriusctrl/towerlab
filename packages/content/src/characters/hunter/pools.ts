@@ -18,9 +18,10 @@ export const hunterRewardCardPools: CardRarityBuckets = {
     "slice",
     "dodge",
     "survivor",
+    "markedShot",
   ],
-  rare: ["outmaneuver", "legSweep", "dash", "predator", "cripplingCloud", "catalyst", "piercingWail", "bouncingFlask", "heelHook", "deadlyTactics"],
-  epic: ["glassKnife", "adrenaline", "finisher"],
+  rare: ["outmaneuver", "legSweep", "dash", "predator", "cripplingCloud", "catalyst", "piercingWail", "bouncingFlask", "heelHook", "deadlyTactics", "nightbrew", "markedQuarry"],
+  epic: ["glassKnife", "adrenaline", "finisher", "cruelTutelage"],
 };
 
 export const hunterShopCardPools: CardRarityBuckets = {

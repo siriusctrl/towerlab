@@ -1,4 +1,4 @@
-import type { BlessingCardPools } from "@towerlab/core";
+import type { BlessingCardPools, BlessingRelicPools } from "@towerlab/core";
 
 export const hunterBlessingCardPools: BlessingCardPools = {
   act1: [
@@ -6,18 +6,18 @@ export const hunterBlessingCardPools: BlessingCardPools = {
     "backflip",
     "terror",
     "escapePlan",
-    "flyingKnee",
-    "quickSlash",
-    "poisonedStab",
+    "nightbrew",
+    "markedQuarry",
+    "cruelTutelage",
   ],
   act2: [
     "outmaneuver",
     "legSweep",
     "dash",
     "catalyst",
-    "piercingWail",
     "bouncingFlask",
-    "heelHook",
+    "markedShot",
+    "nightbrew",
   ],
   act3: [
     "predator",
@@ -25,6 +25,13 @@ export const hunterBlessingCardPools: BlessingCardPools = {
     "adrenaline",
     "glassKnife",
     "finisher",
-    "deadlyTactics",
+    "cruelTutelage",
+    "markedQuarry",
   ],
+};
+
+export const hunterBlessingRelicPools: BlessingRelicPools = {
+  act1: ["fangCharm", "markedScope", "dirtyLedger"],
+  act2: ["viperSeal", "quarryMap", "shadowLedger"],
+  act3: ["venomScriptRelic", "executionMark", "assassinNotebook"],
 };

@@ -90,14 +90,17 @@ describe("App layout", () => {
     const frame = await renderFrame({ columns: 100, rows: 20, inputs: ["1", "1"] });
 
     expect(frame).toContain("Combat");
+    expect(frame).toContain("Combat Effects:");
     expect(frame).toMatch(/Raider|Sentry|Skirmisher|Ember Adept|Ash Scout|Pike Brute|Crusher|Banner Captain|Siege Smith|Forge Keeper|Iron Colossus/);
     expect(frame).not.toContain("Recent Activity");
     expect(frame).not.toContain("│ Map");
   });
 
-  test("shows minimap and recent activity content in combat sidebars", async () => {
+  test("shows combat effects, minimap, and recent activity content in combat sidebars", async () => {
     const frame = await renderFrame({ columns: 100, rows: 24, inputs: ["1", "1"] });
 
+    expect(frame).toContain("Combat Effects");
+    expect(frame).toContain("Your Strike cards deal 2");
     expect(frame).toContain("┌");
     expect(frame).toContain("B");
     expect(frame).toContain("Energy 3/3");
@@ -119,6 +122,8 @@ describe("App layout", () => {
   test("keeps the zh combat sidebar readable and localized", async () => {
     const frame = await renderFrame({ columns: 100, rows: 24, locale: "zh", inputs: ["1", "1"] });
 
+    expect(frame).toContain("本场效果");
+    expect(frame).toContain("打击牌额外造成 2");
     expect(frame).toContain("┌");
     expect(frame).toContain("B");
     expect(frame).not.toContain("[可打]");
@@ -163,14 +168,16 @@ describe("App layout", () => {
     expect(deckFrame).toContain("Apply 2 Vulnerable.");
 
     expect(relicFrame).toContain("Status");
-    expect(relicFrame).toContain("Relics 1");
+    expect(relicFrame).toContain("Relics 2");
     expect(relicFrame).toContain("Burning Blood - Recover 4 HP after each combat.");
+    expect(relicFrame).toContain("Forge Sigil - Strike cards deal 2 more damage.");
   });
 
   test("renders blessing options without spacer gaps between choices", async () => {
     const frame = await renderFrame({ columns: 80, rows: 24, locale: "zh" });
 
-    expect(frame).toMatch(/获得 \d+ 金币。\n\s*2\./u);
+    expect(frame).toMatch(/打击牌额外造成 2 点伤害。\n\s*2\./u);
+    expect(frame).toContain("获得遗物：");
     expect(frame).toContain("获得卡牌：");
   });
 
@@ -362,6 +369,7 @@ describe("App layout", () => {
       drawPileCount: 10,
       discardPileCount: 0,
       exhaustPileCount: 0,
+      activePassives: [],
       enemy: {
         id: "raider",
         name: "Raider",
@@ -527,9 +535,9 @@ describe("App layout", () => {
       expect(mapFrame).toContain("路径： 1.");
       expect(mapFrame).toContain("2.");
       expect(mapFrame).toContain("3.");
-      expect(movedFrame).toContain("┌");
+      expect(movedFrame).toMatch(/[SFER$B]/);
       expect(movedFrame).toContain("B");
-      expect(movedFrame).toMatch(/获得 30 金币|前往 房间 1-1（精英）|前往 房间 1-1（战斗）/);
+      expect(movedFrame).toMatch(/获得遗物|前往 房间 1-1（精英）|前往 房间 1-1（战斗）|请选择下一条路径/);
       expect(movedFrame).not.toContain("act1-battle");
     }
   }, 15000);

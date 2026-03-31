@@ -15,6 +15,8 @@ export const warriorRewardCardPools: CardRarityBuckets = {
     "bloodPact",
     "rallyLine",
     "disarm",
+    "forgeDoctrine",
+    "cinderRitual",
   ],
   rare: [
     "uppercut",
@@ -30,7 +32,7 @@ export const warriorRewardCardPools: CardRarityBuckets = {
     "dropkick",
     "ghostlyArmor",
   ],
-  epic: ["impervious", "bludgeon", "executioner", "finalCharge", "burningBanner", "warSpoils", "reaper"],
+  epic: ["impervious", "bludgeon", "executioner", "finalCharge", "burningBanner", "warSpoils", "reaper", "bastion"],
 };
 
 export const warriorShopCardPools: CardRarityBuckets = {

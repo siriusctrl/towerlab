@@ -4,6 +4,8 @@ import type {
   CardInstance,
   CardKeyword,
   CardRarity,
+  PassiveEffect,
+  PassiveEffectKind,
   CombatObservation,
   EnemyIntent,
   LogEffect,
@@ -361,16 +363,8 @@ export function formatNodeLabel(
 }
 
 export function formatBlessingName(content: RunContent, blessing: BlessingDefinition, locale: Locale): string {
-  if (blessing.kind === "heal") {
-    return text(locale, "blessingHealName");
-  }
-
-  if (blessing.kind === "gold") {
-    return text(locale, "blessingGoldName");
-  }
-
-  if (blessing.kind === "maxHp") {
-    return text(locale, "blessingMaxHpName");
+  if (blessing.kind === "relic" && blessing.relicId) {
+    return localizeRelicDefinition(content.relics[blessing.relicId]!, locale).name;
   }
 
   const localizedCard = blessing.cardId
@@ -380,16 +374,8 @@ export function formatBlessingName(content: RunContent, blessing: BlessingDefini
 }
 
 export function formatBlessingDescription(content: RunContent, blessing: BlessingDefinition, locale: Locale): string {
-  if (blessing.kind === "heal") {
-    return formatText(locale, "blessingHealDescription", { amount: blessing.value ?? 0 });
-  }
-
-  if (blessing.kind === "gold") {
-    return formatText(locale, "blessingGoldDescription", { amount: blessing.value ?? 0 });
-  }
-
-  if (blessing.kind === "maxHp") {
-    return formatText(locale, "blessingMaxHpDescription", { amount: blessing.value ?? 0 });
+  if (blessing.kind === "relic" && blessing.relicId) {
+    return localizeRelicDefinition(content.relics[blessing.relicId]!, locale).description;
   }
 
   if (!blessing.cardId) {
@@ -401,11 +387,15 @@ export function formatBlessingDescription(content: RunContent, blessing: Blessin
 }
 
 export function formatBlessingAcquisition(blessing: BlessingDefinition, locale: Locale): string | null {
-  if (blessing.kind !== "card") {
-    return null;
+  if (blessing.kind === "card") {
+    return text(locale, "blessingGainToDeck");
   }
 
-  return text(locale, "blessingGainToDeck");
+  if (blessing.kind === "relic") {
+    return text(locale, "blessingGainRelic");
+  }
+
+  return null;
 }
 
 const nodeKindBadges: Record<Locale, Record<string, string>> = {
@@ -543,6 +533,7 @@ export type CardLike =
       vulnerable?: number;
       poison?: number;
       poisonMultiplier?: number;
+      passives?: PassiveEffect[];
       exhaust?: boolean;
       retain?: boolean;
     };
@@ -653,6 +644,10 @@ function buildStructuredEffectLines(card: CliCardDefinition, locale: Locale): st
     sentences.push(locale === "zh" ? "将中毒层数翻倍。" : "Multiply Poison by 2.");
   }
 
+  if (card.passives?.length) {
+    sentences.push(...card.passives.map((passive) => formatPassiveEffect(passive, locale)));
+  }
+
   if (sentences.length === 0) {
     return [];
   }
@@ -719,6 +714,38 @@ export function localizeObservedCards<T extends readonly (string | CardLike)[]>(
 
 export function localizeCardKeyword(keyword: CardKeyword, locale: Locale): string {
   return cardKeywords[locale][keyword] ?? keyword;
+}
+
+export function formatPassiveEffect(passive: PassiveEffect, locale: Locale): string {
+  if (passive.kind === "retainBlock") {
+    return locale === "zh" ? "本场战斗中，你的格挡不会在回合结束时失去。" : "Your block is not removed at end of turn this combat.";
+  }
+
+  if (passive.kind === "strikeBonusDamage") {
+    return locale === "zh" ? `本场战斗中，你的打击牌额外造成 ${passive.value} 点伤害。` : `Your Strike cards deal ${passive.value} more damage this combat.`;
+  }
+
+  if (passive.kind === "exhaustBlock") {
+    return locale === "zh" ? `本场战斗中，每当你消耗一张牌，获得 ${passive.value} 点格挡。` : `Whenever you exhaust a card this combat, gain ${passive.value} block.`;
+  }
+
+  if (passive.kind === "attackPoison") {
+    return locale === "zh" ? `本场战斗中，你的攻击额外施加 ${passive.value} 层中毒。` : `Your attacks apply ${passive.value} Poison this combat.`;
+  }
+
+  if (passive.kind === "debuffBonusDamage") {
+    return locale === "zh" ? `本场战斗中，你对带减益的敌人额外造成 ${passive.value} 点伤害。` : `Your attacks deal ${passive.value} more damage to debuffed enemies this combat.`;
+  }
+
+  if (passive.kind === "debuffDraw") {
+    return locale === "zh" ? `本场战斗中，每当你施加虚弱、易伤或中毒，抽 ${passive.value} 张牌。` : `Whenever you apply Weak, Vulnerable, or Poison this combat, draw ${passive.value} card${passive.value === 1 ? "" : "s"}.`;
+  }
+
+  return locale === "zh" ? `${passive.kind} ${passive.value}` : `${passive.kind} ${passive.value}`;
+}
+
+export function formatPassiveEffects(passives: PassiveEffect[], locale: Locale): string {
+  return passives.map((passive) => formatPassiveEffect(passive, locale)).join(locale === "zh" ? "" : " ");
 }
 
 export function localizeCardRarityBadge(rarity: CardRarity, locale: Locale): string {
@@ -883,6 +910,10 @@ function formatLogEffects(effects: LogEffect[], locale: Locale): string[] {
       return locale === "zh" ? `施加 ${effect.amount} 层中毒` : `apply ${effect.amount} Poison`;
     }
 
+    if (effect.type === "passive") {
+      return locale === "zh" ? formatPassiveEffect({ kind: effect.kind, value: effect.value }, locale).replace(/。$/u, "") : formatPassiveEffect({ kind: effect.kind, value: effect.value }, locale).replace(/\.$/u, "");
+    }
+
     return locale === "zh" ? "消耗" : "exhaust";
   });
 }
@@ -961,6 +992,7 @@ function resolveCardDefinition(card: CardLike, content: RunContent | null): CliC
     vulnerable: merged.vulnerable,
     poison: merged.poison,
     poisonMultiplier: merged.poisonMultiplier,
+    passives: merged.passives,
     exhaust: merged.exhaust,
     retain: merged.retain,
   };

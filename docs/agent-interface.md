@@ -56,14 +56,17 @@ Important properties of the current contract:
 - runs are multi-act and include character context, current act, and total act count
 - `state.deck` is `CardInstance[]`, so upgrades apply to individual copies rather than all cards sharing an id
 - observed card objects may include structured fields such as `damage`, `block`, `draw`, `energy`, `heal`, and `keywords`
+- observed card objects may also include structured `passives`
 - observed card objects also include `upgraded`, and rest observations expose both the current card and upgraded preview for each upgradable deck entry
 - keyword-bearing cards should be read through `keywords`, not inferred from localized prose
 - combat observations expose both current `energy` and turn-base `baseEnergy`
+- combat observations expose `activePassives` for currently active combat buffs
 - reward observations expose `mode: "menu" | "cards"`
 - reward menu observations expose `rewardItems`, where each item is structured as gold, relic, or card-choice metadata
 - card reward submenus expose the concrete `cardChoices` array for the currently opened card reward
 - shop observations expose `forSale` as structured offers with `{ card, price }`, not bare card objects
 - `removeDeckCardCost` is the next removal price, and `remainingDeckRemovals` is the remaining removal budget in the current shop
+- blessing observations now expose structured blessing items whose payload is either `cardId` or `relicId`, not flat numeric utility values
 
 Agent rule:
 - treat card metadata as structured data

@@ -32,6 +32,7 @@ Entry behavior:
 - with `--character`, the TUI starts that character directly
 - each act begins with a blessing choice before the first route selection
 - the current tower has 3 acts
+- blessing menus now offer relic buffs and archetype-starting cards instead of flat gold / max-HP utility picks
 
 In-run UI structure:
 - the map tree is rendered inside the main play panel
@@ -111,6 +112,12 @@ Combat hand affordance:
 - combat cards use higher-contrast color treatment when affordable and a much dimmer treatment when blocked on energy
 - this distinction is intentionally visual in TTY; snapshot mode stays text-only
 
+Combat effects affordance:
+- structured combat passives are labeled as `Combat Effects` / `本场效果`
+- on wider combat layouts, that summary moves into the right sidebar above the compact map
+- on tighter combat layouts without a sidebar, the same summary sits directly under the main status bar
+- the main combat flow no longer places that text between the enemy panel and the hand list
+
 Current keyword behavior:
 - keywords are rendered as a separate emphasized line
 - the renderer currently uses this for `Exhaust`, `Retain`, and `Ethereal`
@@ -139,6 +146,17 @@ Reward behavior:
 - gold and relic rewards are claimed directly from the top-level reward menu
 - card rewards open a second-level card choice menu
 - skipping reward leaves all currently unclaimed rewards behind and advances the run
+
+Blessing behavior:
+- blessing choices are currently `relic` or `card`
+- relic blessings grant the relic immediately when chosen
+- card blessings add the chosen card to the deck immediately
+- blessing cards and blessing relics are intended to start or reinforce actual deck directions, not just provide flat safety resources
+
+Combat powers:
+- some cards and relics now create structured combat passives
+- when active, the combat pane renders a `Combat Effects` / `本场效果` summary outside the enemy-to-hand reading flow
+- this line is derived from structured passive metadata, not from ad-hoc prose
 
 ## Route Tree
 

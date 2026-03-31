@@ -51,6 +51,13 @@ const content: RunContent = {
       kind: "maxHp",
       value: 1,
     },
+    openingToken: {
+      id: "openingToken",
+      name: "Opening Token",
+      description: "Test blessing relic.",
+      kind: "restHealBonus",
+      value: 1,
+    },
     merchantTag: {
       id: "merchantTag",
       name: "Merchant Tag",
@@ -284,7 +291,7 @@ function createAct(map: MapNode[]) {
   return {
     id: "act-1",
     map: [{ id: "start", kind: "start", nextIds: [map[0]!.id] }, ...map],
-    blessings: [{ id: "act-1-heal", kind: "heal" as const, value: 1 }],
+    blessings: [{ id: "act-1-heal", kind: "relic" as const, relicId: "openingToken" }],
   };
 }
 
@@ -298,6 +305,7 @@ function createCharacter(starterDeck: string[], rewardPool: string[], shopPool: 
     starterDeck,
     startingRelicId: "starterCharm",
     blessingCardPools: { act1: [starterDeck[0]!], act2: [starterDeck[0]!], act3: [starterDeck[0]!] },
+    blessingRelicPools: { act1: ["openingToken"], act2: ["openingToken"], act3: ["openingToken"] },
     rewardCardPools: { common: rewardPool, rare: [], epic: [] },
     shopCardPools: { common: shopPool, rare: [], epic: [] },
     relicPools: { elite: [], boss: [] },

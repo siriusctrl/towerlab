@@ -2,7 +2,16 @@ import { HAND_SIZE, STARTING_ENERGY } from "./constants.js";
 import { finishNode } from "./progression.js";
 import { drawCards, shuffle } from "./rng.js";
 import { getRewardChoices, getSelectableRelicReward } from "./rewards.js";
-import { appendLog, computeAttackDamage, createCombatStatus, getCombat, getCurrentIntent, getNode, getRelicValue } from "./shared.js";
+import {
+  appendLog,
+  computeAttackDamage,
+  createCombatStatus,
+  getCombat,
+  getCurrentIntent,
+  getNode,
+  getRelicValue,
+  getTotalPassiveValue,
+} from "./shared.js";
 import type { EnemyState, MapNode, RunContent, RunState } from "./types.js";
 import { getEnemyDefinition } from "./validate.js";
 
@@ -52,6 +61,7 @@ export function startCombat(content: RunContent, state: RunState, node: MapNode)
         block: playerStartingBlock,
         status: createCombatStatus(),
         turn: 1,
+        passives: [],
       },
       rest: undefined,
       reward: undefined,
@@ -192,6 +202,7 @@ export function startPlayerTurn(content: RunContent, state: RunState): RunState 
   const combat = getCombat(state);
   const cardsToDraw = Math.max(0, HAND_SIZE - combat.hand.length);
   const drawn = drawCards(combat.drawPile, combat.discardPile, cardsToDraw, state.rng);
+  const nextBlock = getTotalPassiveValue(content, state, "retainBlock") > 0 ? combat.block : 0;
 
   return appendLog(
     {
@@ -203,8 +214,9 @@ export function startPlayerTurn(content: RunContent, state: RunState): RunState 
         discardPile: drawn.discardPile,
         hand: [...combat.hand, ...drawn.drawn],
         energy: STARTING_ENERGY + getRelicValue(content, state, "combatEnergy"),
-        block: 0,
+        block: nextBlock,
         turn: combat.turn + 1,
+        passives: combat.passives,
       },
     },
     { type: "turnStarted", turn: combat.turn + 1, intent: getCurrentIntent(combat.enemy) },

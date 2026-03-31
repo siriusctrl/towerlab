@@ -105,6 +105,7 @@ function createCombatContent(): RunContent {
     },
     relics: {
       starterCharm: { id: "starterCharm", name: "Starter Charm", description: "Gain 1 max HP.", kind: "maxHp", value: 1 },
+      openingToken: { id: "openingToken", name: "Opening Token", description: "Test blessing relic.", kind: "restHealBonus", value: 1 },
     },
     enemies: {
       guard: {
@@ -130,6 +131,7 @@ function createBossContent(): RunContent {
     },
     relics: {
       starterCharm: { id: "starterCharm", name: "Starter Charm", description: "Gain 1 max HP.", kind: "maxHp", value: 1 },
+      openingToken: { id: "openingToken", name: "Opening Token", description: "Test blessing relic.", kind: "restHealBonus", value: 1 },
     },
     enemies: {
       core: {
@@ -149,7 +151,7 @@ function createAct(map: MapNode[]) {
   return {
     id: "act-1",
     map: [{ id: "start", kind: "start", nextIds: [map[0]!.id] }, ...map],
-    blessings: [{ id: "act-1-heal", kind: "heal" as const, value: 1 }],
+    blessings: [{ id: "act-1-heal", kind: "relic" as const, relicId: "openingToken" }],
   };
 }
 
@@ -163,6 +165,7 @@ function createCharacter(starterDeck: string[]) {
     starterDeck,
     startingRelicId: "starterCharm",
     blessingCardPools: { act1: [starterDeck[0]!], act2: [starterDeck[0]!], act3: [starterDeck[0]!] },
+    blessingRelicPools: { act1: ["openingToken"], act2: ["openingToken"], act3: ["openingToken"] },
     rewardCardPools: { common: [], rare: [], epic: [] },
     shopCardPools: { common: [], rare: [], epic: [] },
     relicPools: { elite: [], boss: [] },

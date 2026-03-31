@@ -15,6 +15,8 @@ The current playable slice is small, but no longer toy-sized:
 - both characters now have materially broader STS-style card pools instead of near-starter-only runs
 - campfires now offer percentage-based recovery or a one-card upgrade
 - cards now support a small structured combat vocabulary beyond raw damage/block
+- blessings now bias toward relic buffs and archetype-starting cards instead of flat gold/HP picks
+- build-defining cards and blessing relics can establish combat passives that visibly change card evaluation during a run
 - card views render emphasized keyword lines separately from effect text
 - combat hands now use stronger color contrast between playable and blocked cards
 - three acts, each starting with a blessing choice before route navigation
@@ -86,6 +88,7 @@ TTY flow:
 - without `--character`, the run starts at character selection
 - with `--character`, the UI skips selection and starts that character immediately
 - each act opens with a blessing phase before the first route choice
+- blessing choices now surface either a relic buff or a card pickup aimed at starting a deck direction
 
 Key controls:
 - character select: `1-9` choose character, `l` open character library
@@ -152,6 +155,7 @@ The current structured card vocabulary includes:
 - `weak`
 - `vulnerable`
 - `poison`
+- `passives`
 - `keywords`
 
 Card descriptions are now rendered from these structured fields first in both CLI and snapshots.  
@@ -166,6 +170,19 @@ The structured keywords currently in use are:
 - `exhaust`
 - `retain`
 - `ethereal`
+
+The current structured passive effects include:
+- `strikeBonusDamage`
+- `exhaustBlock`
+- `retainBlock`
+- `attackPoison`
+- `debuffBonusDamage`
+- `debuffDraw`
+
+Combat snapshots and the TUI surface active combat passives in a dedicated `Powers` line so run-defining buffs stay visible during play.
+In TTY combat:
+- wider layouts move `Combat Effects` into the right sidebar so enemy and hand flow stay uninterrupted
+- tighter layouts collapse those effects into a one-line summary under the status bar
 
 ## Why TypeScript
 

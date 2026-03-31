@@ -6,6 +6,7 @@ import { drawCards } from "../rng.js";
 import { grantRelicReward } from "../rewards.js";
 import { buildShopRemovableDeckIndices, getDeckRemovalPrice } from "../shop.js";
 import {
+  addPassiveEffects,
   applyDamageToEnemy,
   applyStatus,
   appendLog,
@@ -18,6 +19,7 @@ import {
   getCombat,
   getNode,
   getRelicValue,
+  getTotalPassiveValue,
   tickStatus,
 } from "../shared.js";
 import type { BlessingDefinition, LogEffect, RestOptionId, RunAction, RunContent, RunState } from "../types.js";
@@ -138,15 +140,32 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
   let hand = combat.hand.filter((_, index) => index !== handIndex);
   let nextRng = state.rng;
   const effects: LogEffect[] = [];
+  const totalStrikeBonusDamage = getTotalPassiveValue(content, state, "strikeBonusDamage");
+  const totalDebuffBonusDamage = getTotalPassiveValue(content, state, "debuffBonusDamage");
+  const totalAttackPoison = getTotalPassiveValue(content, state, "attackPoison");
+  const totalDebuffDraw = getTotalPassiveValue(content, state, "debuffDraw");
+  const totalExhaustBlock = getTotalPassiveValue(content, state, "exhaustBlock");
+  const enemyWasDebuffed = enemy.status.weak > 0 || enemy.status.vulnerable > 0 || enemy.status.poison > 0;
+  const exhaustsOnPlay = numbers.exhaust === true;
 
-  if (numbers.exhaust) {
+  if (exhaustsOnPlay) {
     exhaustPile = [...exhaustPile, cardInstance];
   } else {
     discardPile = [...discardPile, cardInstance];
   }
 
   if (numbers.damage && numbers.damage > 0) {
-    const dealtDamage = computeAttackDamage(numbers.damage, combat.status, enemy.status);
+    let baseDamage = numbers.damage;
+
+    if (card.id === "strike") {
+      baseDamage += totalStrikeBonusDamage;
+    }
+
+    if (enemyWasDebuffed) {
+      baseDamage += totalDebuffBonusDamage;
+    }
+
+    const dealtDamage = computeAttackDamage(baseDamage, combat.status, enemy.status);
     enemy = applyDamageToEnemy(enemy, dealtDamage);
     effects.push({ type: "damage", amount: dealtDamage });
   }
@@ -200,6 +219,11 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
     effects.push({ type: "poison", amount: poison });
   }
 
+  if ((numbers.damage ?? 0) > 0 && totalAttackPoison > 0) {
+    enemy = { ...enemy, status: applyStatus(enemy.status, { poison: totalAttackPoison }) };
+    effects.push({ type: "poison", amount: totalAttackPoison });
+  }
+
   if ((numbers.poisonMultiplier ?? 1) > 1 && enemy.status.poison > 0) {
     const nextPoison = enemy.status.poison * (numbers.poisonMultiplier ?? 1);
     const addedPoison = nextPoison - enemy.status.poison;
@@ -207,8 +231,33 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
     effects.push({ type: "poison", amount: addedPoison });
   }
 
-  if (numbers.exhaust) {
+  if (numbers.passives && numbers.passives.length > 0) {
+    for (const passive of numbers.passives) {
+      effects.push({ type: "passive", kind: passive.kind, value: passive.value });
+    }
+  }
+
+  if (exhaustsOnPlay) {
+    if (totalExhaustBlock > 0) {
+      block += totalExhaustBlock;
+      effects.push({ type: "block", amount: totalExhaustBlock });
+    }
+
     effects.push({ type: "exhaust" });
+  }
+
+  const appliedDebuff = (numbers.weak ?? 0) > 0 || (numbers.vulnerable ?? 0) > 0 || (numbers.poison ?? 0) > 0 || ((numbers.damage ?? 0) > 0 && totalAttackPoison > 0);
+
+  if (appliedDebuff && totalDebuffDraw > 0) {
+    const drawnCards = drawCards(drawPile, discardPile, totalDebuffDraw, nextRng);
+    drawPile = drawnCards.drawPile;
+    discardPile = drawnCards.discardPile;
+    hand = [...hand, ...drawnCards.drawn];
+    nextRng = drawnCards.rng;
+
+    if (drawnCards.drawn.length > 0) {
+      effects.push({ type: "draw", amount: drawnCards.drawn.length });
+    }
   }
 
   const nextState = appendLog(
@@ -225,6 +274,7 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
         exhaustPile,
         energy,
         block,
+        passives: addPassiveEffects(combat.passives, numbers.passives ?? []),
       },
     },
     { type: "playedCard", cardId: card.id, upgraded: cardInstance.upgraded, effects },
@@ -604,43 +654,6 @@ function leaveShop(content: RunContent, state: RunState): RunState {
 }
 
 function applyBlessing(content: RunContent, state: RunState, blessing: BlessingDefinition): RunState {
-  if (blessing.kind === "heal") {
-    const amount = Math.min(blessing.value ?? 0, state.maxHp - state.hp);
-
-    return appendLog(
-      {
-        ...state,
-        hp: Math.min(state.maxHp, state.hp + (blessing.value ?? 0)),
-      },
-      { type: "recoveredHp", amount },
-    );
-  }
-
-  if (blessing.kind === "gold") {
-    const amount = blessing.value ?? 0;
-
-    return appendLog(
-      {
-        ...state,
-        gold: state.gold + amount,
-      },
-      { type: "goldGained", amount },
-    );
-  }
-
-  if (blessing.kind === "maxHp") {
-    const amount = blessing.value ?? 0;
-
-    return appendLog(
-      {
-        ...state,
-        maxHp: state.maxHp + amount,
-        hp: state.hp + amount,
-      },
-      { type: "recoveredHp", amount },
-    );
-  }
-
   if (blessing.kind === "card") {
     const cardId = blessing.cardId;
 
@@ -658,6 +671,14 @@ function applyBlessing(content: RunContent, state: RunState, blessing: BlessingD
       },
       { type: "blessingCardAdded", cardId },
     );
+  }
+
+  if (blessing.kind === "relic") {
+    if (!blessing.relicId) {
+      throw new Error(`blessing ${blessing.id} must define relicId`);
+    }
+
+    return grantRelicReward(content, state, blessing.relicId);
   }
 
   return assertNever(blessing.kind);
