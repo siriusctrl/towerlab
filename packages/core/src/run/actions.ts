@@ -3,6 +3,7 @@ import { finishCombat, resolveEnemyTurn, startPlayerTurn } from "../combat.js";
 import { enterNode } from "../node.js";
 import { finishNode } from "../progression.js";
 import { drawCards } from "../rng.js";
+import { grantRelicReward } from "../rewards.js";
 import { buildShopRemovableDeckIndices, getDeckRemovalPrice } from "../shop.js";
 import {
   applyDamageToEnemy,
@@ -38,6 +39,10 @@ export function applyAction(content: RunContent, state: RunState, action: RunAct
       return upgradeRestCard(content, state, action.deckIndex);
     case "takeReward":
       return takeReward(content, state, action.rewardIndex);
+    case "takeRewardCard":
+      return takeRewardCard(content, state, action.rewardIndex);
+    case "backReward":
+      return backReward(state);
     case "skipReward":
       return skipReward(content, state);
     case "buyShop":
@@ -373,8 +378,60 @@ function takeReward(content: RunContent, state: RunState, rewardIndex: number): 
     throw new Error("reward choices are only available after combat");
   }
 
-  const choices = state.reward?.cardChoices ?? [];
-  const cardId = choices[rewardIndex];
+  if (!state.reward || state.reward.mode !== "menu") {
+    throw new Error("reward items can only be claimed from the reward menu");
+  }
+
+  const reward = state.reward.items[rewardIndex];
+
+  if (!reward || reward.claimed) {
+    throw new Error(`reward index ${rewardIndex} is not available`);
+  }
+
+  if (reward.kind === "cards") {
+    return {
+      ...state,
+      reward: {
+        ...state.reward,
+        mode: "cards",
+      },
+    };
+  }
+
+  let nextState: RunState;
+
+  if (reward.kind === "gold") {
+    nextState = appendLog(
+      {
+        ...state,
+        gold: state.gold + reward.amount,
+      },
+      { type: "goldGained", amount: reward.amount },
+    );
+  } else {
+    nextState = grantRelicReward(content, state, reward.relicId);
+  }
+
+  return settleClaimedReward(content, nextState, rewardIndex);
+}
+
+function takeRewardCard(content: RunContent, state: RunState, rewardIndex: number): RunState {
+  if (state.phase !== "reward") {
+    throw new Error("reward choices are only available after combat");
+  }
+
+  if (!state.reward || state.reward.mode !== "cards") {
+    throw new Error("card rewards can only be chosen from the card reward menu");
+  }
+
+  const cardRewardIndex = state.reward.items.findIndex((item) => item.kind === "cards" && !item.claimed);
+  const reward = cardRewardIndex >= 0 ? state.reward.items[cardRewardIndex] : null;
+
+  if (!reward || reward.kind !== "cards") {
+    throw new Error("card reward is not available");
+  }
+
+  const cardId = reward.cardChoices[rewardIndex];
 
   if (!cardId) {
     throw new Error(`reward index ${rewardIndex} is not available`);
@@ -386,12 +443,25 @@ function takeReward(content: RunContent, state: RunState, rewardIndex: number): 
       ...state,
       deck: [...state.deck, cardInstance],
       nextCardInstanceId: state.nextCardInstanceId + 1,
-      reward: undefined,
     },
     { type: "rewardCardAdded", cardId },
   );
 
-  return finishNode(content, nextState, getNode(content, state.act, state.currentNodeId));
+  return settleClaimedReward(content, nextState, cardRewardIndex);
+}
+
+function backReward(state: RunState): RunState {
+  if (state.phase !== "reward" || state.reward?.mode !== "cards") {
+    throw new Error("can only go back while choosing a card reward");
+  }
+
+  return {
+    ...state,
+    reward: {
+      ...state.reward,
+      mode: "menu",
+    },
+  };
 }
 
 function skipReward(content: RunContent, state: RunState): RunState {
@@ -404,6 +474,30 @@ function skipReward(content: RunContent, state: RunState): RunState {
     appendLog({ ...state, reward: undefined }, { type: "rewardSkipped" }),
     getNode(content, state.act, state.currentNodeId),
   );
+}
+
+function settleClaimedReward(content: RunContent, state: RunState, rewardIndex: number): RunState {
+  const rewardState = state.reward;
+
+  if (!rewardState) {
+    throw new Error("reward state is missing");
+  }
+
+  const nextItems = rewardState.items.map((item, index) => (index === rewardIndex ? { ...item, claimed: true } : item));
+  const nextState: RunState = {
+    ...state,
+    reward: {
+      ...rewardState,
+      mode: "menu",
+      items: nextItems,
+    },
+  };
+
+  if (nextItems.every((item) => item.claimed)) {
+    return finishNode(content, { ...nextState, reward: undefined }, getNode(content, state.act, state.currentNodeId));
+  }
+
+  return nextState;
 }
 
 function buyShop(content: RunContent, state: RunState, saleIndex: number): RunState {

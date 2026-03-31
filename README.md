@@ -89,15 +89,17 @@ TTY flow:
 
 Key controls:
 - character select: `1-9` choose character, `l` open character library
-- blessing/map/rest/reward: `1-9` choose the indexed option
-- combat: `1-9` play the indexed card, `e` end turn
-- reward: `s` skip reward
+- blessing/map/rest: `1-9` choose the indexed option
+- reward menu: `1-9` claim the indexed reward item
+- reward card submenu: `1-9` choose the indexed card, `b` go back
+- combat: `1-9` play the indexed card, `space` end turn
+- reward: `s` skip remaining rewards
 - shop top menu: `1` buy, `2` remove, `0` leave
 - shop buy/remove submenus: `1-9` choose current page, `[` `]` page, `b` go back
 - shop card prices vary by rarity
 - deck removal cost increases across the whole run, does not reset between shops, and each shop allows at most 3 removals
 - inspection panels: `d` status, `l` library, `[` `]` switch sections, `j/k` or arrow keys scroll, `esc` close
-- `q` quit
+- `esc` quit
 - `r` restart after victory or defeat
 
 The route tree is rendered directly in the main play surface rather than a separate map screen.

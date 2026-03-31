@@ -1,7 +1,7 @@
 import { REST_HEAL_RATIO, REST_OPTION_IDS, STARTING_ENERGY } from "../constants.js";
 import { getDeckRemovalPrice, getRemainingDeckRemovals } from "../shop.js";
 import { getAct, getCombat, getCurrentIntent, getNode, getRelicValue, materializeCardDefinition, materializeCardInstance } from "../shared.js";
-import type { Observation, RunAction, RunContent, RunState } from "../types.js";
+import type { Observation, RewardItemObservation, RunAction, RunContent, RunState } from "../types.js";
 import { getCard, getRelic } from "../validate.js";
 
 export function observeRun(content: RunContent, state: RunState): Observation {
@@ -107,12 +107,41 @@ export function observeRun(content: RunContent, state: RunState): Observation {
   }
 
   if (state.phase === "reward") {
-    const choices = state.reward?.cardChoices ?? [];
+    const rewardItems = (state.reward?.items ?? []).reduce<RewardItemObservation[]>((items, item, rewardIndex) => {
+      if (item.claimed) {
+        return items;
+      }
+
+      if (item.kind === "gold") {
+        items.push({ kind: "gold", rewardIndex, amount: item.amount });
+        return items;
+      }
+
+      if (item.kind === "relic") {
+        items.push({ kind: "relic", rewardIndex, relic: getRelic(content, item.relicId) });
+        return items;
+      }
+
+      items.push({
+        kind: "cards",
+        rewardIndex,
+        cardChoices: item.cardChoices.map((cardId) => materializeCardDefinition(getCard(content, cardId), false)),
+      });
+      return items;
+    }, []);
+    const activeCardReward = state.reward?.mode === "cards"
+      ? state.reward.items.find((item) => item.kind === "cards" && !item.claimed)
+      : null;
+    const cardChoices = activeCardReward?.kind === "cards"
+      ? activeCardReward.cardChoices.map((cardId) => materializeCardDefinition(getCard(content, cardId), false))
+      : [];
 
     return {
       ...base,
       phase: "reward",
-      cardChoices: choices.map((cardId) => materializeCardDefinition(getCard(content, cardId), false)),
+      mode: state.reward?.mode ?? "menu",
+      rewardItems,
+      cardChoices,
       nextNodes,
     };
   }
@@ -174,9 +203,18 @@ export function legalActions(content: RunContent, state: RunState): RunAction[] 
   }
 
   if (state.phase === "reward") {
-    const choices = state.reward?.cardChoices ?? [];
+    if (state.reward?.mode === "cards") {
+      const cardReward = state.reward.items.find((item) => item.kind === "cards" && !item.claimed);
+      const choices = cardReward?.kind === "cards" ? cardReward.cardChoices : [];
+      return [
+        ...choices.map((_, rewardIndex): RunAction => ({ type: "takeRewardCard", rewardIndex })),
+        { type: "backReward" },
+        { type: "skipReward" },
+      ];
+    }
+
     return [
-      ...choices.map((_, rewardIndex): RunAction => ({ type: "takeReward", rewardIndex })),
+      ...(state.reward?.items.flatMap((item, rewardIndex): RunAction[] => (item.claimed ? [] : [{ type: "takeReward", rewardIndex }])) ?? []),
       { type: "skipReward" },
     ];
   }

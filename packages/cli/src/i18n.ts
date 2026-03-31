@@ -111,6 +111,23 @@ export function localizeObservation(
     return {
       ...rewardObservation,
       relics,
+      rewardItems: rewardObservation.rewardItems.map((item) => {
+        if (item.kind === "gold") {
+          return item;
+        }
+
+        if (item.kind === "relic") {
+          return {
+            ...item,
+            relic: localizeRelicDefinition(item.relic, locale),
+          };
+        }
+
+        return {
+          ...item,
+          cardChoices: localizeObservedCards(item.cardChoices as (string | CardLike)[], locale, content),
+        };
+      }),
       cardChoices: localizeObservedCards(rewardObservation.cardChoices as (string | CardLike)[], locale, content),
     };
   }
@@ -184,11 +201,11 @@ export function formatLogEvent(content: RunContent, event: LogEvent, locale: Loc
     case "enemyDefeated": {
       const enemyName = readEnemyName(content, event.enemyId);
       return locale === "zh"
-        ? `击败${localizeEnemyName(enemyName, locale)}，获得 ${event.gold} 金币。`
-        : `Defeated ${enemyName} and gained ${event.gold} gold.`;
+        ? `击败${localizeEnemyName(enemyName, locale)}。奖励中包含 ${event.gold} 金币。`
+        : `Defeated ${enemyName}. Rewards include ${event.gold} gold.`;
     }
     case "rewardOffered":
-      return locale === "zh" ? "获得奖励。请选择一张卡牌奖励，或跳过。" : "Won a reward. Choose a card reward or skip.";
+      return locale === "zh" ? "获得奖励。请选择要领取的奖励，或跳过剩余奖励。" : "Won a reward. Claim rewards or skip the rest.";
     case "rewardCardAdded": {
       const cardName = readCardName(content, event.cardId);
       return locale === "zh"
@@ -438,6 +455,10 @@ export function localizeErrorMessage(message: string, locale: Locale): string {
     [/^card upgrades are only available after choosing upgrade at a campfire$/, () => "只有在选择强化后才能在营火强化卡牌"],
     [/^no upgradable cards remain in the deck$/, () => "当前牌组里没有可强化的卡牌"],
     [/^reward choices are only available after combat$/, () => "只有在战斗后才能选择奖励"],
+    [/^reward items can only be claimed from the reward menu$/, () => "只有在奖励菜单中才能领取奖励"],
+    [/^card rewards can only be chosen from the card reward menu$/, () => "只有在卡牌奖励菜单中才能选择卡牌"],
+    [/^can only go back while choosing a card reward$/, () => "只有在选择卡牌奖励时才能返回"],
+    [/^card reward is not available$/, () => "当前没有可选的卡牌奖励"],
     [/^shop actions are only available at shop nodes$/, () => "只有在商店节点才能执行商店行动"],
     [/^deck removal is only available at shop nodes$/, () => "只有在商店节点才能移除卡牌"],
     [/^can only leave when in shop$/, () => "只有在商店中才能离开商店"],
@@ -451,6 +472,7 @@ export function localizeErrorMessage(message: string, locale: Locale): string {
     [/^Invalid chooseRest action: (.+)$/, (raw) => `chooseRest 动作非法：${raw}`],
     [/^Invalid upgradeRestCard action: (.+)$/, (raw) => `upgradeRestCard 动作非法：${raw}`],
     [/^Invalid takeReward action: (.+)$/, (raw) => `takeReward 动作非法：${raw}`],
+    [/^Invalid takeRewardCard action: (.+)$/, (raw) => `takeRewardCard 动作非法：${raw}`],
     [/^Invalid buyShop action: (.+)$/, (raw) => `buyShop 动作非法：${raw}`],
     [/^Invalid removeDeckCard action: (.+)$/, (raw) => `removeDeckCard 动作非法：${raw}`],
     [/^Unsupported action type: (.+)$/, (actionType) => `不支持的动作类型：${actionType}`],

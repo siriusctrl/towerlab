@@ -68,6 +68,17 @@ export function parseAction(raw: string): RunAction {
       return { type: "takeReward", rewardIndex: decoded.rewardIndex };
     }
 
+    case "takeRewardCard": {
+      if (typeof decoded.rewardIndex !== "number" || !Number.isInteger(decoded.rewardIndex)) {
+        throw new Error(`Invalid takeRewardCard action: ${raw}`);
+      }
+
+      return { type: "takeRewardCard", rewardIndex: decoded.rewardIndex };
+    }
+
+    case "backReward":
+      return { type: "backReward" };
+
     case "buyShop": {
       if (typeof decoded.saleIndex !== "number" || !Number.isInteger(decoded.saleIndex)) {
         throw new Error(`Invalid buyShop action: ${raw}`);

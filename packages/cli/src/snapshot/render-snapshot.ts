@@ -112,9 +112,30 @@ function renderObservation(content: RunContent, observation: Observation, locale
     }
   } else if (observation.phase === "reward") {
     lines.push(`${text(locale, "reward")}:`);
+    lines.push(text(locale, observation.mode === "cards" ? "chooseRewardCards" : "chooseReward"));
 
-    for (const [index, card] of observation.cardChoices.entries()) {
-      lines.push(...formatSnapshotCardLines(card, locale, `${index + 1}. `, "   "));
+    if (observation.mode === "cards") {
+      for (const [index, card] of observation.cardChoices.entries()) {
+        lines.push(...formatSnapshotCardLines(card, locale, `${index + 1}. `, "   "));
+      }
+
+      lines.push(`b. ${text(locale, "rewardBack")}`);
+    } else {
+      for (const [index, rewardItem] of observation.rewardItems.entries()) {
+        if (rewardItem.kind === "gold") {
+          lines.push(`${index + 1}. ${text(locale, "rewardGoldItem")} - ${rewardItem.amount} ${text(locale, "gold")}`);
+          continue;
+        }
+
+        if (rewardItem.kind === "relic") {
+          lines.push(`${index + 1}. ${text(locale, "rewardRelicItem")} - ${rewardItem.relic.name}`);
+          lines.push(`   ${rewardItem.relic.description}`);
+          continue;
+        }
+
+        lines.push(`${index + 1}. ${text(locale, "rewardCardItem")}`);
+        lines.push(`   ${formatText(locale, "rewardCardPreview", { count: rewardItem.cardChoices.length })}`);
+      }
     }
 
     lines.push(`s. ${text(locale, "skipReward")}`);

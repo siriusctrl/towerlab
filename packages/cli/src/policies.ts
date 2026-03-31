@@ -81,7 +81,7 @@ function chooseGreedyAction(content: RunContent, state: RunState): RunAction {
   }
 
   if (observation.phase === "reward") {
-    return chooseBestRewardAction(content, observation.cardChoices, actions, false);
+    return chooseBestRewardAction(content, state, observation.cardChoices, actions, false);
   }
 
   if (observation.phase === "shop") {
@@ -125,7 +125,7 @@ function chooseHeuristicAction(content: RunContent, state: RunState): RunAction 
   }
 
   if (observation.phase === "reward") {
-    return chooseBestRewardAction(content, observation.cardChoices, actions, true);
+    return chooseBestRewardAction(content, state, observation.cardChoices, actions, true);
   }
 
   if (observation.phase === "shop") {
@@ -208,29 +208,53 @@ function chooseBestBlessingAction(
 
 function chooseBestRewardAction(
   content: RunContent,
+  state: RunState,
   cards: Array<{ id: string; damage?: number; block?: number }>,
   actions: RunAction[],
   preferFlexibleCards: boolean,
 ): RunAction {
-  const rewardActions = actions.filter((action): action is Extract<RunAction, { type: "takeReward" }> => action.type === "takeReward");
+  const directRewardActions = actions.filter((action): action is Extract<RunAction, { type: "takeReward" }> => action.type === "takeReward");
+  const cardRewardActions = actions.filter(
+    (action): action is Extract<RunAction, { type: "takeRewardCard" }> => action.type === "takeRewardCard",
+  );
 
-  if (rewardActions.length === 0) {
+  if (cardRewardActions.length > 0) {
+    const bestReward = cardRewardActions.reduce((best, action) => {
+      const card = cards[action.rewardIndex]!;
+      const score = scoreRewardCard(content, card.id, card.damage ?? 0, card.block ?? 0, preferFlexibleCards);
+      const bestCard = cards[best.rewardIndex]!;
+      const bestScore = scoreRewardCard(content, bestCard.id, bestCard.damage ?? 0, bestCard.block ?? 0, preferFlexibleCards);
+
+      return score > bestScore ? action : best;
+    });
+
+    const bestCard = cards[bestReward.rewardIndex]!;
+    const bestScore = scoreRewardCard(content, bestCard.id, bestCard.damage ?? 0, bestCard.block ?? 0, preferFlexibleCards);
+
+    return preferFlexibleCards && bestScore <= 10 ? { type: "skipReward" } : bestReward;
+  }
+
+  if (directRewardActions.length === 0) {
     return actions[0]!;
   }
 
-  const bestReward = rewardActions.reduce((best, action) => {
-    const card = cards[action.rewardIndex]!;
-    const score = scoreRewardCard(content, card.id, card.damage ?? 0, card.block ?? 0, preferFlexibleCards);
-    const bestCard = cards[best.rewardIndex]!;
-    const bestScore = scoreRewardCard(content, bestCard.id, bestCard.damage ?? 0, bestCard.block ?? 0, preferFlexibleCards);
+  const rewardItems = state.reward?.items ?? [];
+  const goldAction = directRewardActions.find((action) => rewardItems[action.rewardIndex]?.kind === "gold");
+  if (goldAction) {
+    return goldAction;
+  }
 
-    return score > bestScore ? action : best;
-  });
+  const relicAction = directRewardActions.find((action) => rewardItems[action.rewardIndex]?.kind === "relic");
+  if (relicAction) {
+    return relicAction;
+  }
 
-  const bestCard = cards[bestReward.rewardIndex]!;
-  const bestScore = scoreRewardCard(content, bestCard.id, bestCard.damage ?? 0, bestCard.block ?? 0, preferFlexibleCards);
+  const cardMenuAction = directRewardActions.find((action) => rewardItems[action.rewardIndex]?.kind === "cards");
+  if (cardMenuAction) {
+    return cardMenuAction;
+  }
 
-  return preferFlexibleCards && bestScore <= 10 ? { type: "skipReward" } : bestReward;
+  return actions.find((action) => action.type === "skipReward") ?? actions[0]!;
 }
 
 function chooseBestUpgradeAction(

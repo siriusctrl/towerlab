@@ -458,9 +458,22 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
         return;
       }
 
-      const rewardIndex = readChoiceIndex(input, view.cardChoices.length);
+      if (view.mode === "cards") {
+        if (input === "b") {
+          runAction({ type: "backReward" });
+          return;
+        }
+
+        const rewardIndex = readChoiceIndex(input, view.cardChoices.length);
+        if (rewardIndex !== null) {
+          runAction({ type: "takeRewardCard", rewardIndex });
+        }
+        return;
+      }
+
+      const rewardIndex = readChoiceIndex(input, view.rewardItems.length);
       if (rewardIndex !== null) {
-        runAction({ type: "takeReward", rewardIndex });
+        runAction({ type: "takeReward", rewardIndex: view.rewardItems[rewardIndex]!.rewardIndex });
       }
       return;
     }

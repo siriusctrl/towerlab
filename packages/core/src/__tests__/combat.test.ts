@@ -63,6 +63,10 @@ describe("combat transitions", () => {
       state = applyAction(content, state, { type: "endTurn" });
     }
 
+    if (state.phase === "reward") {
+      state = applyAction(content, state, { type: "takeReward", rewardIndex: 0 });
+    }
+
     expect(state.phase).toBe("victory");
     expect(state.gold).toBe(15);
   });

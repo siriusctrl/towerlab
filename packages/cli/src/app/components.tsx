@@ -376,13 +376,57 @@ export function PhaseBody({
   }
 
   if (observation.phase === "reward") {
+    if (observation.mode === "cards") {
+      return (
+        <>
+          <Text bold color="yellow">{text(locale, "reward")}</Text>
+          <Text wrap="truncate-end">{text(locale, "chooseRewardCards")}</Text>
+          {observation.cardChoices.map((card, index) => (
+            <CardBlock key={card.id} card={card} locale={locale} namePrefix={`${index + 1}. `} indent="   " />
+          ))}
+          <Text>b. {text(locale, "rewardBack")}</Text>
+          <Text>s. {text(locale, "skipReward")}</Text>
+        </>
+      );
+    }
+
     return (
       <>
         <Text bold color="yellow">{text(locale, "reward")}</Text>
         <Text wrap="truncate-end">{text(locale, "chooseReward")}</Text>
-        {observation.cardChoices.map((card, index) => (
-          <CardBlock key={card.id} card={card} locale={locale} namePrefix={`${index + 1}. `} indent="   " />
-        ))}
+        {observation.rewardItems.map((rewardItem, index) => {
+          if (rewardItem.kind === "gold") {
+            return (
+              <Text key={`reward-gold-${rewardItem.rewardIndex}`} wrap="truncate-end">
+                {index + 1}. {text(locale, "rewardGoldItem")} - {rewardItem.amount} {text(locale, "gold")}
+              </Text>
+            );
+          }
+
+          if (rewardItem.kind === "relic") {
+            return (
+              <Box key={`reward-relic-${rewardItem.rewardIndex}`} flexDirection="column">
+                <Text bold wrap="truncate-end">
+                  {index + 1}. {text(locale, "rewardRelicItem")} - {rewardItem.relic.name}
+                </Text>
+                <Text dimColor wrap="truncate-end">
+                  {"   "}{rewardItem.relic.description}
+                </Text>
+              </Box>
+            );
+          }
+
+          return (
+            <Box key={`reward-cards-${rewardItem.rewardIndex}`} flexDirection="column">
+              <Text bold wrap="truncate-end">
+                {index + 1}. {text(locale, "rewardCardItem")}
+              </Text>
+              <Text dimColor wrap="truncate-end">
+                {"   "}{formatText(locale, "rewardCardPreview", { count: rewardItem.cardChoices.length })}
+              </Text>
+            </Box>
+          );
+        })}
         <Text>s. {text(locale, "skipReward")}</Text>
       </>
     );
@@ -549,7 +593,9 @@ export function Controls({
                 : text(locale, "controlsRestUpgrade")
               : text(locale, "controlsRest")
             : observation.phase === "reward"
-              ? text(locale, "controlsReward")
+              ? observation.mode === "cards"
+                ? text(locale, "controlsRewardCards")
+                : text(locale, "controlsReward")
               : observation.phase === "shop"
                 ? shopMenu === "buy"
                   ? shopBuyPageCount > 1

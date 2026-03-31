@@ -48,15 +48,16 @@ Controls:
   - `1-9` choose the indexed blessing
 - combat:
   - `1-9` play the indexed card
-  - `e` end the turn
+  - `space` end the turn
 - map:
   - `1-9` choose the indexed path
 - rest:
   - `1-9` choose the indexed campfire action
   - if `Upgrade` is chosen, `1-9` choose the indexed deck card to upgrade
 - reward:
-  - `1-9` take the indexed reward
-  - `s` skip
+  - reward menu: `1-9` claim the indexed reward item
+  - card submenu: `1-9` choose the indexed card reward, `b` go back
+  - `s` skip all remaining rewards
 - shop top menu:
   - `1` buy
   - `2` remove
@@ -76,7 +77,7 @@ Controls:
   - `j/k` or `↑/↓` scroll
   - `esc` close
 - global:
-  - `q` quit
+  - `esc` quit
   - `r` restart after victory or defeat
 
 ## Status And Library Panels
@@ -128,6 +129,12 @@ Shop behavior:
 - remove uses a run-global escalating price
 - remove price does not reset between shops
 - each shop allows at most 3 deck removals
+
+Reward behavior:
+- combat rewards are gathered into a single reward menu after combat resolves
+- gold and relic rewards are claimed directly from the top-level reward menu
+- card rewards open a second-level card choice menu
+- skipping reward leaves all currently unclaimed rewards behind and advances the run
 
 ## Route Tree
 
@@ -262,6 +269,8 @@ Supported action objects:
 {"type":"upgradeRestCard","deckIndex":3}
 {"type":"skipReward"}
 {"type":"takeReward","rewardIndex":1}
+{"type":"takeRewardCard","rewardIndex":1}
+{"type":"backReward"}
 {"type":"buyShop","saleIndex":0}
 {"type":"removeDeckCard","deckIndex":3}
 {"type":"leaveShop"}

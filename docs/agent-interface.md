@@ -18,7 +18,7 @@ The legal action set stays phase-aligned:
 - combat: play a card, end the turn
 - map: choose a path
 - rest: choose a campfire option, then possibly choose a deck card to upgrade
-- reward: take a reward, or skip it
+- reward: claim a top-level reward item, possibly open a card submenu, choose a reward card, go back, or skip the remaining rewards
 - shop: buy a card, remove a card, or leave
 - victory and defeat: no actions
 
@@ -59,6 +59,9 @@ Important properties of the current contract:
 - observed card objects also include `upgraded`, and rest observations expose both the current card and upgraded preview for each upgradable deck entry
 - keyword-bearing cards should be read through `keywords`, not inferred from localized prose
 - combat observations expose both current `energy` and turn-base `baseEnergy`
+- reward observations expose `mode: "menu" | "cards"`
+- reward menu observations expose `rewardItems`, where each item is structured as gold, relic, or card-choice metadata
+- card reward submenus expose the concrete `cardChoices` array for the currently opened card reward
 - shop observations expose `forSale` as structured offers with `{ card, price }`, not bare card objects
 - `removeDeckCardCost` is the next removal price, and `remainingDeckRemovals` is the remaining removal budget in the current shop
 

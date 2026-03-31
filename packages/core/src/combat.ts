@@ -1,7 +1,7 @@
 import { HAND_SIZE, STARTING_ENERGY } from "./constants.js";
 import { finishNode } from "./progression.js";
 import { drawCards, shuffle } from "./rng.js";
-import { getRewardChoices, grantRelicReward } from "./rewards.js";
+import { getRewardChoices, getSelectableRelicReward } from "./rewards.js";
 import { appendLog, computeAttackDamage, createCombatStatus, getCombat, getCurrentIntent, getNode, getRelicValue } from "./shared.js";
 import type { EnemyState, MapNode, RunContent, RunState } from "./types.js";
 import { getEnemyDefinition } from "./validate.js";
@@ -64,22 +64,34 @@ export function startCombat(content: RunContent, state: RunState, node: MapNode)
 export function finishCombat(content: RunContent, state: RunState): RunState {
   const combat = getCombat(state);
   const currentNode = getNode(content, state.act, state.currentNodeId);
-  const reward = combat.enemy.goldReward;
+  const goldReward = combat.enemy.goldReward;
 
   let nextState: RunState = appendLog(
     {
       ...state,
-      gold: state.gold + reward,
       hp: Math.min(state.maxHp, state.hp + getRelicValue(content, state, "postCombatHeal")),
       combat: undefined,
     },
-    { type: "enemyDefeated", enemyId: combat.enemy.id, gold: reward },
+    { type: "enemyDefeated", enemyId: combat.enemy.id, gold: goldReward },
   );
 
-  nextState = grantRelicReward(content, nextState, currentNode);
   const rewardSelection = getRewardChoices(content, nextState);
+  const rewardItems: NonNullable<RunState["reward"]>["items"] = [];
+  const relicReward = getSelectableRelicReward(nextState, currentNode);
 
-  if (rewardSelection.cards.length === 0) {
+  if (goldReward > 0) {
+    rewardItems.push({ kind: "gold" as const, amount: goldReward, claimed: false });
+  }
+
+  if (relicReward) {
+    rewardItems.push({ kind: "relic" as const, relicId: relicReward, claimed: false });
+  }
+
+  if (rewardSelection.cards.length > 0) {
+    rewardItems.push({ kind: "cards" as const, cardChoices: rewardSelection.cards, claimed: false });
+  }
+
+  if (rewardItems.length === 0) {
     return finishNode(content, nextState, currentNode);
   }
 
@@ -89,7 +101,8 @@ export function finishCombat(content: RunContent, state: RunState): RunState {
       rng: rewardSelection.rng,
       phase: "reward",
       reward: {
-        cardChoices: rewardSelection.cards,
+        mode: "menu",
+        items: rewardItems,
       },
     },
     { type: "rewardOffered" },

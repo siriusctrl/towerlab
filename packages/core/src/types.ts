@@ -215,8 +215,29 @@ export interface CombatState {
 }
 
 export interface RewardState {
-  cardChoices: string[];
+  mode: "menu" | "cards";
+  items: RewardItemState[];
 }
+
+export interface RewardGoldItemState {
+  kind: "gold";
+  amount: number;
+  claimed: boolean;
+}
+
+export interface RewardRelicItemState {
+  kind: "relic";
+  relicId: string;
+  claimed: boolean;
+}
+
+export interface RewardCardItemState {
+  kind: "cards";
+  cardChoices: string[];
+  claimed: boolean;
+}
+
+export type RewardItemState = RewardGoldItemState | RewardRelicItemState | RewardCardItemState;
 
 export interface ShopCardOfferState {
   cardId: string;
@@ -321,9 +342,32 @@ export interface RestObservation extends ObservationBase {
 
 export interface RewardObservation extends ObservationBase {
   phase: "reward";
+  mode: "menu" | "cards";
+  rewardItems: RewardItemObservation[];
   cardChoices: ResolvedCard[];
   nextNodes: MapNode[];
 }
+
+interface RewardItemObservationBase {
+  rewardIndex: number;
+}
+
+export interface RewardGoldItemObservation extends RewardItemObservationBase {
+  kind: "gold";
+  amount: number;
+}
+
+export interface RewardRelicItemObservation extends RewardItemObservationBase {
+  kind: "relic";
+  relic: RelicDefinition;
+}
+
+export interface RewardCardItemObservation extends RewardItemObservationBase {
+  kind: "cards";
+  cardChoices: ResolvedCard[];
+}
+
+export type RewardItemObservation = RewardGoldItemObservation | RewardRelicItemObservation | RewardCardItemObservation;
 
 export interface ShopObservation extends ObservationBase {
   phase: "shop";
@@ -357,6 +401,8 @@ export type RunAction =
   | { type: "upgradeRestCard"; deckIndex: number }
   | { type: "skipReward" }
   | { type: "takeReward"; rewardIndex: number }
+  | { type: "takeRewardCard"; rewardIndex: number }
+  | { type: "backReward" }
   | { type: "buyShop"; saleIndex: number }
   | { type: "removeDeckCard"; deckIndex: number }
   | { type: "leaveShop" };

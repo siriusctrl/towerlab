@@ -3,13 +3,7 @@ import { appendLog, selectCardsFromBuckets } from "./shared.js";
 import type { MapNode, RunContent, RunState } from "./types.js";
 import { getRelic } from "./validate.js";
 
-export function grantRelicReward(content: RunContent, state: RunState, currentNode: MapNode): RunState {
-  const relicId = currentNode.relicReward;
-
-  if (!relicId) {
-    return state;
-  }
-
+export function grantRelicReward(content: RunContent, state: RunState, relicId: string): RunState {
   if (state.relics.includes(relicId)) {
     return appendLog(state, { type: "relicAlreadyOwned", relicId });
   }
@@ -29,6 +23,16 @@ export function grantRelicReward(content: RunContent, state: RunState, currentNo
   }
 
   return appendLog(nextState, { type: "relicAcquired", relicId });
+}
+
+export function getSelectableRelicReward(state: RunState, currentNode: MapNode): string | null {
+  const relicId = currentNode.relicReward;
+
+  if (!relicId || state.relics.includes(relicId)) {
+    return null;
+  }
+
+  return relicId;
 }
 
 export function getRewardChoices(content: RunContent, state: RunState): { cards: string[]; rng: number } {

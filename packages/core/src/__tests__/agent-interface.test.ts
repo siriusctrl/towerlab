@@ -110,10 +110,10 @@ describe("legalActions", () => {
     expect(legalActions(content, rewardState)).toEqual([
       { type: "takeReward", rewardIndex: 0 },
       { type: "takeReward", rewardIndex: 1 },
-      { type: "takeReward", rewardIndex: 2 },
       { type: "skipReward" },
     ]);
 
+    state = applyAction(content, state, { type: "takeReward", rewardIndex: 0 });
     state = applyAction(content, state, { type: "skipReward" });
 
     expect(legalActions(content, state)).toEqual([

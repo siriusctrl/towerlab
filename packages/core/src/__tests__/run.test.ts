@@ -633,15 +633,24 @@ describe("post-combat rewards", () => {
       acts: [createAct([{ id: "gate", kind: "battle", encounterId: "patrol", nextIds: [] }])],
     };
 
-    let state = createRun(rewardContent, 15);
-    state = winCurrentCombat(rewardContent, state);
+    let state = winCurrentCombatToReward(rewardContent, createRun(rewardContent, 15));
     const rewardView = observeRun(rewardContent, state);
 
     if (rewardView.phase !== "reward") {
       throw new Error(`expected reward phase, received ${rewardView.phase}`);
     }
 
-    expect(rewardView.cardChoices).toHaveLength(3);
+    expect(rewardView.mode).toBe("menu");
+    expect(rewardView.rewardItems.map((item) => item.kind)).toEqual(["gold", "cards"]);
+    state = applyAction(rewardContent, state, { type: "takeReward", rewardIndex: rewardView.rewardItems[1]!.rewardIndex });
+    const cardRewardView = observeRun(rewardContent, state);
+
+    if (cardRewardView.phase !== "reward") {
+      throw new Error(`expected reward phase, received ${cardRewardView.phase}`);
+    }
+
+    expect(cardRewardView.mode).toBe("cards");
+    expect(cardRewardView.cardChoices).toHaveLength(3);
     state = applyAction(rewardContent, state, { type: "skipReward" });
     expect(state.phase).toBe("victory");
   });
@@ -675,15 +684,27 @@ describe("post-combat rewards", () => {
       acts: [createAct([{ id: "gate", kind: "battle", encounterId: "patrol", nextIds: [] }])],
     };
 
-    let state = createRun(rewardContent, 16);
-    state = winCurrentCombat(rewardContent, state);
+    let state = winCurrentCombatToReward(rewardContent, createRun(rewardContent, 16));
     const rewardView = observeRun(rewardContent, state);
     if (rewardView.phase !== "reward") {
       throw new Error(`expected reward phase, received ${rewardView.phase}`);
     }
 
-    const chosenCard = rewardView.cardChoices[0];
-    const afterReward = applyAction(rewardContent, state, { type: "takeReward", rewardIndex: 0 });
+    const cardReward = rewardView.rewardItems.find((item) => item.kind === "cards");
+
+    if (!cardReward || cardReward.kind !== "cards") {
+      throw new Error("expected a card reward");
+    }
+
+    state = applyAction(rewardContent, state, { type: "takeReward", rewardIndex: cardReward.rewardIndex });
+    const cardMenu = observeRun(rewardContent, state);
+
+    if (cardMenu.phase !== "reward") {
+      throw new Error(`expected reward phase, received ${cardMenu.phase}`);
+    }
+
+    const chosenCard = cardMenu.cardChoices[0]!;
+    const afterReward = applyAction(rewardContent, state, { type: "takeRewardCard", rewardIndex: 0 });
 
     expect(afterReward.deck.some((card) => card.cardId === chosenCard.id && !card.upgraded)).toBe(true);
     expect(afterReward.deck.length).toBe(rewardContent.character.starterDeck.length + 1);
@@ -1144,6 +1165,59 @@ function winCurrentCombat(runContent: RunContent, state: RunState): RunState {
     }
 
     nextState = applyAction(runContent, nextState, { type: "endTurn" });
+  }
+
+  return resolvePostCombatRewards(runContent, nextState);
+}
+
+function winCurrentCombatToReward(runContent: RunContent, state: RunState): RunState {
+  let nextState = enterOpeningCombat(runContent, state);
+
+  while (nextState.phase === "combat") {
+    const view = observeCombat(runContent, nextState);
+    const strikeIndex = view.hand.findIndex((card) => card.id === "strike");
+    const fallbackIndex = view.hand.findIndex((card) => card.cost <= view.energy);
+    const chosenIndex = strikeIndex >= 0 ? strikeIndex : fallbackIndex;
+
+    if (chosenIndex >= 0 && view.hand[chosenIndex].cost <= view.energy) {
+      nextState = applyAction(runContent, nextState, { type: "playCard", handIndex: chosenIndex });
+      continue;
+    }
+
+    nextState = applyAction(runContent, nextState, { type: "endTurn" });
+  }
+
+  return nextState;
+}
+
+function resolvePostCombatRewards(runContent: RunContent, state: RunState): RunState {
+  let nextState = state;
+
+  while (nextState.phase === "reward") {
+    const view = observeRun(runContent, nextState);
+
+    if (view.phase !== "reward") {
+      return nextState;
+    }
+
+    if (view.mode === "cards") {
+      nextState = applyAction(runContent, nextState, { type: "skipReward" });
+      continue;
+    }
+
+    const goldReward = view.rewardItems.find((item) => item.kind === "gold");
+    if (goldReward) {
+      nextState = applyAction(runContent, nextState, { type: "takeReward", rewardIndex: goldReward.rewardIndex });
+      continue;
+    }
+
+    const relicReward = view.rewardItems.find((item) => item.kind === "relic");
+    if (relicReward) {
+      nextState = applyAction(runContent, nextState, { type: "takeReward", rewardIndex: relicReward.rewardIndex });
+      continue;
+    }
+
+    nextState = applyAction(runContent, nextState, { type: "skipReward" });
   }
 
   return nextState;
