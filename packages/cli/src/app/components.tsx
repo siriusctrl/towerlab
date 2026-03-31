@@ -11,6 +11,7 @@ import {
   type CliCardDefinition,
   localizeCardDefinition,
   localizeCardKeyword,
+  localizeCardRarityBadge,
   localizePhaseLabel,
   text,
   type Locale,
@@ -274,7 +275,7 @@ export function PhaseBody({
             ? formatBlessingCard(content, blessing.cardId, blessing.upgraded, locale)
             : null;
           const title = blessingCard
-            ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}[${blessingCard.cost}] ${formatBlessingName(content, blessing, locale)}`
+            ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}${localizeCardRarityBadge(blessingCard.rarity, locale)} [${blessingCard.cost}] ${formatBlessingName(content, blessing, locale)}`
             : formatBlessingName(content, blessing, locale);
 
           return (
@@ -650,15 +651,17 @@ function CardBlock({
   const effectLines = formatCardEffectLines(card, locale);
   const dimmed = playable === false;
   const emphasizedPlayable = playable === true;
+  const rarityBadge = localizeCardRarityBadge(card.rarity, locale);
   const titleColor = emphasizedPlayable ? "green" : dimmed ? "gray" : undefined;
   const costColor = dimmed ? "red" : "yellow";
   const keywordColor = dimmed ? "gray" : "yellow";
   const effectColor = dimmed ? "gray" : undefined;
+  const rarityColor = dimmed ? "gray" : card.rarity === "epic" ? "magenta" : card.rarity === "rare" ? "cyan" : undefined;
 
   return (
     <Box flexDirection="column">
       <Text color={titleColor} bold wrap="truncate-end" dimColor={dimmed}>
-        {namePrefix}{card.name} <Text color={costColor}>[{card.cost}]</Text>
+        {namePrefix}<Text color={rarityColor}>{rarityBadge}</Text> {card.name} <Text color={costColor}>[{card.cost}]</Text>
       </Text>
       {detailLines?.map((line) => (
         <Text key={`${card.id}-detail-${line}`} dimColor wrap="truncate-end">

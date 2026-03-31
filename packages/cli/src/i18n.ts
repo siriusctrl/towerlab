@@ -3,6 +3,7 @@ import type {
   CardDefinition,
   CardInstance,
   CardKeyword,
+  CardRarity,
   CombatObservation,
   EnemyIntent,
   LogEffect,
@@ -718,6 +719,30 @@ export function localizeObservedCards<T extends readonly (string | CardLike)[]>(
 
 export function localizeCardKeyword(keyword: CardKeyword, locale: Locale): string {
   return cardKeywords[locale][keyword] ?? keyword;
+}
+
+export function localizeCardRarityBadge(rarity: CardRarity, locale: Locale): string {
+  if (locale === "zh") {
+    if (rarity === "common") {
+      return "[普]";
+    }
+
+    if (rarity === "rare") {
+      return "[稀]";
+    }
+
+    return "[史]";
+  }
+
+  if (rarity === "common") {
+    return "[C]";
+  }
+
+  if (rarity === "rare") {
+    return "[R]";
+  }
+
+  return "[E]";
 }
 
 export function formatCombatStatus(status: { weak: number; vulnerable: number; poison: number }, locale: Locale): string | null {
