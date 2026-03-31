@@ -89,13 +89,24 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
   const referenceHeight = Math.max(8, rows - (compactMapPhase ? 6 : 9));
   const characterSelectLibraryHeight = Math.max(8, rows - 9);
   const mainPaneWidth = Math.max(32, columns - (showInspectorSidebar ? inspectorWidth + 4 : 2));
+  const referencePanelWidth = showInspectorSidebar ? inspectorWidth - 3 : mainPaneWidth - 2;
+  const characterSelectLibraryWidth = Math.max(24, columns - 4);
   const shopBuyPageCount = view?.phase === "shop" ? Math.max(1, Math.ceil(view.forSale.length / SHOP_BUY_PAGE_SIZE)) : 1;
   const shopRemovePageCount = view?.phase === "shop" ? Math.max(1, Math.ceil(view.removableDeckCards.length / SHOP_REMOVE_PAGE_SIZE)) : 1;
   const resolvedShopBuyPage = view?.phase === "shop" ? Math.min(Math.max(shopBuyPage, 0), shopBuyPageCount - 1) : 0;
   const resolvedShopRemovePage = view?.phase === "shop" ? Math.min(Math.max(shopRemovePage, 0), shopRemovePageCount - 1) : 0;
   const referenceMaxScroll =
     content && state && referenceMode !== "hidden"
-      ? getReferencePanelMaxScroll(content, state, locale, referenceMode, statusSectionIndex, librarySectionIndex, referenceHeight)
+      ? getReferencePanelMaxScroll(
+          content,
+          state,
+          locale,
+          referenceMode,
+          statusSectionIndex,
+          librarySectionIndex,
+          referenceHeight,
+          referencePanelWidth,
+        )
       : 0;
   const characterSelectLibraryMaxScroll =
     !view && characterSelectMode === "library"
@@ -104,6 +115,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
           locale,
           librarySectionIndex,
           characterSelectLibraryHeight,
+          characterSelectLibraryWidth,
         )
       : 0;
 
@@ -569,7 +581,8 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
           showLibrary={characterSelectMode === "library"}
           selectedCharacterIndex={characterSelectIndex}
           librarySectionIndex={librarySectionIndex}
-        referenceScrollOffset={referenceScrollOffset}
+          referenceScrollOffset={referenceScrollOffset}
+          width={characterSelectLibraryWidth}
       />
     );
   }
@@ -603,6 +616,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
               librarySectionIndex={librarySectionIndex}
               scrollOffset={referenceScrollOffset}
               height={referenceHeight}
+              width={referencePanelWidth}
             />
           ) : (
             <>
@@ -657,6 +671,7 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
               librarySectionIndex={librarySectionIndex}
               scrollOffset={referenceScrollOffset}
               height={referenceHeight}
+              width={referencePanelWidth}
             />
           </Box>
         ) : showSidebar ? (

@@ -16,6 +16,8 @@ Responsibilities:
 - stable per-copy card instances and card-upgrade transitions
 - relic application and deterministic effects
 - deterministic combat passives from cards and relics
+- deterministic scripted enemy phases, scaling, and intent progression
+- explicit combat timing windows for player turn start/end and enemy turn start/intent/end resolution
 - structured `LogEvent[]` recording for state and observation
 - pure observation shaping
 - replay from seed plus ordered action history
@@ -33,6 +35,7 @@ Responsibilities:
 - upgraded card stats and per-copy upgrade previews
 - relic definitions
 - enemy definitions
+- enemy phase scripts, multi-hit intents, scaling intents, and boss phase thresholds
 - per-character starter decks, blessing card pools, blessing relic pools, reward pools, and shop pools
 - per-character relic pools
 - act configuration and seeded tower map generation

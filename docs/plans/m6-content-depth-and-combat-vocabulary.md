@@ -41,6 +41,8 @@ The following M6 work is already on `main`:
 - upgrade previews now expose the strengthened card directly in the campfire inspection flow
 - blessings now skew toward relic buffs and archetype-starting cards instead of flat gold / max-HP picks
 - build-defining cards and blessing relics can establish structured combat passives that show up in the active combat UI
+- enemies now use scripted intent loops, phase-local behavior, and explicit scaling/utility actions instead of mostly flat random rotations
+- combat resolution now runs through explicit player/enemy timing windows instead of scattered end-turn state mutations
 - cards render as:
   - name + cost
   - keyword lines
@@ -48,6 +50,7 @@ The following M6 work is already on `main`:
 - combat hands now make affordable vs blocked cards visibly distinct in TTY without adding extra rules text to the cards themselves
 - both current characters have broader first-pass and second-pass card pools than M5 shipped with
 - acts now use deeper route stacks and more meaningful combat-to-utility pacing than the post-M5 map shape provided
+- baseline reward handling no longer loops indefinitely inside reward submenus during batch play
 
 This milestone remains active because the full content-depth target is still ahead.
 
@@ -131,6 +134,7 @@ Focus:
 - enough variation that build choices matter
 - no character-specific enemy pools
 - maps should remain legible in TTY while carrying more medium-horizon planning weight than the current shallow route tree
+- enemies should read as opponents with tempo plans, not as bags of HP that randomly alternate between two flat intents
 
 ### 5. Balance and benchmark sanity
 
@@ -182,6 +186,7 @@ M6 can move to `done` when all of the following are true:
 - map depth and route pacing create more than a handful of consequential choices per act without breaking TTY readability
 - map generation satisfies path-level risk constraints (elite band, spacing, and path variance) on generated maps
 - batch sanity checks across both characters do not show an obviously broken baseline state
+- enemy observations visibly surface scaling and phase pressure in both TTY and agent-facing observation payloads
 - docs accurately describe the current card rendering, agent-facing card data, and active milestone scope
 
 ## Review bias

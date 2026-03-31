@@ -829,7 +829,75 @@ function localizeEnemyName(name: string, locale: Locale): string {
 }
 
 function localizeIntentDescription(description: string, locale: Locale): string {
-  return locale === "zh" ? (intentDescriptions[description] ?? description) : description;
+  if (locale !== "zh") {
+    return description;
+  }
+
+  const parsed = parseIntentDescription(description);
+  return parsed ?? intentDescriptions[description] ?? description;
+}
+
+function parseIntentDescription(description: string): string | null {
+  const clauses = description.split(/\s+and\s+/u);
+  const translated = clauses.map((clause) => translateIntentClauseToChinese(clause.trim()));
+
+  if (translated.some((clause) => clause === null)) {
+    return null;
+  }
+
+  return translated.join("，");
+}
+
+function translateIntentClauseToChinese(clause: string): string | null {
+  const multiAttackMatch = clause.match(/^Attack for (\d+) x(\d+)$/u);
+  if (multiAttackMatch) {
+    return `攻击 ${multiAttackMatch[2]} 次，每次造成 ${multiAttackMatch[1]} 点`;
+  }
+
+  const attackMatch = clause.match(/^Attack for (\d+)$/u);
+  if (attackMatch) {
+    return `攻击造成 ${attackMatch[1]} 点`;
+  }
+
+  const blockMatch = clause.match(/^Gain (\d+) block$/u);
+  if (blockMatch) {
+    return `获得 ${blockMatch[1]} 点格挡`;
+  }
+
+  const healMatch = clause.match(/^Recover (\d+) HP$/u);
+  if (healMatch) {
+    return `恢复 ${healMatch[1]} 点生命`;
+  }
+
+  const weakMatch = clause.match(/^Apply (\d+) Weak$/u);
+  if (weakMatch) {
+    return `施加 ${weakMatch[1]} 层虚弱`;
+  }
+
+  const vulnerableMatch = clause.match(/^Apply (\d+) Vulnerable$/u);
+  if (vulnerableMatch) {
+    return `施加 ${vulnerableMatch[1]} 层易伤`;
+  }
+
+  const poisonMatch = clause.match(/^Apply (\d+) Poison$/u);
+  if (poisonMatch) {
+    return `施加 ${poisonMatch[1]} 层中毒`;
+  }
+
+  const strengthMatch = clause.match(/^Gain (\d+) Strength$/u);
+  if (strengthMatch) {
+    return `获得 ${strengthMatch[1]} 点力量`;
+  }
+
+  if (clause === "Clear your block") {
+    return "清空你的格挡";
+  }
+
+  if (clause === "Cleanse debuffs") {
+    return "清除自身减益";
+  }
+
+  return null;
 }
 
 function localizeRelicName(name: string, locale: Locale): string {

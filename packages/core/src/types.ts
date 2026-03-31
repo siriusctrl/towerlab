@@ -131,15 +131,34 @@ export interface ResolvedCard extends CardNumbers {
   upgraded: boolean;
 }
 
+export type EnemyIntentKind = "attack" | "attackBlock" | "block" | "heal" | "buff";
+export type CombatTimingWindow =
+  | "playerTurnStart"
+  | "beforeCardResolve"
+  | "afterCardResolve"
+  | "playerTurnEnd"
+  | "enemyTurnStart"
+  | "enemyIntentResolve"
+  | "enemyTurnEnd";
+
 export interface EnemyIntent {
-  kind: "attack" | "attackBlock" | "block" | "heal";
+  kind: EnemyIntentKind;
   description: string;
   damage?: number;
+  hits?: number;
   block?: number;
   heal?: number;
   weak?: number;
   vulnerable?: number;
   poison?: number;
+  selfStrength?: number;
+  clearPlayerBlock?: boolean;
+  cleanse?: boolean;
+}
+
+export interface EnemyPhaseDefinition {
+  whenHpAtOrBelow?: number;
+  intents: EnemyIntent[];
 }
 
 export type LogEffect =
@@ -190,7 +209,8 @@ export interface EnemyDefinition {
   name: string;
   maxHp: number;
   goldReward: number;
-  intents: EnemyIntent[];
+  intents?: EnemyIntent[];
+  phases?: EnemyPhaseDefinition[];
 }
 
 export type RelicKind = PassiveEffectKind;
@@ -218,8 +238,10 @@ export interface EnemyState {
   maxHp: number;
   block: number;
   status: CombatStatus;
+  strength: number;
   goldReward: number;
-  intents: EnemyIntent[];
+  phases: EnemyPhaseDefinition[];
+  phaseIndex: number;
   intentIndex: number;
 }
 
@@ -311,6 +333,9 @@ export interface ObservedEnemy {
   hp: number;
   maxHp: number;
   block: number;
+  strength: number;
+  phase: number;
+  totalPhases: number;
   status: CombatStatus;
   intent: EnemyIntent;
 }

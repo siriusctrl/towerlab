@@ -96,6 +96,7 @@ Library panel sections:
 - rare cards
 - epic cards
 - relic library
+- terms glossary for statuses, keywords, and timing notes
 
 The current rarity model is `common / rare / epic`.
 
@@ -120,9 +121,15 @@ Combat effects affordance:
 - on tighter combat layouts without a sidebar, the same summary sits directly under the main status bar
 - the main combat flow no longer places that text between the enemy panel and the hand list
 
+Enemy intent affordance:
+- enemy rows may now show `P1/2`, `P2/2`, and similar phase markers for multi-phase elites and bosses
+- enemy rows also surface current `Strength` / `力量` inline when scaling is active
+- intent text can now describe multi-hit attacks, self-buffs, block-clearing turns, and cleanse turns
+
 Current keyword behavior:
 - keywords are rendered as a separate emphasized line
 - the renderer currently uses this for `Exhaust`, `Retain`, and `Ethereal`
+- the library glossary explains timing-sensitive effects such as poison resolving before the holder acts
 - keyword semantics come from structured card data, not from parsing card description strings
 
 Card text rendering pipeline:
@@ -159,6 +166,11 @@ Combat powers:
 - some cards and relics now create structured combat passives
 - when active, the combat pane renders a `Combat Effects` / `本场效果` summary outside the enemy-to-hand reading flow
 - this line is derived from structured passive metadata, not from ad-hoc prose
+
+Enemy behavior:
+- enemies are no longer treated as shallow random intent pickers
+- normal fights, elites, and bosses can run scripted local intent loops
+- elites and bosses may transition across multiple HP-based phases during one fight
 
 ## Route Tree
 

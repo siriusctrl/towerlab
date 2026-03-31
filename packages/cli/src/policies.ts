@@ -44,8 +44,12 @@ function chooseRandomAction(content: RunContent, state: RunState): RunAction {
     throw new Error(`policy random cannot act during ${state.phase}`);
   }
 
-  const index = state.rng % actions.length;
-  return actions[index]!;
+  const rewardChoices =
+    state.phase === "reward" && state.reward?.mode === "cards"
+      ? actions.filter((action) => action.type !== "backReward")
+      : actions;
+  const index = state.rng % rewardChoices.length;
+  return rewardChoices[index]!;
 }
 
 function chooseGreedyAction(content: RunContent, state: RunState): RunAction {
@@ -221,15 +225,15 @@ function chooseBestRewardAction(
   if (cardRewardActions.length > 0) {
     const bestReward = cardRewardActions.reduce((best, action) => {
       const card = cards[action.rewardIndex]!;
-      const score = scoreRewardCard(content, card.id, card.damage ?? 0, card.block ?? 0, preferFlexibleCards);
+      const score = scoreRewardCard(content, card.id, preferFlexibleCards);
       const bestCard = cards[best.rewardIndex]!;
-      const bestScore = scoreRewardCard(content, bestCard.id, bestCard.damage ?? 0, bestCard.block ?? 0, preferFlexibleCards);
+      const bestScore = scoreRewardCard(content, bestCard.id, preferFlexibleCards);
 
       return score > bestScore ? action : best;
     });
 
     const bestCard = cards[bestReward.rewardIndex]!;
-    const bestScore = scoreRewardCard(content, bestCard.id, bestCard.damage ?? 0, bestCard.block ?? 0, preferFlexibleCards);
+    const bestScore = scoreRewardCard(content, bestCard.id, preferFlexibleCards);
 
     return preferFlexibleCards && bestScore <= 10 ? { type: "skipReward" } : bestReward;
   }
@@ -282,8 +286,8 @@ function chooseGreedyShopAction(content: RunContent, state: RunState, actions: R
       const cardId = state.shop?.forSale[action.saleIndex]?.cardId!;
       const bestCardId = state.shop?.forSale[best.saleIndex]?.cardId!;
 
-      return scoreRewardCard(content, cardId, content.cards[cardId]?.damage ?? 0, content.cards[cardId]?.block ?? 0, false) >
-          scoreRewardCard(content, bestCardId, content.cards[bestCardId]?.damage ?? 0, content.cards[bestCardId]?.block ?? 0, false)
+      return scoreRewardCard(content, cardId, false) >
+          scoreRewardCard(content, bestCardId, false)
         ? action
         : best;
     });
@@ -308,26 +312,14 @@ function chooseHeuristicShopAction(content: RunContent, state: RunState, actions
   const bestBuy = buyActions.reduce((best, action) => {
     const cardId = state.shop?.forSale[action.saleIndex]?.cardId!;
     const bestCardId = state.shop?.forSale[best.saleIndex]?.cardId!;
-    const score = scoreRewardCard(content, cardId, content.cards[cardId]?.damage ?? 0, content.cards[cardId]?.block ?? 0, true);
-    const bestScore = scoreRewardCard(
-      content,
-      bestCardId,
-      content.cards[bestCardId]?.damage ?? 0,
-      content.cards[bestCardId]?.block ?? 0,
-      true,
-    );
+    const score = scoreRewardCard(content, cardId, true);
+    const bestScore = scoreRewardCard(content, bestCardId, true);
 
     return score > bestScore ? action : best;
   });
 
   const bestCardId = state.shop.forSale[bestBuy.saleIndex]?.cardId!;
-  const bestScore = scoreRewardCard(
-    content,
-    bestCardId,
-    content.cards[bestCardId]?.damage ?? 0,
-    content.cards[bestCardId]?.block ?? 0,
-    true,
-  );
+  const bestScore = scoreRewardCard(content, bestCardId, true);
 
   return bestScore >= 22 ? bestBuy : { type: "leaveShop" };
 }
@@ -371,13 +363,47 @@ function scoreCombatCard(damage: number, block: number, cost: number, blockGap: 
 function scoreRewardCard(
   content: RunContent,
   id: string,
-  damage: number,
-  block: number,
   preferFlexibleCards: boolean,
 ): number {
-  const flexibilityBonus = preferFlexibleCards && damage > 0 && block > 0 ? 12 : 0;
+  const card = content.cards[id];
+
+  if (!card) {
+    return Number.NEGATIVE_INFINITY;
+  }
+
+  const damage = card.damage ?? 0;
+  const block = card.block ?? 0;
+  const draw = card.draw ?? 0;
+  const energy = card.energy ?? 0;
+  const heal = card.heal ?? 0;
+  const weak = card.weak ?? 0;
+  const vulnerable = card.vulnerable ?? 0;
+  const poison = card.poison ?? 0;
+  const poisonMultiplier = card.poisonMultiplier ?? 0;
+  const passiveScore = (card.passives ?? []).reduce((total, passive) => total + scorePassive(passive.kind, passive.value), 0);
+  const keywordScore =
+    (card.retain ? 6 : 0)
+    + (card.keywords?.includes("retain") ? 4 : 0)
+    + (card.keywords?.includes("exhaust") ? 2 : 0)
+    - (card.keywords?.includes("ethereal") ? 5 : 0);
+  const flexibilityBonus =
+    preferFlexibleCards && damage > 0 && (block > 0 || draw > 0 || weak > 0 || vulnerable > 0 || poison > 0) ? 12 : 0;
   const nonStarterBonus = isStarterCard(content, id) ? 0 : 4;
-  return damage * 3 + block * 3 + flexibilityBonus + nonStarterBonus;
+  return (
+    damage * 3
+    + block * 3
+    + draw * 7
+    + energy * 10
+    + heal * 4
+    + weak * 5
+    + vulnerable * 6
+    + poison * 5
+    + poisonMultiplier * 14
+    + passiveScore
+    + keywordScore
+    + flexibilityBonus
+    + nonStarterBonus
+  );
 }
 
 function countStarterCards(content: RunContent, deck: Array<{ cardId: string }>): number {
@@ -401,7 +427,7 @@ function scoreBlessing(
       return 0;
     }
 
-    return scoreRewardCard(content, card.id, card.damage ?? 0, card.block ?? 0, preferSafety) + 30;
+    return scoreRewardCard(content, card.id, preferSafety) + 30;
   }
 
   if (blessing.kind === "relic" && blessing.relicId) {
@@ -471,14 +497,82 @@ function scoreUpgrade(
   content: RunContent,
   preferFlexibleCards: boolean,
 ): number {
-  const before = scoreRewardCard(content, entry.card.id, entry.card.damage ?? 0, entry.card.block ?? 0, preferFlexibleCards)
-    + (entry.card.draw ?? 0) * 2
-    + (entry.card.energy ?? 0) * 4
-    + (entry.card.heal ?? 0) * 2;
-  const after = scoreRewardCard(content, entry.upgradedCard.id, entry.upgradedCard.damage ?? 0, entry.upgradedCard.block ?? 0, preferFlexibleCards)
-    + (entry.upgradedCard.draw ?? 0) * 2
-    + (entry.upgradedCard.energy ?? 0) * 4
-    + (entry.upgradedCard.heal ?? 0) * 2;
+  const before = scoreObservedCard(content, entry.card, preferFlexibleCards);
+  const after = scoreObservedCard(content, entry.upgradedCard, preferFlexibleCards);
 
   return after - before;
+}
+
+function scoreObservedCard(
+  content: RunContent,
+  card: {
+    id: string;
+    damage?: number;
+    block?: number;
+    draw?: number;
+    energy?: number;
+    heal?: number;
+    weak?: number;
+    vulnerable?: number;
+    poison?: number;
+    poisonMultiplier?: number;
+    keywords?: string[];
+    retain?: boolean;
+    passives?: Array<{ kind: string; value: number }>;
+  },
+  preferFlexibleCards: boolean,
+): number {
+  const damage = card.damage ?? 0;
+  const block = card.block ?? 0;
+  const draw = card.draw ?? 0;
+  const energy = card.energy ?? 0;
+  const heal = card.heal ?? 0;
+  const weak = card.weak ?? 0;
+  const vulnerable = card.vulnerable ?? 0;
+  const poison = card.poison ?? 0;
+  const poisonMultiplier = card.poisonMultiplier ?? 0;
+  const passiveScore = (card.passives ?? []).reduce((total, passive) => total + scorePassive(passive.kind, passive.value), 0);
+  const keywordScore =
+    (card.retain ? 6 : 0)
+    + (card.keywords?.includes("retain") ? 4 : 0)
+    + (card.keywords?.includes("exhaust") ? 2 : 0)
+    - (card.keywords?.includes("ethereal") ? 5 : 0);
+  const flexibilityBonus =
+    preferFlexibleCards && damage > 0 && (block > 0 || draw > 0 || weak > 0 || vulnerable > 0 || poison > 0) ? 12 : 0;
+  const nonStarterBonus = isStarterCard(content, card.id) ? 0 : 4;
+
+  return (
+    damage * 3
+    + block * 3
+    + draw * 7
+    + energy * 10
+    + heal * 4
+    + weak * 5
+    + vulnerable * 6
+    + poison * 5
+    + poisonMultiplier * 14
+    + passiveScore
+    + keywordScore
+    + flexibilityBonus
+    + nonStarterBonus
+  );
+}
+
+function scorePassive(kind: string, value: number): number {
+  switch (kind) {
+    case "strikeBonusDamage":
+      return 30 + value * 10;
+    case "exhaustBlock":
+      return 28 + value * 9;
+    case "retainBlock":
+      return 26 + value * 10;
+    case "attackPoison":
+      return 32 + value * 10;
+    case "debuffBonusDamage":
+      return 34 + value * 10;
+    case "debuffDraw":
+      return 38 + value * 12;
+    default:
+      return 0;
+  }
 }

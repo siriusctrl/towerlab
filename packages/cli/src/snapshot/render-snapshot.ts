@@ -64,7 +64,7 @@ function renderObservation(content: RunContent, observation: Observation, locale
   if (observation.phase === "combat") {
     lines.push(
       `${text(locale, "combat")}  ${text(locale, "draw")} ${observation.drawPileCount} ${text(locale, "discard")} ${observation.discardPileCount}`,
-      `${observation.enemy.name} ${text(locale, "hp")} ${observation.enemy.hp}/${observation.enemy.maxHp} ${text(locale, "block")} ${observation.enemy.block} → ${observation.enemy.intent.description}`,
+      `${observation.enemy.name} ${text(locale, "hp")} ${observation.enemy.hp}/${observation.enemy.maxHp} ${text(locale, "block")} ${observation.enemy.block}${observation.enemy.strength > 0 ? `  ${text(locale, "strength")} ${observation.enemy.strength}` : ""}${observation.enemy.totalPhases > 1 ? `  P${observation.enemy.phase}/${observation.enemy.totalPhases}` : ""} → ${observation.enemy.intent.description}`,
       `${text(locale, "energy")} ${observation.energy}/${observation.baseEnergy}  ${text(locale, "block")} ${observation.block}`,
     );
 

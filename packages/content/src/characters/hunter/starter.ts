@@ -4,17 +4,17 @@ export const hunterStarter: Pick<
   CharacterDefinition,
   "maxHp" | "startGold" | "starterDeck" | "startingRelicId"
 > = {
-  maxHp: 72,
+  maxHp: 76,
   startGold: 12,
   starterDeck: [
     "slice",
     "slice",
     "slice",
-    "slice",
+    "poisonedStab",
     "dodge",
     "dodge",
     "dodge",
-    "dodge",
+    "backflip",
     "neutralize",
     "survivor",
   ],

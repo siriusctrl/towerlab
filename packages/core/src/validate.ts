@@ -1,8 +1,9 @@
 import type { CardDefinition, EnemyDefinition, RelicDefinition, RelicKind, RunContent } from "./types.js";
-import { getCardNumbers } from "./shared.js";
+import { getCardNumbers, getEnemyPhases } from "./shared.js";
 
 export function validateContent(content: RunContent): void {
   validateCards(content);
+  validateEnemies(content);
   validateCharacter(content);
   validateMap(content);
   validatePools(content);
@@ -157,6 +158,37 @@ function validateCards(content: RunContent): void {
   }
 }
 
+function validateEnemies(content: RunContent): void {
+  for (const enemy of Object.values(content.enemies)) {
+    const phases = getEnemyPhases(enemy);
+
+    if (phases.length === 0) {
+      throw new Error(`enemy ${enemy.id} must define at least one phase`);
+    }
+
+    let previousThreshold = enemy.maxHp;
+    for (const [phaseIndex, phase] of phases.entries()) {
+      if (phase.intents.length === 0) {
+        throw new Error(`enemy ${enemy.id} phase ${phaseIndex + 1} must define at least one intent`);
+      }
+
+      if (phaseIndex === 0) {
+        continue;
+      }
+
+      if (phase.whenHpAtOrBelow === undefined) {
+        throw new Error(`enemy ${enemy.id} phase ${phaseIndex + 1} must define whenHpAtOrBelow`);
+      }
+
+      if (phase.whenHpAtOrBelow <= 0 || phase.whenHpAtOrBelow >= previousThreshold) {
+        throw new Error(`enemy ${enemy.id} phase ${phaseIndex + 1} threshold must be between 1 and ${previousThreshold - 1}`);
+      }
+
+      previousThreshold = phase.whenHpAtOrBelow;
+    }
+  }
+}
+
 function validateCardNumbers(cardId: string, label: "base" | "upgraded", numbers: CardDefinition["base"]): void {
   if (numbers.cost < 0) {
     throw new Error(`card ${cardId} ${label} cost must be non-negative`);
@@ -189,9 +221,7 @@ export function getEnemyDefinition(content: RunContent, enemyId: string): EnemyD
     throw new Error(`unknown enemy: ${enemyId}`);
   }
 
-  if (enemy.intents.length === 0) {
-    throw new Error(`enemy ${enemyId} must define at least one intent`);
-  }
+  getEnemyPhases(enemy);
 
   return enemy;
 }

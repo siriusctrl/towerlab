@@ -1,372 +1,497 @@
-import type { EnemyDefinition } from "@towerlab/core";
+import type { EnemyDefinition, EnemyIntent, EnemyPhaseDefinition } from "@towerlab/core";
+
+function joinClauses(...clauses: Array<string | null | undefined>): string {
+  return clauses.filter((clause): clause is string => Boolean(clause)).join(" and ");
+}
+
+function attackClause(damage: number, hits = 1): string {
+  return hits > 1 ? `Attack for ${damage} x${hits}` : `Attack for ${damage}`;
+}
+
+function blockClause(block: number): string {
+  return `Gain ${block} block`;
+}
+
+function healClause(heal: number): string {
+  return `Recover ${heal} HP`;
+}
+
+function applyClause(label: "Weak" | "Vulnerable" | "Poison", amount: number): string {
+  return `Apply ${amount} ${label}`;
+}
+
+function strengthClause(amount: number): string {
+  return `Gain ${amount} Strength`;
+}
+
+function clearBlockClause(): string {
+  return "Clear your block";
+}
+
+function cleanseClause(): string {
+  return "Cleanse debuffs";
+}
+
+function attack(damage: number, options: Partial<EnemyIntent> = {}): EnemyIntent {
+  const hits = options.hits ?? 1;
+  return {
+    kind: "attack",
+    damage,
+    ...options,
+    description: joinClauses(
+      attackClause(damage, hits),
+      options.clearPlayerBlock ? clearBlockClause() : null,
+      options.weak ? applyClause("Weak", options.weak) : null,
+      options.vulnerable ? applyClause("Vulnerable", options.vulnerable) : null,
+      options.poison ? applyClause("Poison", options.poison) : null,
+      options.selfStrength ? strengthClause(options.selfStrength) : null,
+    ),
+  };
+}
+
+function attackBlock(damage: number, block: number, options: Partial<EnemyIntent> = {}): EnemyIntent {
+  const hits = options.hits ?? 1;
+  return {
+    kind: "attackBlock",
+    damage,
+    block,
+    ...options,
+    description: joinClauses(
+      attackClause(damage, hits),
+      blockClause(block),
+      options.clearPlayerBlock ? clearBlockClause() : null,
+      options.weak ? applyClause("Weak", options.weak) : null,
+      options.vulnerable ? applyClause("Vulnerable", options.vulnerable) : null,
+      options.poison ? applyClause("Poison", options.poison) : null,
+      options.selfStrength ? strengthClause(options.selfStrength) : null,
+    ),
+  };
+}
+
+function block(blockAmount: number, options: Partial<EnemyIntent> = {}): EnemyIntent {
+  return {
+    kind: options.selfStrength || options.cleanse ? "buff" : "block",
+    block: blockAmount,
+    ...options,
+    description: joinClauses(
+      blockClause(blockAmount),
+      options.selfStrength ? strengthClause(options.selfStrength) : null,
+      options.cleanse ? cleanseClause() : null,
+    ),
+  };
+}
+
+function heal(healAmount: number, options: Partial<EnemyIntent> = {}): EnemyIntent {
+  return {
+    kind: "heal",
+    heal: healAmount,
+    ...options,
+    description: joinClauses(
+      healClause(healAmount),
+      options.cleanse ? cleanseClause() : null,
+      options.selfStrength ? strengthClause(options.selfStrength) : null,
+    ),
+  };
+}
+
+function buff(options: { block?: number; selfStrength?: number; cleanse?: boolean; weak?: number; vulnerable?: number; poison?: number }): EnemyIntent {
+  return {
+    kind: "buff",
+    block: options.block,
+    selfStrength: options.selfStrength,
+    cleanse: options.cleanse,
+    weak: options.weak,
+    vulnerable: options.vulnerable,
+    poison: options.poison,
+    description: joinClauses(
+      options.block ? blockClause(options.block) : null,
+      options.selfStrength ? strengthClause(options.selfStrength) : null,
+      options.cleanse ? cleanseClause() : null,
+      options.weak ? applyClause("Weak", options.weak) : null,
+      options.vulnerable ? applyClause("Vulnerable", options.vulnerable) : null,
+      options.poison ? applyClause("Poison", options.poison) : null,
+    ),
+  };
+}
+
+function phases(...entries: Array<EnemyIntent[] | [number, EnemyIntent[]]>): EnemyPhaseDefinition[] {
+  return entries.map((entry, index) => {
+    if (Array.isArray(entry) && typeof entry[0] === "number") {
+      const [whenHpAtOrBelow, intents] = entry as [number, EnemyIntent[]];
+      return { whenHpAtOrBelow, intents };
+    }
+
+    return index === 0 ? { intents: entry as EnemyIntent[] } : { whenHpAtOrBelow: 1, intents: entry as EnemyIntent[] };
+  });
+}
 
 export const enemies: Record<string, EnemyDefinition> = {
   sentry: {
     id: "sentry",
     name: "Sentry",
-    maxHp: 24,
+    maxHp: 26,
     goldReward: 16,
-    intents: [
-      { kind: "attack", description: "Jab for 5", damage: 5 },
-      { kind: "block", description: "Brace for 6 block", block: 6 },
-      { kind: "attack", description: "Lunge for 7", damage: 7 },
-    ],
+    phases: phases([
+      attack(5),
+      block(6),
+      attack(3, { hits: 2 }),
+      attack(7),
+    ]),
   },
   raider: {
     id: "raider",
     name: "Raider",
-    maxHp: 27,
+    maxHp: 30,
     goldReward: 18,
-    intents: [
-      { kind: "attack", description: "Slash for 6", damage: 6 },
-      { kind: "attackBlock", description: "Press for 6 and gain 3 block", damage: 6, block: 3 },
-      { kind: "attack", description: "Rush for 8 and apply 1 Vulnerable", damage: 8, vulnerable: 1 },
-    ],
+    phases: phases([
+      buff({ selfStrength: 2 }),
+      attack(7),
+      attack(8, { vulnerable: 1 }),
+      attackBlock(6, 4),
+    ]),
   },
   skirmisher: {
     id: "skirmisher",
     name: "Skirmisher",
-    maxHp: 25,
+    maxHp: 28,
     goldReward: 17,
-    intents: [
-      { kind: "attackBlock", description: "Feint for 4 and gain 3 block", damage: 4, block: 3 },
-      { kind: "attack", description: "Slice for 7", damage: 7 },
-      { kind: "block", description: "Guard for 6 block", block: 6 },
-    ],
+    phases: phases([
+      attack(4, { hits: 2 }),
+      attackBlock(6, 4),
+      attack(9),
+      block(7),
+    ]),
   },
   emberAdept: {
     id: "emberAdept",
     name: "Ember Adept",
-    maxHp: 26,
+    maxHp: 29,
     goldReward: 19,
-    intents: [
-      { kind: "attack", description: "Spark for 6", damage: 6 },
-      { kind: "block", description: "Stoke 5 block", block: 5 },
-      { kind: "attack", description: "Scorch for 8", damage: 8 },
-    ],
+    phases: phases([
+      attack(6, { weak: 1 }),
+      block(5, { selfStrength: 1 }),
+      attack(9, { poison: 2 }),
+      attack(4, { hits: 2 }),
+    ]),
   },
   ashScout: {
     id: "ashScout",
     name: "Ash Scout",
-    maxHp: 28,
+    maxHp: 31,
     goldReward: 18,
-    intents: [
-      { kind: "attack", description: "Flare for 6", damage: 6 },
-      { kind: "attackBlock", description: "Skirmish for 5 and gain 4 block", damage: 5, block: 4 },
-      { kind: "attack", description: "Rush for 9", damage: 9 },
-    ],
+    phases: phases([
+      attack(5, { hits: 2 }),
+      block(5, { selfStrength: 1 }),
+      attack(10),
+      attack(8, { clearPlayerBlock: true }),
+    ]),
   },
   pikeBrute: {
     id: "pikeBrute",
     name: "Pike Brute",
-    maxHp: 30,
+    maxHp: 33,
     goldReward: 20,
-    intents: [
-      { kind: "attack", description: "Pike jab for 7", damage: 7 },
-      { kind: "block", description: "Dig in for 7 block", block: 7 },
-      { kind: "attackBlock", description: "Press for 7 and gain 3 block", damage: 7, block: 3 },
-    ],
+    phases: phases([
+      block(7),
+      attack(11),
+      attack(8, { clearPlayerBlock: true }),
+      attackBlock(7, 4),
+    ]),
   },
   crusher: {
     id: "crusher",
     name: "Crusher",
-    maxHp: 40,
+    maxHp: 44,
     goldReward: 27,
-    intents: [
-      { kind: "attackBlock", description: "Crush for 8 and gain 4 block", damage: 8, block: 4 },
-      { kind: "heal", description: "Patch 6 HP", heal: 6 },
-      { kind: "attack", description: "Hammer for 12", damage: 12 },
-    ],
+    phases: phases(
+      [attackBlock(8, 4), buff({ selfStrength: 2 }), attack(11)],
+      [20, [attack(14), attack(8, { hits: 2 }), heal(6, { cleanse: true })]],
+    ),
   },
   siegeSmith: {
     id: "siegeSmith",
     name: "Siege Smith",
-    maxHp: 44,
+    maxHp: 48,
     goldReward: 30,
-    intents: [
-      { kind: "attackBlock", description: "Forge strike for 9 and gain 4 block", damage: 9, block: 4 },
-      { kind: "block", description: "Temper 9 block", block: 9 },
-      { kind: "attack", description: "Anvil drop for 13", damage: 13 },
-    ],
+    phases: phases(
+      [block(8, { selfStrength: 2 }), attackBlock(10, 6), attack(13)],
+      [22, [attack(15, { clearPlayerBlock: true }), block(10, { selfStrength: 2 }), attack(10, { hits: 2 })]],
+    ),
   },
   bannerCaptain: {
     id: "bannerCaptain",
     name: "Banner Captain",
-    maxHp: 46,
+    maxHp: 50,
     goldReward: 29,
-    intents: [
-      { kind: "attackBlock", description: "Command for 8 and gain 5 block", damage: 8, block: 5 },
-      { kind: "block", description: "Brace for 8 block", block: 8 },
-      { kind: "attack", description: "Cleave for 12", damage: 12 },
-    ],
+    phases: phases(
+      [buff({ block: 6, selfStrength: 2 }), attack(9, { hits: 2 }), attack(12, { vulnerable: 1 })],
+      [24, [attack(14), attack(10, { hits: 2 }), block(8, { selfStrength: 2 })]],
+    ),
   },
   forgeKeeper: {
     id: "forgeKeeper",
     name: "Forge Keeper",
-    maxHp: 72,
+    maxHp: 78,
     goldReward: 48,
-    intents: [
-      { kind: "attackBlock", description: "Smash for 10 and gain 4 block", damage: 10, block: 4 },
-      { kind: "block", description: "Temper 8 block", block: 8 },
-      { kind: "attack", description: "Crush for 14", damage: 14 },
-    ],
+    phases: phases(
+      [block(10, { selfStrength: 2 }), attack(12), attack(8, { hits: 2 }), attackBlock(10, 6)],
+      [40, [attack(16, { clearPlayerBlock: true }), attack(12, { hits: 2 }), heal(8, { cleanse: true }), block(12, { selfStrength: 2 })]],
+    ),
   },
   ironColossus: {
     id: "ironColossus",
     name: "Iron Colossus",
-    maxHp: 78,
+    maxHp: 86,
     goldReward: 52,
-    intents: [
-      { kind: "attack", description: "Trample for 16", damage: 16 },
-      { kind: "block", description: "Raise 10 block", block: 10 },
-      { kind: "attackBlock", description: "Hammer for 13 and gain 4 block", damage: 13, block: 4 },
-      { kind: "heal", description: "Reforge 8 HP", heal: 8 },
-    ],
+    phases: phases(
+      [attack(14), block(10, { selfStrength: 1 }), attack(9, { hits: 2 }), attackBlock(12, 6)],
+      [44, [attack(18, { clearPlayerBlock: true }), attack(11, { hits: 2 }), heal(10, { cleanse: true }), buff({ selfStrength: 2 })]],
+    ),
   },
   watcher: {
     id: "watcher",
     name: "Watcher",
-    maxHp: 34,
+    maxHp: 38,
     goldReward: 23,
-    intents: [
-      { kind: "attack", description: "Pulse for 7", damage: 7 },
-      { kind: "block", description: "Charge 7 block", block: 7 },
-      { kind: "attackBlock", description: "Overwatch for 9 and gain 3 block", damage: 9, block: 3 },
-    ],
+    phases: phases([
+      attack(8),
+      block(8),
+      attack(6, { hits: 2 }),
+      attack(10, { vulnerable: 1 }),
+    ]),
   },
   boltHound: {
     id: "boltHound",
     name: "Bolt Hound",
-    maxHp: 32,
+    maxHp: 36,
     goldReward: 24,
-    intents: [
-      { kind: "attack", description: "Snap for 6", damage: 6 },
-      { kind: "heal", description: "Recover 6 HP", heal: 6 },
-      { kind: "attack", description: "Arc Bite for 11", damage: 11 },
-    ],
+    phases: phases([
+      attack(4, { hits: 2 }),
+      attack(11),
+      attack(7, { vulnerable: 1 }),
+      heal(6),
+    ]),
   },
   lensAdept: {
     id: "lensAdept",
     name: "Lens Adept",
-    maxHp: 35,
+    maxHp: 39,
     goldReward: 25,
-    intents: [
-      { kind: "attack", description: "Beam for 8", damage: 8 },
-      { kind: "block", description: "Ward 7 block", block: 7 },
-      { kind: "attackBlock", description: "Align for 7 and gain 3 block", damage: 7, block: 3 },
-    ],
+    phases: phases([
+      block(8, { selfStrength: 1 }),
+      attack(9),
+      attackBlock(8, 4),
+      attack(10, { weak: 1 }),
+    ]),
   },
   circuitMantis: {
     id: "circuitMantis",
     name: "Circuit Mantis",
-    maxHp: 33,
+    maxHp: 37,
     goldReward: 24,
-    intents: [
-      { kind: "attack", description: "Snap for 7", damage: 7 },
-      { kind: "block", description: "Charge 6 block", block: 6 },
-      { kind: "attack", description: "Arc Lash for 9", damage: 9 },
-    ],
+    phases: phases([
+      attack(5, { hits: 2 }),
+      attack(10),
+      attackBlock(7, 5),
+      attack(8, { poison: 2 }),
+    ]),
   },
   sparkRogue: {
     id: "sparkRogue",
     name: "Spark Rogue",
-    maxHp: 34,
+    maxHp: 38,
     goldReward: 25,
-    intents: [
-      { kind: "attack", description: "Spark knife for 8", damage: 8 },
-      { kind: "attackBlock", description: "Slip for 6 and gain 4 block", damage: 6, block: 4 },
-      { kind: "attack", description: "Flash cut for 10 and apply 1 Vulnerable", damage: 10, vulnerable: 1 },
-    ],
+    phases: phases([
+      attack(8),
+      attackBlock(6, 4),
+      attack(11, { vulnerable: 1 }),
+      buff({ selfStrength: 1 }),
+    ]),
   },
   mirrorDrone: {
     id: "mirrorDrone",
     name: "Mirror Drone",
-    maxHp: 36,
+    maxHp: 40,
     goldReward: 26,
-    intents: [
-      { kind: "block", description: "Reflect 8 block", block: 8 },
-      { kind: "attack", description: "Beam for 9", damage: 9 },
-      { kind: "attackBlock", description: "Copy strike for 8 and gain 3 block", damage: 8, block: 3 },
-    ],
+    phases: phases([
+      block(9, { selfStrength: 1 }),
+      attack(9),
+      attackBlock(8, 4),
+      attack(6, { hits: 2 }),
+    ]),
   },
   watchCore: {
     id: "watchCore",
     name: "Watch Core",
-    maxHp: 52,
+    maxHp: 56,
     goldReward: 34,
-    intents: [
-      { kind: "block", description: "Charge 8 block", block: 8 },
-      { kind: "attack", description: "Pulse for 11", damage: 11 },
-      { kind: "attackBlock", description: "Overload for 14 and gain 5 block", damage: 14, block: 5 },
-    ],
+    phases: phases(
+      [block(8, { selfStrength: 2 }), attack(12), attack(8, { hits: 2 }), attackBlock(10, 5)],
+      [28, [attack(16), attack(10, { hits: 2 }), block(10, { selfStrength: 2 })]],
+    ),
   },
   voltSentinel: {
     id: "voltSentinel",
     name: "Volt Sentinel",
-    maxHp: 58,
+    maxHp: 62,
     goldReward: 37,
-    intents: [
-      { kind: "attack", description: "Discharge for 12", damage: 12 },
-      { kind: "block", description: "Polarize 9 block", block: 9 },
-      { kind: "attackBlock", description: "Voltage crush for 11 and gain 5 block", damage: 11, block: 5 },
-    ],
+    phases: phases(
+      [attack(12), block(9, { selfStrength: 1 }), attackBlock(11, 5), attack(7, { hits: 2 })],
+      [30, [attack(16, { clearPlayerBlock: true }), attack(11, { hits: 2 }), buff({ selfStrength: 2 })]],
+    ),
   },
   stormBishop: {
     id: "stormBishop",
     name: "Storm Bishop",
-    maxHp: 55,
+    maxHp: 59,
     goldReward: 36,
-    intents: [
-      { kind: "attack", description: "Bolt for 11", damage: 11 },
-      { kind: "block", description: "Sanctify 8 block", block: 8 },
-      { kind: "attackBlock", description: "Stormcall for 10 and gain 5 block", damage: 10, block: 5 },
-      { kind: "heal", description: "Recover 6 HP", heal: 6 },
-    ],
+    phases: phases(
+      [attack(11, { weak: 1 }), block(8, { selfStrength: 1 }), heal(6), attack(10, { poison: 2 })],
+      [28, [attack(15), attack(9, { hits: 2 }), block(9, { selfStrength: 2 })]],
+    ),
   },
   spireWarden: {
     id: "spireWarden",
     name: "Spire Warden",
-    maxHp: 82,
+    maxHp: 88,
     goldReward: 58,
-    intents: [
-      { kind: "block", description: "Raise 10 block", block: 10 },
-      { kind: "attack", description: "Judgment for 13", damage: 13 },
-      { kind: "attackBlock", description: "Seal for 16 and gain 6 block", damage: 16, block: 6 },
-    ],
+    phases: phases(
+      [block(12, { selfStrength: 1 }), attack(13), attack(8, { hits: 2 }), attackBlock(14, 6)],
+      [46, [attack(18, { clearPlayerBlock: true }), attack(12, { hits: 2 }), block(12, { selfStrength: 2 }), heal(8, { cleanse: true })]],
+    ),
   },
   tempestPrism: {
     id: "tempestPrism",
     name: "Tempest Prism",
-    maxHp: 86,
+    maxHp: 92,
     goldReward: 62,
-    intents: [
-      { kind: "attack", description: "Prism Beam for 15", damage: 15 },
-      { kind: "block", description: "Polarize 11 block", block: 11 },
-      { kind: "attackBlock", description: "Static Burst for 12 and gain 5 block", damage: 12, block: 5 },
-      { kind: "heal", description: "Recharge 8 HP", heal: 8 },
-    ],
+    phases: phases(
+      [attack(14), block(11, { selfStrength: 1 }), attack(10, { hits: 2 }), attack(12, { vulnerable: 1 })],
+      [48, [attack(19), attack(11, { hits: 2, vulnerable: 1 }), heal(8, { cleanse: true }), buff({ selfStrength: 2 })]],
+    ),
   },
   ashenKnight: {
     id: "ashenKnight",
     name: "Ashen Knight",
-    maxHp: 40,
+    maxHp: 45,
     goldReward: 28,
-    intents: [
-      { kind: "attack", description: "Cleave for 10", damage: 10 },
-      { kind: "attackBlock", description: "Guarded swing for 12 and gain 4 block", damage: 12, block: 4 },
-      { kind: "heal", description: "Steady 6 HP", heal: 6 },
-    ],
+    phases: phases([
+      attack(11),
+      attackBlock(12, 4),
+      attack(9, { hits: 2 }),
+      buff({ selfStrength: 1 }),
+    ]),
   },
   voidPriest: {
     id: "voidPriest",
     name: "Void Priest",
-    maxHp: 38,
+    maxHp: 43,
     goldReward: 29,
-    intents: [
-      { kind: "block", description: "Ward 10 block", block: 10 },
-      { kind: "attack", description: "Blast for 12 and apply 1 Vulnerable", damage: 12, vulnerable: 1 },
-      { kind: "attackBlock", description: "Rift for 10 and gain 6 block", damage: 10, block: 6 },
-    ],
+    phases: phases([
+      block(10, { selfStrength: 1 }),
+      attack(12, { vulnerable: 1 }),
+      attackBlock(10, 6),
+      attack(8, { poison: 3 }),
+    ]),
   },
   mawSentinel: {
     id: "mawSentinel",
     name: "Maw Sentinel",
-    maxHp: 43,
+    maxHp: 47,
     goldReward: 31,
-    intents: [
-      { kind: "attack", description: "Maul for 11", damage: 11 },
-      { kind: "block", description: "Brace for 8 block", block: 8 },
-      { kind: "attackBlock", description: "Rend for 10 and gain 4 block", damage: 10, block: 4 },
-    ],
+    phases: phases([
+      attack(12),
+      block(9),
+      attackBlock(10, 5),
+      attack(7, { hits: 2 }),
+    ]),
   },
   ruinStalker: {
     id: "ruinStalker",
     name: "Ruin Stalker",
-    maxHp: 41,
+    maxHp: 46,
     goldReward: 30,
-    intents: [
-      { kind: "attack", description: "Pounce for 12", damage: 12 },
-      { kind: "block", description: "Harden 9 block", block: 9 },
-      { kind: "attackBlock", description: "Stalk for 9 and gain 4 block", damage: 9, block: 4 },
-    ],
+    phases: phases([
+      attack(12, { vulnerable: 1 }),
+      attackBlock(10, 4),
+      buff({ selfStrength: 1 }),
+      attack(9, { hits: 2 }),
+    ]),
   },
   graveBinder: {
     id: "graveBinder",
     name: "Grave Binder",
-    maxHp: 42,
+    maxHp: 46,
     goldReward: 31,
-    intents: [
-      { kind: "attack", description: "Hex bolt for 11 and apply 1 Weak", damage: 11, weak: 1 },
-      { kind: "block", description: "Bone ward 9 block", block: 9 },
-      { kind: "attackBlock", description: "Bind for 10 and gain 4 block", damage: 10, block: 4 },
-    ],
+    phases: phases([
+      attack(11, { weak: 1 }),
+      block(9, { selfStrength: 1 }),
+      attackBlock(10, 4),
+      attack(8, { poison: 2 }),
+    ]),
   },
   duskMarauder: {
     id: "duskMarauder",
     name: "Dusk Marauder",
-    maxHp: 44,
+    maxHp: 48,
     goldReward: 32,
-    intents: [
-      { kind: "attack", description: "Night strike for 12 and apply 1 Vulnerable", damage: 12, vulnerable: 1 },
-      { kind: "attackBlock", description: "Stalk for 10 and gain 5 block", damage: 10, block: 5 },
-      { kind: "heal", description: "Feed 6 HP", heal: 6 },
-    ],
+    phases: phases([
+      attack(12, { vulnerable: 1 }),
+      attackBlock(10, 5),
+      heal(6, { selfStrength: 1 }),
+      attack(9, { hits: 2 }),
+    ]),
   },
   grimEngine: {
     id: "grimEngine",
     name: "Grim Engine",
-    maxHp: 62,
+    maxHp: 68,
     goldReward: 42,
-    intents: [
-      { kind: "attackBlock", description: "Drive for 15 and gain 6 block", damage: 15, block: 6 },
-      { kind: "heal", description: "Refit 8 HP", heal: 8 },
-      { kind: "attack", description: "Overrun for 18", damage: 18 },
-    ],
+    phases: phases(
+      [attackBlock(15, 6), heal(8, { cleanse: true }), attack(18), buff({ selfStrength: 2 })],
+      [34, [attack(14, { hits: 2 }), block(12, { selfStrength: 2 }), attack(20, { clearPlayerBlock: true })]],
+    ),
   },
   ruinBehemoth: {
     id: "ruinBehemoth",
     name: "Ruin Behemoth",
-    maxHp: 70,
+    maxHp: 74,
     goldReward: 46,
-    intents: [
-      { kind: "attackBlock", description: "Crush for 16 and gain 6 block", damage: 16, block: 6 },
-      { kind: "block", description: "Fortify 13 block", block: 13 },
-      { kind: "attack", description: "Raze for 19", damage: 19 },
-    ],
+    phases: phases(
+      [attackBlock(16, 6), block(13), attack(19), buff({ selfStrength: 2 })],
+      [36, [attack(21, { clearPlayerBlock: true }), attack(12, { hits: 2 }), block(12, { selfStrength: 2 })]],
+    ),
   },
   hollowRegent: {
     id: "hollowRegent",
     name: "Hollow Regent",
-    maxHp: 67,
+    maxHp: 71,
     goldReward: 44,
-    intents: [
-      { kind: "attack", description: "Edict for 14", damage: 14 },
-      { kind: "block", description: "Ward 12 block", block: 12 },
-      { kind: "attackBlock", description: "Crush for 12 and gain 6 block", damage: 12, block: 6 },
-      { kind: "heal", description: "Recover 8 HP", heal: 8 },
-    ],
+    phases: phases(
+      [attack(14), block(12, { selfStrength: 1 }), attackBlock(12, 6), heal(8, { cleanse: true })],
+      [34, [attack(16, { hits: 2 }), attack(18, { vulnerable: 1 }), buff({ selfStrength: 2 })]],
+    ),
   },
   ancientTitan: {
     id: "ancientTitan",
     name: "Ancient Titan",
-    maxHp: 98,
+    maxHp: 106,
     goldReward: 74,
-    intents: [
-      { kind: "block", description: "Fortify 12 block", block: 12 },
-      { kind: "attack", description: "Quake for 16", damage: 16 },
-      { kind: "attackBlock", description: "Cataclysm for 20 and gain 8 block", damage: 20, block: 8 },
-    ],
+    phases: phases(
+      [block(12, { selfStrength: 2 }), attack(16), attack(10, { hits: 2 }), attackBlock(18, 8)],
+      [56, [attack(22, { clearPlayerBlock: true }), attack(13, { hits: 2 }), heal(10, { cleanse: true }), buff({ selfStrength: 3 })]],
+      [26, [attack(16, { hits: 3 }), attack(24), block(14, { selfStrength: 2 })]],
+    ),
   },
   voidSovereign: {
     id: "voidSovereign",
     name: "Void Sovereign",
-    maxHp: 104,
+    maxHp: 112,
     goldReward: 78,
-    intents: [
-      { kind: "attack", description: "Void Lance for 18", damage: 18 },
-      { kind: "block", description: "Aegis 14 block", block: 14 },
-      { kind: "attackBlock", description: "Dominate for 16 and gain 7 block", damage: 16, block: 7 },
-      { kind: "heal", description: "Devour 10 HP", heal: 10 },
-    ],
+    phases: phases(
+      [attack(18), block(14, { selfStrength: 1 }), attackBlock(16, 7), attack(10, { poison: 3 })],
+      [58, [attack(20, { clearPlayerBlock: true, vulnerable: 1 }), heal(10, { cleanse: true }), attack(12, { hits: 2 })]],
+      [28, [buff({ selfStrength: 3 }), attack(15, { hits: 3 }), attack(24, { poison: 4 })]],
+    ),
   },
 };

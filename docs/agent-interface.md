@@ -61,6 +61,8 @@ Important properties of the current contract:
 - keyword-bearing cards should be read through `keywords`, not inferred from localized prose
 - combat observations expose both current `energy` and turn-base `baseEnergy`
 - combat observations expose `activePassives` for currently active combat buffs
+- combat observations expose enemy `strength`, `phase`, and `totalPhases`
+- combat intent descriptions may now represent multi-hit attacks, self-buffs, block-clears, and cleanses through structured enemy data
 - reward observations expose `mode: "menu" | "cards"`
 - reward menu observations expose `rewardItems`, where each item is structured as gold, relic, or card-choice metadata
 - card reward submenus expose the concrete `cardChoices` array for the currently opened card reward

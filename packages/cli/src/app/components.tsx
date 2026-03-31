@@ -291,6 +291,8 @@ export function PhaseBody({
           <Text color={enemyHpColor}>{enemyHpBar}</Text>
           <Text> {observation.enemy.hp}/{observation.enemy.maxHp}</Text>
           {observation.enemy.block > 0 ? <Text dimColor> {text(locale, "block")} {observation.enemy.block}</Text> : null}
+          {observation.enemy.strength > 0 ? <Text dimColor> {text(locale, "strength")} {observation.enemy.strength}</Text> : null}
+          {observation.enemy.totalPhases > 1 ? <Text dimColor> P{observation.enemy.phase}/{observation.enemy.totalPhases}</Text> : null}
           <Text dimColor> {"→"} </Text>
           <Text>{observation.enemy.intent.description}</Text>
         </Text>

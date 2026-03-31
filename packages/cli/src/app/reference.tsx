@@ -14,9 +14,10 @@ import {
   text,
   type Locale,
 } from "../i18n.js";
+import { getTerminalTextWidth } from "./utils.js";
 
 type ReferenceMode = "hidden" | "status" | "library";
-type LibrarySection = "starter" | "common" | "rare" | "epic" | "relics";
+type LibrarySection = "starter" | "common" | "rare" | "epic" | "relics" | "terms";
 type StatusSection = "deck" | "relics";
 type ReferenceLine = {
   text: string;
@@ -31,7 +32,7 @@ type ReferenceSection<Key extends string> = {
   entries: ReferenceEntry[];
 };
 
-const LIBRARY_SECTIONS: LibrarySection[] = ["starter", "common", "rare", "epic", "relics"];
+const LIBRARY_SECTIONS: LibrarySection[] = ["starter", "common", "rare", "epic", "relics", "terms"];
 const STATUS_SECTIONS: StatusSection[] = ["deck", "relics"];
 
 export const LIBRARY_SECTION_COUNT = LIBRARY_SECTIONS.length;
@@ -45,6 +46,7 @@ export function getReferencePanelMaxScroll(
   statusSectionIndex: number,
   librarySectionIndex: number,
   height: number,
+  width: number,
 ): number {
   const section =
     referenceMode === "status"
@@ -52,7 +54,7 @@ export function getReferencePanelMaxScroll(
       : buildLibrarySection(content, locale, LIBRARY_SECTIONS[librarySectionIndex] ?? LIBRARY_SECTIONS[0]!);
   const headerLines = 4;
   const bodyHeight = Math.max(4, height - headerLines);
-  return getMaxReferenceEntryScroll(section.entries, bodyHeight);
+  return getMaxReferenceEntryScroll(wrapReferenceEntries(section.entries, width), bodyHeight);
 }
 
 export function getCharacterSelectLibraryMaxScroll(
@@ -60,10 +62,11 @@ export function getCharacterSelectLibraryMaxScroll(
   locale: Locale,
   librarySectionIndex: number,
   height: number,
+  width: number,
 ): number {
   const section = buildLibrarySection(content, locale, LIBRARY_SECTIONS[librarySectionIndex] ?? LIBRARY_SECTIONS[0]!);
   const bodyHeight = Math.max(4, height - 4);
-  return getMaxReferenceEntryScroll(section.entries, bodyHeight);
+  return getMaxReferenceEntryScroll(wrapReferenceEntries(section.entries, width), bodyHeight);
 }
 
 export function ReferenceControls({ locale, referenceMode }: { locale: Locale; referenceMode: ReferenceMode }) {
@@ -83,6 +86,7 @@ export function ReferencePanel({
   librarySectionIndex,
   scrollOffset,
   height,
+  width,
 }: {
   content: RunContent;
   state: RunState;
@@ -92,6 +96,7 @@ export function ReferencePanel({
   librarySectionIndex: number;
   scrollOffset: number;
   height: number;
+  width: number;
 }) {
   const section =
     referenceMode === "status"
@@ -100,12 +105,13 @@ export function ReferencePanel({
   const characterName = localizeCharacterName(content.character.id, locale);
   const headerLines = 4;
   const bodyHeight = Math.max(4, height - headerLines);
-  const maxScroll = getMaxReferenceEntryScroll(section.entries, bodyHeight);
+  const wrappedEntries = wrapReferenceEntries(section.entries, width);
+  const maxScroll = getMaxReferenceEntryScroll(wrappedEntries, bodyHeight);
   const clampedScroll = Math.min(scrollOffset, maxScroll);
-  const visibleEntries = getVisibleReferenceEntries(section.entries, clampedScroll, bodyHeight);
+  const visibleEntries = getVisibleReferenceEntries(wrappedEntries, clampedScroll, bodyHeight);
   const visibleLines = visibleEntries.flat();
-  const start = section.entries.length === 0 ? 0 : clampedScroll + 1;
-  const end = section.entries.length === 0 ? 0 : Math.min(section.entries.length, clampedScroll + visibleEntries.length);
+  const start = wrappedEntries.length === 0 ? 0 : clampedScroll + 1;
+  const end = wrappedEntries.length === 0 ? 0 : Math.min(wrappedEntries.length, clampedScroll + visibleEntries.length);
 
   return (
     <Box flexDirection="column" overflow="hidden">
@@ -152,6 +158,7 @@ export function CharacterSelectScreen({
   selectedCharacterIndex,
   librarySectionIndex,
   referenceScrollOffset,
+  width,
 }: {
   characters: CharacterDefinition[];
   contents: RunContent[];
@@ -161,6 +168,7 @@ export function CharacterSelectScreen({
   selectedCharacterIndex: number;
   librarySectionIndex: number;
   referenceScrollOffset: number;
+  width: number;
 }) {
   const selectedContent = contents[selectedCharacterIndex] ?? contents[0];
 
@@ -186,6 +194,7 @@ export function CharacterSelectScreen({
           librarySectionIndex={librarySectionIndex}
           scrollOffset={referenceScrollOffset}
           height={libraryHeight}
+          width={width}
         />
       ) : null}
       <Box marginTop={1}>
@@ -203,22 +212,25 @@ function CharacterSelectLibraryPanel({
   librarySectionIndex,
   scrollOffset,
   height,
+  width,
 }: {
   content: RunContent;
   locale: Locale;
   librarySectionIndex: number;
   scrollOffset: number;
   height: number;
+  width: number;
 }) {
   const section = buildLibrarySection(content, locale, LIBRARY_SECTIONS[librarySectionIndex] ?? LIBRARY_SECTIONS[0]!);
   const characterName = localizeCharacterName(content.character.id, locale);
   const bodyHeight = Math.max(4, height - 4);
-  const maxScroll = getMaxReferenceEntryScroll(section.entries, bodyHeight);
+  const wrappedEntries = wrapReferenceEntries(section.entries, width);
+  const maxScroll = getMaxReferenceEntryScroll(wrappedEntries, bodyHeight);
   const clampedScroll = Math.min(scrollOffset, maxScroll);
-  const visibleEntries = getVisibleReferenceEntries(section.entries, clampedScroll, bodyHeight);
+  const visibleEntries = getVisibleReferenceEntries(wrappedEntries, clampedScroll, bodyHeight);
   const visibleLines = visibleEntries.flat();
-  const start = section.entries.length === 0 ? 0 : clampedScroll + 1;
-  const end = section.entries.length === 0 ? 0 : Math.min(section.entries.length, clampedScroll + visibleEntries.length);
+  const start = wrappedEntries.length === 0 ? 0 : clampedScroll + 1;
+  const end = wrappedEntries.length === 0 ? 0 : Math.min(wrappedEntries.length, clampedScroll + visibleEntries.length);
 
   return (
     <Box marginTop={1} flexDirection="column" overflow="hidden">
@@ -290,6 +302,14 @@ function buildLibrarySection(content: RunContent, locale: Locale, section: Libra
     };
   }
 
+  if (section === "terms") {
+    return {
+      key: section,
+      title: text(locale, "termsSection"),
+      entries: buildTermsEntries(locale),
+    };
+  }
+
   const startingRelic = content.relics[content.character.startingRelicId];
   const eliteRelics = content.character.relicPools.elite
     .map((relicId) => content.relics[relicId])
@@ -317,6 +337,7 @@ function librarySectionLabel(locale: Locale, section: LibrarySection): string {
   if (section === "common") return text(locale, "commonCardsSection");
   if (section === "rare") return text(locale, "rareCardsSection");
   if (section === "epic") return text(locale, "epicCardsSection");
+  if (section === "terms") return text(locale, "termsSection");
   return text(locale, "relicLibrarySection");
 }
 
@@ -386,6 +407,26 @@ function formatRelicCollectionEntries(relicIds: string[], content: RunContent, l
     .map((relic) => formatRelicEntry(relic, locale));
 }
 
+function buildTermsEntries(locale: Locale): ReferenceEntry[] {
+  return [
+    buildTermEntry(text(locale, "strength"), text(locale, "glossaryStrengthDescription")),
+    buildTermEntry(text(locale, "weak"), text(locale, "glossaryWeakDescription")),
+    buildTermEntry(text(locale, "vulnerable"), text(locale, "glossaryVulnerableDescription")),
+    buildTermEntry(text(locale, "poison"), text(locale, "glossaryPoisonDescription")),
+    buildTermEntry(localizeCardKeyword("exhaust", locale), text(locale, "glossaryExhaustDescription")),
+    buildTermEntry(localizeCardKeyword("retain", locale), text(locale, "glossaryRetainDescription")),
+    buildTermEntry(localizeCardKeyword("ethereal", locale), text(locale, "glossaryEtherealDescription")),
+    buildTermEntry(text(locale, "powers"), text(locale, "glossaryCombatEffectsDescription")),
+  ];
+}
+
+function buildTermEntry(title: string, description: string): ReferenceEntry {
+  return [
+    { text: title, bold: true, color: "yellow" },
+    { text: `  ${description}` },
+  ];
+}
+
 function getVisibleReferenceEntries(entries: ReferenceEntry[], startIndex: number, bodyHeight: number): ReferenceEntry[] {
   const visibleEntries: ReferenceEntry[] = [];
   let usedLines = 0;
@@ -420,4 +461,51 @@ function getMaxReferenceEntryScroll(entries: ReferenceEntry[], bodyHeight: numbe
   }
 
   return 0;
+}
+
+function wrapReferenceEntries(entries: ReferenceEntry[], width: number): ReferenceEntry[] {
+  const maxWidth = Math.max(12, width);
+  return entries.map((entry) => entry.flatMap((line) => wrapReferenceLine(line, maxWidth)));
+}
+
+function wrapReferenceLine(line: ReferenceLine, width: number): ReferenceLine[] {
+  if (getTerminalTextWidth(line.text) <= width) {
+    return [line];
+  }
+
+  const indent = line.text.match(/^\s*/u)?.[0] ?? "";
+  const indentWidth = Math.min(getTerminalTextWidth(indent), Math.max(0, width - 4));
+  const segments = wrapTextToWidth(line.text, width, indentWidth > 0 ? indent : "");
+
+  return segments.map((text) => ({ ...line, text }));
+}
+
+function wrapTextToWidth(text: string, width: number, continuationPrefix: string): string[] {
+  const segments: string[] = [];
+  const continuationWidth = getTerminalTextWidth(continuationPrefix);
+  let current = "";
+  let currentWidth = 0;
+  let segmentIndex = 0;
+
+  for (const char of text) {
+    const charWidth = getTerminalTextWidth(char);
+    const maxWidth = segmentIndex === 0 ? width : Math.max(1, width - continuationWidth);
+
+    if (currentWidth + charWidth > maxWidth && current.length > 0) {
+      segments.push(segmentIndex === 0 ? current : `${continuationPrefix}${current}`);
+      current = char;
+      currentWidth = charWidth;
+      segmentIndex += 1;
+      continue;
+    }
+
+    current += char;
+    currentWidth += charWidth;
+  }
+
+  if (current.length > 0 || segments.length === 0) {
+    segments.push(segmentIndex === 0 ? current : `${continuationPrefix}${current}`);
+  }
+
+  return segments;
 }

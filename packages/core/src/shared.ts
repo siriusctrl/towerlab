@@ -8,6 +8,7 @@ import type {
   CardRarityBuckets,
   CombatStatus,
   EnemyIntent,
+  EnemyPhaseDefinition,
   EnemyState,
   PassiveEffect,
   PassiveEffectKind,
@@ -66,14 +67,67 @@ export function computeAttackDamage(baseDamage: number, attackerStatus: CombatSt
   return Math.max(0, damage);
 }
 
+export function getEnemyPhases(enemy: { intents?: EnemyIntent[]; phases?: EnemyPhaseDefinition[] }): EnemyPhaseDefinition[] {
+  if (enemy.phases && enemy.phases.length > 0) {
+    return enemy.phases;
+  }
+
+  if (enemy.intents && enemy.intents.length > 0) {
+    return [{ intents: enemy.intents }];
+  }
+
+  throw new Error(`enemy is missing intents and phases`);
+}
+
+export function getCurrentEnemyPhase(enemy: EnemyState): EnemyPhaseDefinition {
+  const phase = enemy.phases[enemy.phaseIndex];
+
+  if (!phase) {
+    throw new Error(`enemy ${enemy.id} has no phase at index ${enemy.phaseIndex}`);
+  }
+
+  return phase;
+}
+
 export function getCurrentIntent(enemy: EnemyState): EnemyIntent {
-  const intent = enemy.intents[enemy.intentIndex];
+  const phase = getCurrentEnemyPhase(enemy);
+  const intent = phase.intents[enemy.intentIndex];
 
   if (!intent) {
-    throw new Error(`enemy ${enemy.id} has no intent at index ${enemy.intentIndex}`);
+    throw new Error(`enemy ${enemy.id} has no intent at index ${enemy.intentIndex} for phase ${enemy.phaseIndex}`);
   }
 
   return intent;
+}
+
+export function syncEnemyPhase(enemy: EnemyState): EnemyState {
+  let nextPhaseIndex = enemy.phaseIndex;
+
+  for (let index = enemy.phaseIndex + 1; index < enemy.phases.length; index += 1) {
+    const phase = enemy.phases[index]!;
+    if (phase.whenHpAtOrBelow !== undefined && enemy.hp <= phase.whenHpAtOrBelow) {
+      nextPhaseIndex = index;
+    }
+  }
+
+  if (nextPhaseIndex === enemy.phaseIndex) {
+    return enemy;
+  }
+
+  return {
+    ...enemy,
+    phaseIndex: nextPhaseIndex,
+    intentIndex: 0,
+  };
+}
+
+export function advanceEnemyIntent(enemy: EnemyState): EnemyState {
+  const phase = getCurrentEnemyPhase(enemy);
+
+  return {
+    ...enemy,
+    intentIndex: (enemy.intentIndex + 1) % phase.intents.length,
+  };
 }
 
 export function getCombat(state: RunState): NonNullable<RunState["combat"]> {

@@ -17,13 +17,15 @@ The current playable slice is small, but no longer toy-sized:
 - cards now support a small structured combat vocabulary beyond raw damage/block
 - blessings now bias toward relic buffs and archetype-starting cards instead of flat gold/HP picks
 - build-defining cards and blessing relics can establish combat passives that visibly change card evaluation during a run
+- enemies now use scripted patterns, scaling intents, and multi-phase elite/boss behavior instead of near-random two-move loops
+- combat resolution now runs through explicit player/enemy timing windows instead of ad hoc end-turn branches
 - card views render emphasized keyword lines separately from effect text
 - combat hands now use stronger color contrast between playable and blocked cards
 - three acts, each starting with a blessing choice before route navigation
 - acts now use deeper room stacks with more route decisions before each boss
 - map generation now enforces per-path elite density bands so most routes stay in a controlled risk band while still leaving distinct easy/hard routes
 - deterministic combat, rewards, shop, relics, and branching map routing
-- TUI status and library panels for inspecting current run state and character content
+- TUI status and library panels for inspecting current run state, character content, and combat/status terminology
 - headless JSON mode for replay, policy evaluation, and agent control
 
 ## Design stance
@@ -147,6 +149,7 @@ Rendered card titles now surface rarity primarily through title color in the TTY
 Characters own their own starter decks, starter relics, reward pools, shop pools, and relic pools.
 Core state stores deck cards as stable card instances, so upgrades are tracked per copy instead of per card id.
 Enemies stay shared across characters and vary by act.
+Combat observations now also expose enemy `strength` and current `phase`, so humans and agents can read scaling pressure directly.
 
 The current structured card vocabulary includes:
 - `damage`
@@ -180,6 +183,13 @@ The current structured passive effects include:
 - `attackPoison`
 - `debuffBonusDamage`
 - `debuffDraw`
+
+The enemy side now also carries richer structured combat state:
+- scripted phase-local intent loops
+- optional multi-hit attacks
+- optional self-strength buffs
+- optional block-clearing and cleanse actions
+- observed `strength`, `phase`, and `totalPhases`
 
 Combat snapshots and the TUI surface active combat passives in a dedicated `Powers` line so run-defining buffs stay visible during play.
 In TTY combat:

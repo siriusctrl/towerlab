@@ -65,6 +65,14 @@ describe("baseline policies", () => {
     expect(action).toEqual({ type: "chooseBlessing", blessingId: "opening-relic" });
   });
 
+  it("random does not bounce back out of reward card submenus", () => {
+    const state = createRewardCardMenuState();
+    const action = choosePolicyAction("random", state);
+
+    expect(action.type).not.toBe("backReward");
+  });
+
+
   it("heuristic prefers the shop route when gold is available", () => {
     const state = gateMapState();
     const action = choosePolicyAction("heuristic", state);
@@ -87,6 +95,60 @@ describe("baseline policies", () => {
     expect(sampleContent.character.starterDeck).toContain(state.deck[action.deckIndex]?.cardId);
   });
 });
+
+function createRewardCardMenuState(): RunState {
+  let state = createRun(sampleContent, 7);
+  const openingAction = choosePolicyAction("heuristic", state);
+
+  if (openingAction.type !== "chooseBlessing") {
+    throw new Error(`expected chooseBlessing, received ${openingAction.type}`);
+  }
+
+  state = applyAction(sampleContent, state, openingAction);
+  const observation = observeRun(sampleContent, state);
+
+  if (observation.phase !== "map") {
+    throw new Error(`expected map phase, received ${observation.phase}`);
+  }
+
+  const battleNode = observation.nextNodes.find((node) => node.kind === "battle") ?? observation.nextNodes[0];
+
+  if (!battleNode) {
+    throw new Error("expected reachable battle node");
+  }
+
+  state = applyAction(sampleContent, state, { type: "choosePath", nodeId: battleNode.id });
+  state = finishCombat(state);
+
+  if (state.phase !== "reward") {
+    throw new Error(`expected reward phase, received ${state.phase}`);
+  }
+
+  const rewardObservation = observeRun(sampleContent, state);
+
+  if (rewardObservation.phase !== "reward") {
+    throw new Error(`expected reward observation, received ${rewardObservation.phase}`);
+  }
+
+  const cardMenuAction = rewardObservation.rewardItems
+    .find((item) => item.kind === "cards")
+    ?.rewardIndex;
+
+  if (cardMenuAction === undefined) {
+    throw new Error("expected card reward item");
+  }
+
+  const cardMenuState = applyAction(sampleContent, state, { type: "takeReward", rewardIndex: cardMenuAction });
+
+  if (cardMenuState.phase !== "reward" || cardMenuState.reward?.mode !== "cards") {
+    throw new Error("expected reward card submenu");
+  }
+
+  return {
+    ...cardMenuState,
+    rng: 3,
+  };
+}
 
 function firstMapState(seed: number): RunState {
   const state = advanceOpeningBlessing(createRun(sampleContent, seed));

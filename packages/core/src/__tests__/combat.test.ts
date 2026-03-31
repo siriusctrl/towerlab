@@ -70,6 +70,57 @@ describe("combat transitions", () => {
     expect(state.phase).toBe("victory");
     expect(state.gold).toBe(15);
   });
+
+  it("applies poison to enemies before they act", () => {
+    const content = createCombatContent();
+    const opening = enterOpeningCombat(content, createRun(content, 5));
+    const poisonedEnemy: RunState = {
+      ...opening,
+      combat: opening.combat
+        ? {
+            ...opening.combat,
+            enemy: {
+              ...opening.combat.enemy,
+              hp: 3,
+              status: {
+                ...opening.combat.enemy.status,
+                poison: 3,
+              },
+            },
+          }
+        : opening.combat,
+    };
+
+    const next = applyAction(content, poisonedEnemy, { type: "endTurn" });
+
+    expect(next.hp).toBe(poisonedEnemy.hp);
+    expect(next.phase).toBe("reward");
+  });
+
+  it("does not let healed enemies fall back to earlier phases", () => {
+    const content = createHealingPhaseContent();
+    const opening = enterOpeningCombat(content, createRun(content, 9));
+    const phasedEnemy: RunState = {
+      ...opening,
+      combat: opening.combat
+        ? {
+            ...opening.combat,
+            enemy: {
+              ...opening.combat.enemy,
+              hp: 8,
+              phaseIndex: 1,
+              intentIndex: 0,
+            },
+          }
+        : opening.combat,
+    };
+
+    const next = applyAction(content, phasedEnemy, { type: "endTurn" });
+    const combatView = observeCombat(content, next);
+
+    expect(combatView.enemy.phase).toBe(2);
+    expect(combatView.enemy.intent.description).toBe("Phase two strike for 10");
+  });
 });
 
 function observeCombat(content: RunContent, state: RunState): CombatObservation {
@@ -144,6 +195,40 @@ function createBossContent(): RunContent {
     },
     character: createCharacter(["strike", "strike", "strike", "strike", "strike"]),
     acts: [createAct([{ id: "summit", kind: "boss", encounterId: "core", nextIds: [] }])],
+  };
+}
+
+function createHealingPhaseContent(): RunContent {
+  return {
+    cards: {
+      strike: { id: "strike", name: "Strike", cost: 1, description: "Deal 6 damage.", damage: 6 },
+    },
+    relics: {
+      starterCharm: { id: "starterCharm", name: "Starter Charm", description: "Gain 1 max HP.", kind: "maxHp", value: 1 },
+      openingToken: { id: "openingToken", name: "Opening Token", description: "Test blessing relic.", kind: "restHealBonus", value: 1 },
+    },
+    enemies: {
+      mender: {
+        id: "mender",
+        name: "Mender",
+        maxHp: 20,
+        goldReward: 12,
+        phases: [
+          {
+            intents: [{ kind: "attack", description: "Phase one strike for 5", damage: 5 }],
+          },
+          {
+            whenHpAtOrBelow: 10,
+            intents: [
+              { kind: "heal", description: "Recover 6 HP", heal: 6 },
+              { kind: "attack", description: "Phase two strike for 10", damage: 10 },
+            ],
+          },
+        ],
+      },
+    },
+    character: createCharacter(["strike", "strike", "strike", "strike", "strike"]),
+    acts: [createAct([{ id: "gate", kind: "battle", encounterId: "mender", nextIds: [] }])],
   };
 }
 

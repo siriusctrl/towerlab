@@ -1,5 +1,5 @@
 import { REST_HEAL_RATIO } from "../constants.js";
-import { finishCombat, resolveEnemyTurn, startPlayerTurn } from "../combat.js";
+import { finishCombat, resolveEnemyTurn, resolvePlayerTurnEnd, resolvePlayerTurnStart } from "../combat.js";
 import { enterNode } from "../node.js";
 import { finishNode } from "../progression.js";
 import { drawCards } from "../rng.js";
@@ -20,10 +20,45 @@ import {
   getNode,
   getRelicValue,
   getTotalPassiveValue,
-  tickStatus,
+  syncEnemyPhase,
 } from "../shared.js";
-import type { BlessingDefinition, LogEffect, RestOptionId, RunAction, RunContent, RunState } from "../types.js";
+import type {
+  BlessingDefinition,
+  CardDefinition,
+  CardInstance,
+  CardNumbers,
+  CombatTimingWindow,
+  EnemyState,
+  LogEffect,
+  PassiveEffect,
+  RestOptionId,
+  RunAction,
+  RunContent,
+  RunState,
+} from "../types.js";
 import { getCard } from "../validate.js";
+
+type CardResolutionState = {
+  enemy: EnemyState;
+  block: number;
+  hp: number;
+  energy: number;
+  drawPile: CardInstance[];
+  discardPile: CardInstance[];
+  exhaustPile: CardInstance[];
+  hand: CardInstance[];
+  nextRng: number;
+  effects: LogEffect[];
+  addedPassives: PassiveEffect[];
+};
+
+type BeforeCardResolveResult = {
+  baseDamageBonus: number;
+  attackPoison: number;
+  debuffDraw: number;
+  exhaustBlock: number;
+  exhaustsOnPlay: boolean;
+};
 
 export function applyAction(content: RunContent, state: RunState, action: RunAction): RunState {
   switch (action.type) {
@@ -140,13 +175,8 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
   let hand = combat.hand.filter((_, index) => index !== handIndex);
   let nextRng = state.rng;
   const effects: LogEffect[] = [];
-  const totalStrikeBonusDamage = getTotalPassiveValue(content, state, "strikeBonusDamage");
-  const totalDebuffBonusDamage = getTotalPassiveValue(content, state, "debuffBonusDamage");
-  const totalAttackPoison = getTotalPassiveValue(content, state, "attackPoison");
-  const totalDebuffDraw = getTotalPassiveValue(content, state, "debuffDraw");
-  const totalExhaustBlock = getTotalPassiveValue(content, state, "exhaustBlock");
-  const enemyWasDebuffed = enemy.status.weak > 0 || enemy.status.vulnerable > 0 || enemy.status.poison > 0;
-  const exhaustsOnPlay = numbers.exhaust === true;
+  const beforeCard = resolveBeforeCardResolve(content, state, card, numbers, enemy);
+  const exhaustsOnPlay = beforeCard.exhaustsOnPlay;
 
   if (exhaustsOnPlay) {
     exhaustPile = [...exhaustPile, cardInstance];
@@ -155,16 +185,7 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
   }
 
   if (numbers.damage && numbers.damage > 0) {
-    let baseDamage = numbers.damage;
-
-    if (card.id === "strike") {
-      baseDamage += totalStrikeBonusDamage;
-    }
-
-    if (enemyWasDebuffed) {
-      baseDamage += totalDebuffBonusDamage;
-    }
-
+    const baseDamage = numbers.damage + beforeCard.baseDamageBonus;
     const dealtDamage = computeAttackDamage(baseDamage, combat.status, enemy.status);
     enemy = applyDamageToEnemy(enemy, dealtDamage);
     effects.push({ type: "damage", amount: dealtDamage });
@@ -219,9 +240,9 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
     effects.push({ type: "poison", amount: poison });
   }
 
-  if ((numbers.damage ?? 0) > 0 && totalAttackPoison > 0) {
-    enemy = { ...enemy, status: applyStatus(enemy.status, { poison: totalAttackPoison }) };
-    effects.push({ type: "poison", amount: totalAttackPoison });
+  if ((numbers.damage ?? 0) > 0 && beforeCard.attackPoison > 0) {
+    enemy = { ...enemy, status: applyStatus(enemy.status, { poison: beforeCard.attackPoison }) };
+    effects.push({ type: "poison", amount: beforeCard.attackPoison });
   }
 
   if ((numbers.poisonMultiplier ?? 1) > 1 && enemy.status.poison > 0) {
@@ -237,50 +258,41 @@ function playCard(content: RunContent, state: RunState, handIndex: number): RunS
     }
   }
 
-  if (exhaustsOnPlay) {
-    if (totalExhaustBlock > 0) {
-      block += totalExhaustBlock;
-      effects.push({ type: "block", amount: totalExhaustBlock });
-    }
-
-    effects.push({ type: "exhaust" });
-  }
-
-  const appliedDebuff = (numbers.weak ?? 0) > 0 || (numbers.vulnerable ?? 0) > 0 || (numbers.poison ?? 0) > 0 || ((numbers.damage ?? 0) > 0 && totalAttackPoison > 0);
-
-  if (appliedDebuff && totalDebuffDraw > 0) {
-    const drawnCards = drawCards(drawPile, discardPile, totalDebuffDraw, nextRng);
-    drawPile = drawnCards.drawPile;
-    discardPile = drawnCards.discardPile;
-    hand = [...hand, ...drawnCards.drawn];
-    nextRng = drawnCards.rng;
-
-    if (drawnCards.drawn.length > 0) {
-      effects.push({ type: "draw", amount: drawnCards.drawn.length });
-    }
-  }
+  const afterCard = resolveAfterCardResolve(numbers, beforeCard, {
+    enemy,
+    block,
+    hp,
+    energy,
+    drawPile,
+    discardPile,
+    exhaustPile,
+    hand,
+    nextRng,
+    effects,
+    addedPassives: numbers.passives ?? [],
+  });
 
   const nextState = appendLog(
     {
       ...state,
-      hp,
-      rng: nextRng,
+      hp: afterCard.hp,
+      rng: afterCard.nextRng,
       combat: {
         ...combat,
-        enemy,
-        drawPile,
-        hand,
-        discardPile,
-        exhaustPile,
-        energy,
-        block,
-        passives: addPassiveEffects(combat.passives, numbers.passives ?? []),
+        enemy: syncEnemyPhase(afterCard.enemy),
+        drawPile: afterCard.drawPile,
+        hand: afterCard.hand,
+        discardPile: afterCard.discardPile,
+        exhaustPile: afterCard.exhaustPile,
+        energy: afterCard.energy,
+        block: afterCard.block,
+        passives: addPassiveEffects(combat.passives, afterCard.addedPassives),
       },
     },
-    { type: "playedCard", cardId: card.id, upgraded: cardInstance.upgraded, effects },
+    { type: "playedCard", cardId: card.id, upgraded: cardInstance.upgraded, effects: afterCard.effects },
   );
 
-  if (enemy.hp <= 0) {
+  if (afterCard.enemy.hp <= 0) {
     return finishCombat(content, nextState);
   }
 
@@ -292,42 +304,10 @@ function endTurn(content: RunContent, state: RunState): RunState {
     throw new Error("ending the turn is only available during combat");
   }
 
-  const combat = getCombat(state);
-  const etherealHand = combat.hand.filter((instance) =>
-    getCardNumbers(getCard(content, instance.cardId), instance.upgraded).keywords?.includes("ethereal")
-  );
-  const retainedHand = combat.hand.filter((instance) => {
-    const numbers = getCardNumbers(getCard(content, instance.cardId), instance.upgraded);
-    return numbers.retain && !numbers.keywords?.includes("ethereal");
-  });
-  const discardedHand = combat.hand.filter((instance) => {
-    const numbers = getCardNumbers(getCard(content, instance.cardId), instance.upgraded);
-    return !numbers.retain && !numbers.keywords?.includes("ethereal");
-  });
-  const poisonDamage = combat.status.poison;
-  const nextHp = Math.max(0, state.hp - poisonDamage);
-  let nextState: RunState = {
-    ...state,
-    hp: nextHp,
-    combat: {
-      ...combat,
-      discardPile: [...combat.discardPile, ...discardedHand],
-      exhaustPile: [...combat.exhaustPile, ...etherealHand],
-      hand: retainedHand,
-      energy: 0,
-      status: tickStatus(combat.status),
-    },
-  };
+  let nextState = resolvePlayerTurnEnd(content, state);
 
-  if (nextHp <= 0) {
-    return appendLog(
-      {
-        ...nextState,
-        phase: "defeat",
-        combat: undefined,
-      },
-      { type: "playerDefeated" },
-    );
+  if (nextState.phase === "defeat") {
+    return nextState;
   }
 
   nextState = resolveEnemyTurn(nextState);
@@ -340,7 +320,7 @@ function endTurn(content: RunContent, state: RunState): RunState {
     return finishCombat(content, nextState);
   }
 
-  return startPlayerTurn(content, nextState);
+  return resolvePlayerTurnStart(content, nextState);
 }
 
 function chooseRest(content: RunContent, state: RunState, optionId: RestOptionId): RunState {
@@ -651,6 +631,85 @@ function leaveShop(content: RunContent, state: RunState): RunState {
   }
 
   return finishNode(content, appendLog({ ...state, shop: undefined }, { type: "shopLeft" }), getNode(content, state.act, state.currentNodeId));
+}
+
+function resolveBeforeCardResolve(
+  content: RunContent,
+  state: RunState,
+  card: CardDefinition,
+  numbers: CardNumbers,
+  enemy: EnemyState,
+): BeforeCardResolveResult {
+  const window: CombatTimingWindow = "beforeCardResolve";
+
+  switch (window) {
+    case "beforeCardResolve":
+      return {
+        baseDamageBonus:
+          (card.id === "strike" ? getTotalPassiveValue(content, state, "strikeBonusDamage") : 0) +
+          (isDebuffed(enemy) ? getTotalPassiveValue(content, state, "debuffBonusDamage") : 0),
+        attackPoison: getTotalPassiveValue(content, state, "attackPoison"),
+        debuffDraw: getTotalPassiveValue(content, state, "debuffDraw"),
+        exhaustBlock: getTotalPassiveValue(content, state, "exhaustBlock"),
+        exhaustsOnPlay: numbers.exhaust === true,
+      };
+    default:
+      throw new Error(`unsupported card timing window: ${window}`);
+  }
+}
+
+function resolveAfterCardResolve(numbers: CardNumbers, beforeCard: BeforeCardResolveResult, resolution: CardResolutionState): CardResolutionState {
+  const window: CombatTimingWindow = "afterCardResolve";
+
+  switch (window) {
+    case "afterCardResolve": {
+      let nextResolution = resolution;
+
+      if (beforeCard.exhaustsOnPlay) {
+        if (beforeCard.exhaustBlock > 0) {
+          nextResolution = {
+            ...nextResolution,
+            block: nextResolution.block + beforeCard.exhaustBlock,
+            effects: [...nextResolution.effects, { type: "block", amount: beforeCard.exhaustBlock }],
+          };
+        }
+
+        nextResolution = {
+          ...nextResolution,
+          effects: [...nextResolution.effects, { type: "exhaust" }],
+        };
+      }
+
+      const appliedDebuff =
+        (numbers.weak ?? 0) > 0 ||
+        (numbers.vulnerable ?? 0) > 0 ||
+        (numbers.poison ?? 0) > 0 ||
+        ((numbers.damage ?? 0) > 0 && beforeCard.attackPoison > 0);
+
+      if (appliedDebuff && beforeCard.debuffDraw > 0) {
+        const drawnCards = drawCards(nextResolution.drawPile, nextResolution.discardPile, beforeCard.debuffDraw, nextResolution.nextRng);
+        nextResolution = {
+          ...nextResolution,
+          drawPile: drawnCards.drawPile,
+          discardPile: drawnCards.discardPile,
+          hand: [...nextResolution.hand, ...drawnCards.drawn],
+          nextRng: drawnCards.rng,
+          effects:
+            drawnCards.drawn.length > 0
+              ? [...nextResolution.effects, { type: "draw", amount: drawnCards.drawn.length }]
+              : nextResolution.effects,
+        };
+      }
+
+      return nextResolution;
+    }
+    default:
+      throw new Error(`unsupported card timing window: ${window}`);
+  }
+}
+
+function isDebuffed(enemy: EnemyState): boolean {
+  return enemy.status.weak > 0 || enemy.status.vulnerable > 0 || enemy.status.poison > 0;
 }
 
 function applyBlessing(content: RunContent, state: RunState, blessing: BlessingDefinition): RunState {

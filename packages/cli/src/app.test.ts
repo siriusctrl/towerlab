@@ -36,6 +36,7 @@ describe("App layout", () => {
     const starterFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["1", "l"] });
     const rareFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["1", "l", "]", "]"] });
     const epicFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["1", "l", "]", "]", "]"] });
+    const termsFrame = await renderFrame({ columns: 120, rows: 28, locale: "zh", inputs: ["1", "l", "]", "]", "]", "]", "]"] });
 
     expect(starterFrame).toContain("图鉴");
     expect(starterFrame).toContain("起始牌组");
@@ -54,6 +55,10 @@ describe("App layout", () => {
     expect(epicFrame).toContain("史诗卡");
     expect(epicFrame).toContain("无懈可击");
     expect(epicFrame).toContain("获得 20 点格挡。");
+    expect(termsFrame).toContain("术语");
+    expect(termsFrame).toContain("中毒");
+    expect(termsFrame).toContain("在持有者行动前");
+    expect(termsFrame).toContain("消耗");
   });
 
   test("renders keyword lines in separate rows for card descriptions", async () => {
