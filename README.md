@@ -135,6 +135,10 @@ The current card rarity model is:
 - `rare`
 - `epic`
 
+Rendered card titles now surface rarity directly:
+- zh: `[普]`, `[稀]`, `[史]`
+- en: `[C]`, `[R]`, `[E]`
+
 Characters own their own starter decks, starter relics, reward pools, shop pools, and relic pools.
 Core state stores deck cards as stable card instances, so upgrades are tracked per copy instead of per card id.
 Enemies stay shared across characters and vary by act.
@@ -152,6 +156,11 @@ The current structured card vocabulary includes:
 
 Card descriptions are now rendered from these structured fields first in both CLI and snapshots.  
 Fallback translation now runs only on unmatched description clauses for non-structured cards.
+
+Rendered card blocks use a compact three-layer layout:
+- title row: rarity badge plus card name and cost
+- optional keyword row: emphasized keywords such as `Exhaust`, `Retain`, and `Ethereal`
+- effect row: structured combat effects collapsed into one compact prose line
 
 The structured keywords currently in use are:
 - `exhaust`

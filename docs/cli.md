@@ -99,9 +99,13 @@ Library panel sections:
 The current rarity model is `common / rare / epic`.
 
 Cards are rendered in a three-part shape rather than a single prose line:
-- name and cost
+- title row: rarity badge plus name and cost
 - zero or more keyword lines
-- effect text
+- one compact effect row for ordinary structured effects
+
+Rarity badges are explicit in card titles:
+- zh: `[普]`, `[稀]`, `[史]`
+- en: `[C]`, `[R]`, `[E]`
 
 Combat hand affordance:
 - combat cards use higher-contrast color treatment when affordable and a much dimmer treatment when blocked on energy
