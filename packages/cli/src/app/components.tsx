@@ -12,7 +12,6 @@ import {
   type CliCardDefinition,
   localizeCardDefinition,
   localizeCardKeyword,
-  localizeCardRarityBadge,
   localizePhaseLabel,
   text,
   type Locale,
@@ -57,6 +56,18 @@ export type RestDeckUpgradeCard = {
 
 export const COMBAT_HAND_PAGE_SIZE = 9;
 export const REST_UPGRADE_PAGE_SIZE = 9;
+
+function getCardRarityColor(rarity: CliCardDefinition["rarity"]): "cyan" | "magenta" | "white" {
+  if (rarity === "epic") {
+    return "magenta";
+  }
+
+  if (rarity === "rare") {
+    return "cyan";
+  }
+
+  return "white";
+}
 
 export function StatusBar({
   observation,
@@ -136,10 +147,16 @@ export function CombatEffectsPanel({
   }
 
   return (
-    <Text>
-      <Text bold color="yellow">{text(locale, "powers")}: </Text>
-      <Text dimColor>{effects.map((effect) => formatPassiveEffect(effect as never, locale)).join(" · ")}</Text>
-    </Text>
+    <>
+      <Text bold color="yellow" wrap="truncate-end">
+        {text(locale, "powers")}
+      </Text>
+      {effects.map((effect, index) => (
+        <Text key={`${effect.kind}-${effect.value}-${index}`} dimColor wrap="truncate-end">
+          - {formatPassiveEffect(effect as never, locale)}
+        </Text>
+      ))}
+    </>
   );
 }
 
@@ -313,17 +330,23 @@ export function PhaseBody({
             ? formatBlessingCard(content, blessing.cardId, blessing.upgraded, locale)
             : null;
           const blessingRelic = blessing.relicId ? content.relics[blessing.relicId] : null;
-          const title = blessingCard
-            ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}${localizeCardRarityBadge(blessingCard.rarity, locale)} [${blessingCard.cost}] ${formatBlessingName(content, blessing, locale)}`
-            : blessingRelic
-              ? `${text(locale, "blessingRelicTitleLabel")}${labelSuffix}${formatBlessingName(content, blessing, locale)}`
-              : formatBlessingName(content, blessing, locale);
 
           return (
             <Box key={blessing.id} flexDirection="column">
-              <Text bold wrap="truncate-end">
-                {index + 1}. {title}
-              </Text>
+              {blessingCard ? (
+                <Text bold wrap="truncate-end">
+                  {index + 1}. {text(locale, "blessingCardTitleLabel")}{labelSuffix}
+                  <Text color={getCardRarityColor(blessingCard.rarity)}>[{blessingCard.cost}] {formatBlessingName(content, blessing, locale)}</Text>
+                </Text>
+              ) : blessingRelic ? (
+                <Text bold wrap="truncate-end">
+                  {index + 1}. {text(locale, "blessingRelicTitleLabel")}{labelSuffix}{formatBlessingName(content, blessing, locale)}
+                </Text>
+              ) : (
+                <Text bold wrap="truncate-end">
+                  {index + 1}. {formatBlessingName(content, blessing, locale)}
+                </Text>
+              )}
               {blessingCard?.keywords?.map((keyword) => (
                 <Text key={`${blessing.id}-${keyword}`} color="yellow" bold wrap="truncate-end">
                   {"   "}{localizeCardKeyword(keyword, locale)}
@@ -691,18 +714,16 @@ function CardBlock({
 }) {
   const effectLines = formatCardEffectLines(card, locale);
   const dimmed = playable === false;
-  const emphasizedPlayable = playable === true;
-  const rarityBadge = localizeCardRarityBadge(card.rarity, locale);
-  const titleColor = emphasizedPlayable ? "green" : dimmed ? "gray" : undefined;
+  const titleColor = dimmed ? undefined : getCardRarityColor(card.rarity);
   const costColor = dimmed ? "red" : "yellow";
   const keywordColor = dimmed ? "gray" : "yellow";
   const effectColor = dimmed ? "gray" : undefined;
-  const rarityColor = dimmed ? "gray" : card.rarity === "epic" ? "magenta" : card.rarity === "rare" ? "cyan" : undefined;
 
   return (
     <Box flexDirection="column">
-      <Text color={titleColor} bold wrap="truncate-end" dimColor={dimmed}>
-        {namePrefix}<Text color={rarityColor}>{rarityBadge}</Text> {card.name} <Text color={costColor}>[{card.cost}]</Text>
+      <Text bold wrap="truncate-end" dimColor={dimmed}>
+        {namePrefix}
+        <Text color={titleColor}>{card.name}</Text> <Text color={costColor}>[{card.cost}]</Text>
       </Text>
       {detailLines?.map((line) => (
         <Text key={`${card.id}-detail-${line}`} dimColor wrap="truncate-end">

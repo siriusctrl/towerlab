@@ -426,13 +426,13 @@ describe("App layout", () => {
     );
 
     expect(firstPage.lastFrame()).toContain("Combat (Page 1/2)");
-    expect(firstPage.lastFrame()).toContain("1. [E] Strike 1");
-    expect(firstPage.lastFrame()).toContain("9. [E] Strike 9");
+    expect(firstPage.lastFrame()).toContain("1. Strike 1 [1]");
+    expect(firstPage.lastFrame()).toContain("9. Strike 9 [1]");
     expect(firstPage.lastFrame()).not.toContain("10. Strike 10");
     expect(controls.lastFrame()).toContain("[ ] page");
     expect(secondPage.lastFrame()).toContain("Combat (Page 2/2)");
-    expect(secondPage.lastFrame()).toContain("1. [E] Strike 10");
-    expect(secondPage.lastFrame()).toContain("3. [E] Strike 12");
+    expect(secondPage.lastFrame()).toContain("1. Strike 10 [1]");
+    expect(secondPage.lastFrame()).toContain("3. Strike 12 [1]");
   });
 
   test("paginates shop buy choices beyond nine cards", async () => {
@@ -509,12 +509,12 @@ describe("App layout", () => {
     );
 
     expect(firstPage.lastFrame()).toContain("Buy (Page 1/2)");
-    expect(firstPage.lastFrame()).toContain("1. [E] Card 1");
-    expect(firstPage.lastFrame()).toContain("9. [E] Card 9");
+    expect(firstPage.lastFrame()).toContain("1. Card 1 [1]");
+    expect(firstPage.lastFrame()).toContain("9. Card 9 [1]");
     expect(controls.lastFrame()).toContain("[ ] page");
     expect(secondPage.lastFrame()).toContain("Buy (Page 2/2)");
-    expect(secondPage.lastFrame()).toContain("1. [E] Card 10");
-    expect(secondPage.lastFrame()).toContain("3. [E] Card 12");
+    expect(secondPage.lastFrame()).toContain("1. Card 10 [1]");
+    expect(secondPage.lastFrame()).toContain("3. Card 12 [1]");
   });
 
   test("keeps opening blessings, compact map, and post-move minimap stable across multiple seeds", async () => {

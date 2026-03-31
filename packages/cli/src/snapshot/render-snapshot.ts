@@ -13,7 +13,6 @@ import {
   formatLogEntries,
   localizeCardDefinition,
   localizeCardKeyword,
-  localizeCardRarityBadge,
   localizeCharacterName,
   localizeObservation,
   localizePhaseLabel,
@@ -97,7 +96,7 @@ function renderObservation(content: RunContent, observation: Observation, locale
         : null;
       const blessingRelic = blessing.relicId ? content.relics[blessing.relicId] : null;
       const title = blessingCard
-        ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}${localizeCardRarityBadge(blessingCard.rarity, locale)} [${blessingCard.cost}] ${formatBlessingName(content, blessing, locale)}`
+        ? `${text(locale, "blessingCardTitleLabel")}${labelSuffix}[${blessingCard.cost}] ${formatBlessingName(content, blessing, locale)}`
         : blessingRelic
           ? `${text(locale, "blessingRelicTitleLabel")}${labelSuffix}${formatBlessingName(content, blessing, locale)}`
           : formatBlessingName(content, blessing, locale);
@@ -203,7 +202,7 @@ function renderObservation(content: RunContent, observation: Observation, locale
 
 function formatSnapshotCardLines(card: Parameters<typeof formatCardEffectLines>[0], locale: Locale, prefix: string, indent: string): string[] {
   return [
-    `${prefix}${localizeCardRarityBadge(card.rarity, locale)} ${card.name} [${card.cost}]`,
+    `${prefix}${card.name} [${card.cost}]`,
     ...formatSnapshotKeywordLines(card, locale, indent),
     ...formatCardEffectLines(card, locale).map((line) => `${indent}${line}`),
   ];

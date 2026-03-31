@@ -100,13 +100,15 @@ Library panel sections:
 The current rarity model is `common / rare / epic`.
 
 Cards are rendered in a three-part shape rather than a single prose line:
-- title row: rarity badge plus name and cost
+- title row: name and cost, with rarity carried by title color in the TTY
 - zero or more keyword lines
 - one compact effect row for ordinary structured effects
 
-Rarity badges are explicit in card titles:
-- zh: `[普]`, `[稀]`, `[史]`
-- en: `[C]`, `[R]`, `[E]`
+Rarity is intentionally lighter-weight than before:
+- `common` stays neutral
+- `rare` uses a cyan title
+- `epic` uses a magenta title
+- blocked combat cards still dim heavily so energy affordability stays clearer than rarity
 
 Combat hand affordance:
 - combat cards use higher-contrast color treatment when affordable and a much dimmer treatment when blocked on energy
@@ -114,7 +116,7 @@ Combat hand affordance:
 
 Combat effects affordance:
 - structured combat passives are labeled as `Combat Effects` / `本场效果`
-- on wider combat layouts, that summary moves into the right sidebar above the compact map
+- on wider combat layouts, those effects render as a small footer block inside the main combat area
 - on tighter combat layouts without a sidebar, the same summary sits directly under the main status bar
 - the main combat flow no longer places that text between the enemy panel and the hand list
 

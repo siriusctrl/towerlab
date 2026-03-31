@@ -620,6 +620,11 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
                 hpBarWidth={hpBarWidth}
                 compactMapPhase={compactMapPhase}
               />
+              {view.phase === "combat" && showSidebar && (view.activePassives?.length ?? 0) > 0 ? (
+                <Box marginTop={1} flexDirection="column" overflow="hidden">
+                  <CombatEffectsPanel effects={view.activePassives ?? []} locale={locale} />
+                </Box>
+              ) : null}
               {showInlineLog ? (
                 <Box marginTop={1} flexDirection="column" overflow="hidden">
                   <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
@@ -668,24 +673,10 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
             paddingLeft={1}
             overflow="hidden"
           >
-            {view.phase === "combat" ? (
-              <>
-                <CombatEffectsPanel effects={view.activePassives ?? []} locale={locale} />
-                <Box marginTop={1} flexDirection="column" overflow="hidden">
-                  <MapTreeView map={currentMap} observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
-                </Box>
-                <Box marginTop={1} flexDirection="column" overflow="hidden">
-                  <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
-                </Box>
-              </>
-            ) : (
-              <>
-                <MapTreeView map={currentMap} observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
-                <Box marginTop={1} flexDirection="column" overflow="hidden">
-                  <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
-                </Box>
-              </>
-            )}
+            <MapTreeView map={currentMap} observation={view} actions={actions} locale={locale} width={sidebarWidth - 3} compact compactLegendLine={compactLegendLine} />
+            <Box marginTop={1} flexDirection="column" overflow="hidden">
+              <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
+            </Box>
           </Box>
         ) : null}
       </Box>

@@ -138,9 +138,11 @@ The current card rarity model is:
 - `rare`
 - `epic`
 
-Rendered card titles now surface rarity directly:
-- zh: `[普]`, `[稀]`, `[史]`
-- en: `[C]`, `[R]`, `[E]`
+Rendered card titles now surface rarity primarily through title color in the TTY:
+- `common` stays neutral
+- `rare` shifts to cyan
+- `epic` shifts to magenta
+- blocked combat cards still dim heavily so affordability remains obvious
 
 Characters own their own starter decks, starter relics, reward pools, shop pools, and relic pools.
 Core state stores deck cards as stable card instances, so upgrades are tracked per copy instead of per card id.
@@ -162,7 +164,7 @@ Card descriptions are now rendered from these structured fields first in both CL
 Fallback translation now runs only on unmatched description clauses for non-structured cards.
 
 Rendered card blocks use a compact three-layer layout:
-- title row: rarity badge plus card name and cost
+- title row: card name and cost, with rarity carried by title color in the TTY
 - optional keyword row: emphasized keywords such as `Exhaust`, `Retain`, and `Ethereal`
 - effect row: structured combat effects collapsed into one compact prose line
 
@@ -181,7 +183,7 @@ The current structured passive effects include:
 
 Combat snapshots and the TUI surface active combat passives in a dedicated `Powers` line so run-defining buffs stay visible during play.
 In TTY combat:
-- wider layouts move `Combat Effects` into the right sidebar so enemy and hand flow stay uninterrupted
+- wider layouts render `Combat Effects` as a small footer block inside the main combat area, below the hand and above controls
 - tighter layouts collapse those effects into a one-line summary under the status bar
 
 ## Why TypeScript

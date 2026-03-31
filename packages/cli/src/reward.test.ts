@@ -120,8 +120,8 @@ describe("reward rendering", () => {
     );
 
     expect(body.lastFrame()).toContain("选择一张奖励卡。");
-    expect(body.lastFrame()).toContain("1. [普] 愤怒 [0]");
-    expect(body.lastFrame()).toContain("2. [普] 不当回事 [1]");
+    expect(body.lastFrame()).toContain("1. 愤怒 [0]");
+    expect(body.lastFrame()).toContain("2. 不当回事 [1]");
     expect(body.lastFrame()).toContain("b. 返回");
     expect(body.lastFrame()).toContain("s. 跳过剩余奖励");
   });

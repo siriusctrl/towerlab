@@ -3,7 +3,6 @@ import type {
   CardDefinition,
   CardInstance,
   CardKeyword,
-  CardRarity,
   PassiveEffect,
   PassiveEffectKind,
   CombatObservation,
@@ -689,6 +688,12 @@ function translateEnglishClauseToChinese(clause: string): string {
     [/^Apply (\d+) Vulnerable$/iu, (value) => `施加 ${value} 层易伤。`],
     [/^Apply (\d+) Poison$/iu, (value) => `施加 ${value} 层中毒。`],
     [/^Multiply Poison by 2$/iu, () => "将中毒层数翻倍。"],
+    [/^Your block is not removed at end of turn this combat$/iu, () => "本场战斗中，你的格挡不会在回合结束时失去。"],
+    [/^Your Strike cards deal (\d+) more damage this combat$/iu, (value) => `本场战斗中，你的打击牌额外造成 ${value} 点伤害。`],
+    [/^Whenever you exhaust a card this combat, gain (\d+) block$/iu, (value) => `本场战斗中，每当你消耗一张牌，获得 ${value} 点格挡。`],
+    [/^Your attacks apply (\d+) Poison this combat$/iu, (value) => `本场战斗中，你的攻击额外施加 ${value} 层中毒。`],
+    [/^Your attacks deal (\d+) more damage to debuffed enemies this combat$/iu, (value) => `本场战斗中，你对带减益的敌人额外造成 ${value} 点伤害。`],
+    [/^Whenever you apply Weak, Vulnerable, or Poison this combat, draw (\d+) card[s]?$/iu, (value) => `本场战斗中，每当你施加虚弱、易伤或中毒，抽 ${value} 张牌。`],
     [/^Exhaust$/iu, () => "消耗。"],
     [/^Retain$/iu, () => "保留。"],
     [/^Ethereal$/iu, () => "虚无。"],
@@ -746,30 +751,6 @@ export function formatPassiveEffect(passive: PassiveEffect, locale: Locale): str
 
 export function formatPassiveEffects(passives: PassiveEffect[], locale: Locale): string {
   return passives.map((passive) => formatPassiveEffect(passive, locale)).join(locale === "zh" ? "" : " ");
-}
-
-export function localizeCardRarityBadge(rarity: CardRarity, locale: Locale): string {
-  if (locale === "zh") {
-    if (rarity === "common") {
-      return "[普]";
-    }
-
-    if (rarity === "rare") {
-      return "[稀]";
-    }
-
-    return "[史]";
-  }
-
-  if (rarity === "common") {
-    return "[C]";
-  }
-
-  if (rarity === "rare") {
-    return "[R]";
-  }
-
-  return "[E]";
 }
 
 export function formatCombatStatus(status: { weak: number; vulnerable: number; poison: number }, locale: Locale): string | null {

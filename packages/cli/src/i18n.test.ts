@@ -212,6 +212,24 @@ describe("i18n log localization", () => {
     ]);
   });
 
+  test("does not append untranslated passive fallback text when a passive line is already structured in zh", () => {
+    const card = localizeCardDefinition(
+      {
+        id: "cruel-tutelage",
+        name: "Cruel Tutelage",
+        cost: 1,
+        description: "Whenever you apply Weak, Vulnerable, or Poison this combat, draw 1 card.",
+        passives: [{ kind: "debuffDraw", value: 1 }],
+      },
+      "zh",
+      sampleContent,
+    );
+
+    expect(formatCardEffectLines(card, "zh")).toEqual([
+      "本场战斗中，每当你施加虚弱、易伤或中毒，抽 1 张牌。",
+    ]);
+  });
+
   test("falls back to parsed description clauses when structured effects are absent", () => {
     const card = localizeCardDefinition(
       {
