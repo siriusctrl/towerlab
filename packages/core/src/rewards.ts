@@ -1,4 +1,8 @@
-import { REWARD_CARD_COUNT_PLANS } from "./constants.js";
+import {
+  BATTLE_REWARD_CARD_COUNT_PLANS,
+  BOSS_REWARD_CARD_COUNT_PLANS,
+  ELITE_REWARD_CARD_COUNT_PLANS,
+} from "./constants.js";
 import { appendLog, selectCardsFromBuckets } from "./shared.js";
 import type { MapNode, RunContent, RunState } from "./types.js";
 import { getRelic } from "./validate.js";
@@ -35,10 +39,17 @@ export function getSelectableRelicReward(state: RunState, currentNode: MapNode):
   return relicId;
 }
 
-export function getRewardChoices(content: RunContent, state: RunState): { cards: string[]; rng: number } {
+function getRewardPlanForNode(currentNode: MapNode) {
+  if (currentNode.kind === "boss") return BOSS_REWARD_CARD_COUNT_PLANS;
+  if (currentNode.kind === "elite") return ELITE_REWARD_CARD_COUNT_PLANS;
+  return BATTLE_REWARD_CARD_COUNT_PLANS;
+}
+
+export function getRewardChoices(content: RunContent, state: RunState, currentNode: MapNode): { cards: string[]; rng: number } {
+  const rewardPlans = getRewardPlanForNode(currentNode);
   const planSelection = selectCardsFromBuckets(
     content.character.rewardCardPools,
-    REWARD_CARD_COUNT_PLANS[state.rng % REWARD_CARD_COUNT_PLANS.length]!,
+    rewardPlans[state.rng % rewardPlans.length]!,
     state.rng,
   );
   const cardChoices = planSelection.cards.filter((cardId) => content.cards[cardId]);

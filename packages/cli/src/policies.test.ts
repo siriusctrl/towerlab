@@ -84,15 +84,13 @@ describe("baseline policies", () => {
     expect(getNode(action.nodeId).kind).toBe("shop");
   });
 
-  it("heuristic removes a starter card in shop before buying", () => {
+  it("heuristic prefers buying over removal when deck cuts are more expensive", () => {
     const state = { ...gateShopState(), gold: 12 };
     const action = choosePolicyAction("heuristic", state);
 
-    if (action.type !== "removeDeckCard") {
-      throw new Error(`expected removeDeckCard, received ${action.type}`);
+    if (action.type !== "buyShop") {
+      throw new Error(`expected buyShop, received ${action.type}`);
     }
-
-    expect(sampleContent.character.starterDeck).toContain(state.deck[action.deckIndex]?.cardId);
   });
 });
 

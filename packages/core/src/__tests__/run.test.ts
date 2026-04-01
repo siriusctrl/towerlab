@@ -832,13 +832,17 @@ describe("shop behavior", () => {
     let state = createRun(shopContent, 20);
     state = winCurrentCombat(shopContent, state);
     state = applyAction(shopContent, state, { type: "choosePath", nodeId: "market" });
+    state = {
+      ...state,
+      gold: 40,
+    };
     const shopView = observeRun(shopContent, state);
 
     if (shopView.phase !== "shop") {
       throw new Error(`expected shop phase, received ${shopView.phase}`);
     }
 
-    expect(shopView.removeDeckCardCost).toBe(12);
+    expect(shopView.removeDeckCardCost).toBe(16);
     expect(shopView.remainingDeckRemovals).toBe(3);
     expect(shopView.forSale[0]).toEqual(
       expect.objectContaining({
@@ -870,7 +874,7 @@ describe("shop behavior", () => {
     if (removedView.phase !== "shop") {
       throw new Error(`expected shop phase after removal, received ${removedView.phase}`);
     }
-    expect(removedView.removeDeckCardCost).toBe(20);
+    expect(removedView.removeDeckCardCost).toBe(26);
     expect(removedView.remainingDeckRemovals).toBe(2);
 
     const left = applyAction(shopContent, removed, { type: "leaveShop" });

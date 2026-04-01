@@ -138,11 +138,6 @@ describe("legalActions", () => {
     expect(legalActions(content, shopState)).toEqual([
       { type: "buyShop", saleIndex: 0 },
       { type: "buyShop", saleIndex: 1 },
-      { type: "removeDeckCard", deckIndex: 0 },
-      { type: "removeDeckCard", deckIndex: 1 },
-      { type: "removeDeckCard", deckIndex: 2 },
-      { type: "removeDeckCard", deckIndex: 3 },
-      { type: "removeDeckCard", deckIndex: 4 },
       { type: "leaveShop" },
     ]);
 

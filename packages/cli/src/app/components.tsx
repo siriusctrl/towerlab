@@ -559,9 +559,6 @@ export function PhaseBody({
             <Text dimColor wrap="truncate-end">{text(locale, "shopNoAffordableBuys")}</Text>
           ) : null}
           {submenuBindings.buyOptions.length === 0 ? <Text dimColor wrap="truncate-end">{text(locale, "shopNoCardsForSale")}</Text> : null}
-          <Text dimColor wrap="truncate-end">
-            {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
-          </Text>
           <Text color="yellow">
             {SHOP_MENU_BACK_KEY}. {text(locale, "shopBack")}
           </Text>
@@ -596,9 +593,6 @@ export function PhaseBody({
               {observation.remainingDeckRemovals === 0 ? text(locale, "shopNoRemainingRemovals") : text(locale, "noRemovableCards")}
             </Text>
           ) : null}
-          <Text dimColor wrap="truncate-end">
-            {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
-          </Text>
           <Text color="yellow">
             {SHOP_MENU_BACK_KEY}. {text(locale, "shopBack")}
           </Text>
@@ -626,9 +620,6 @@ export function PhaseBody({
             {observation.remainingDeckRemovals === 0 ? text(locale, "shopNoRemainingRemovals") : text(locale, "noRemovableCards")}
           </Text>
         ) : null}
-        <Text dimColor wrap="truncate-end">
-          {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
-        </Text>
         <Text color="yellow">
           {topBindings.leaveKey}. {text(locale, "leaveShop")}
         </Text>

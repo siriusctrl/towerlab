@@ -91,7 +91,7 @@ export function finishCombat(content: RunContent, state: RunState): RunState {
     { type: "enemyDefeated", enemyId: combat.enemy.id, gold: goldReward },
   );
 
-  const rewardSelection = getRewardChoices(content, nextState);
+  const rewardSelection = getRewardChoices(content, nextState, currentNode);
   const rewardItems: NonNullable<RunState["reward"]>["items"] = [];
   const relicReward = getSelectableRelicReward(nextState, currentNode);
 

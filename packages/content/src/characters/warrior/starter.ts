@@ -4,7 +4,7 @@ export const warriorStarter: Pick<
   CharacterDefinition,
   "maxHp" | "startGold" | "starterDeck" | "startingRelicId"
 > = {
-  maxHp: 82,
+  maxHp: 80,
   startGold: 0,
   starterDeck: [
     "strike",
