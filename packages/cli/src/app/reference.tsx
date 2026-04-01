@@ -355,7 +355,7 @@ function formatCardCollectionEntries(
 
   for (const entry of cardIds) {
     const cardLike = typeof entry === "string"
-      ? { id: entry, cost: 0 }
+      ? { id: entry }
       : "cardId" in entry
         ? { id: entry.cardId, baseCardId: entry.cardId, upgraded: entry.upgraded, instanceId: entry.instanceId }
         : entry;

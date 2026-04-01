@@ -40,7 +40,7 @@ describe("App layout", () => {
 
     expect(starterFrame).toContain("图鉴");
     expect(starterFrame).toContain("起始牌组");
-    expect(starterFrame).toContain("4x 打击");
+    expect(starterFrame).toContain("4x 打击 [1]");
     expect(starterFrame).toContain("造成 6 点伤害。");
     expect(rareFrame).toContain("稀有卡");
     expect(rareFrame).toContain("上勾拳");
