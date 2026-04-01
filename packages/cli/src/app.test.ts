@@ -95,7 +95,7 @@ describe("App layout", () => {
     const frame = await renderFrame({ columns: 100, rows: 20, inputs: ["1", "1"] });
 
     expect(frame).toContain("Combat");
-    expect(frame).toContain("Combat Effects:");
+    expect(frame).toContain("Attack");
     expect(frame).toMatch(/Raider|Sentry|Skirmisher|Ember Adept|Ash Scout|Pike Brute|Crusher|Banner Captain|Siege Smith|Forge Keeper|Iron Colossus/);
     expect(frame).not.toContain("Recent Activity");
     expect(frame).not.toContain("│ Map");
@@ -104,8 +104,8 @@ describe("App layout", () => {
   test("shows combat effects, minimap, and recent activity content in combat sidebars", async () => {
     const frame = await renderFrame({ columns: 100, rows: 24, inputs: ["1", "1"] });
 
-    expect(frame).toContain("Combat Effects");
-    expect(frame).toContain("Your Strike cards deal 2");
+    expect(frame).toContain("Strike cards +2 damage");
+    expect(frame).toContain("Attack");
     expect(frame).toContain("┌");
     expect(frame).toContain("B");
     expect(frame).toContain("Energy 3/3");
@@ -127,8 +127,8 @@ describe("App layout", () => {
   test("keeps the zh combat sidebar readable and localized", async () => {
     const frame = await renderFrame({ columns: 100, rows: 24, locale: "zh", inputs: ["1", "1"] });
 
-    expect(frame).toContain("本场效果");
-    expect(frame).toContain("打击牌额外造成 2");
+    expect(frame).toContain("打击牌额外 +2 伤害");
+    expect(frame).toContain("攻击");
     expect(frame).toContain("┌");
     expect(frame).toContain("B");
     expect(frame).not.toContain("[可打]");
@@ -259,13 +259,13 @@ describe("App layout", () => {
     );
 
     expect(firstPage.lastFrame()).toContain("Choose one card to upgrade. (Page 1/2)");
-    expect(firstPage.lastFrame()).toContain("1. Strike 1 → Strike 1+");
-    expect(firstPage.lastFrame()).toContain("9. Strike 9 → Strike 9+");
+    expect(firstPage.lastFrame()).toContain("1. Strike 1 [1] → Strike 1+ [1]");
+    expect(firstPage.lastFrame()).toContain("9. Strike 9 [1] → Strike 9+ [1]");
     expect(firstPage.lastFrame()).not.toContain("10. Strike 10");
     expect(controls.lastFrame()).toContain("[ ] page");
     expect(secondPage.lastFrame()).toContain("Choose one card to upgrade. (Page 2/2)");
-    expect(secondPage.lastFrame()).toContain("1. Strike 10 → Strike 10+");
-    expect(secondPage.lastFrame()).toContain("3. Strike 12 → Strike 12+");
+    expect(secondPage.lastFrame()).toContain("1. Strike 10 [1] → Strike 10+ [1]");
+    expect(secondPage.lastFrame()).toContain("3. Strike 12 [1] → Strike 12+ [1]");
     expect(secondPage.lastFrame()).not.toContain("4. Strike 13");
   });
 

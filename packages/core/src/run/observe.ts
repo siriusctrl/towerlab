@@ -1,6 +1,6 @@
 import { REST_HEAL_RATIO, REST_OPTION_IDS, STARTING_ENERGY } from "../constants.js";
 import { getDeckRemovalPrice, getRemainingDeckRemovals } from "../shop.js";
-import { getAct, getCombat, getCurrentIntent, getNode, getRelicValue, listActiveCombatPassives, materializeCardDefinition, materializeCardInstance } from "../shared.js";
+import { computeAttackDamage, getAct, getCombat, getCurrentIntent, getNode, getRelicValue, listActiveCombatPassives, materializeCardDefinition, materializeCardInstance } from "../shared.js";
 import type { Observation, RewardItemObservation, RunAction, RunContent, RunState } from "../types.js";
 import { getCard, getRelic } from "../validate.js";
 
@@ -48,6 +48,14 @@ export function observeRun(content: RunContent, state: RunState): Observation {
         totalPhases: combat.enemy.phases.length,
         status: combat.enemy.status,
         intent: currentIntent,
+        effectiveDamagePerHit:
+          currentIntent.damage !== undefined
+            ? computeAttackDamage(
+                (currentIntent.damage ?? 0) + combat.enemy.strength,
+                combat.enemy.status,
+                combat.status,
+              )
+            : undefined,
       },
     };
   }

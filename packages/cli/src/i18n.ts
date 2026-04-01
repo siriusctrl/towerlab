@@ -9,6 +9,7 @@ import type {
   EnemyIntent,
   LogEffect,
   LogEvent,
+  ObservedEnemy,
   Observation,
   ResolvedCard,
   RewardObservation,
@@ -769,6 +770,77 @@ export function formatCombatStatus(status: { weak: number; vulnerable: number; p
   }
 
   return parts.length > 0 ? parts.join(locale === "zh" ? "，" : ", ") : null;
+}
+
+/**
+ * Build a compact intent string from structured intent data + effective damage.
+ * Example: "Attack 7 x2 · +2 Weak" or "Block 8 · +2 Str"
+ */
+export function formatCompactIntent(enemy: ObservedEnemy, locale: Locale): string {
+  const intent = enemy.intent;
+  const effectiveDmg = enemy.effectiveDamagePerHit;
+  const parts: string[] = [];
+
+  if (intent.kind === "attack" || intent.kind === "attackBlock") {
+    const dmg = effectiveDmg ?? intent.damage ?? 0;
+    const hits = Math.max(1, intent.hits ?? 1);
+    const hitSuffix = hits > 1 ? ` x${hits}` : "";
+    parts.push(`${text(locale, "intentAttack")} ${dmg}${hitSuffix}`);
+  }
+
+  if (intent.kind === "attackBlock" || intent.kind === "block" || intent.kind === "buff") {
+    if (intent.block && intent.block > 0) {
+      parts.push(locale === "zh" ? `${text(locale, "block")} ${intent.block}` : `Block ${intent.block}`);
+    }
+  }
+
+  if (intent.kind === "heal" || (intent.heal && intent.heal > 0)) {
+    parts.push(locale === "zh" ? `恢复 ${intent.heal}` : `Heal ${intent.heal}`);
+  }
+
+  if (intent.weak && intent.weak > 0) {
+    parts.push(locale === "zh" ? `+${intent.weak} ${text(locale, "weak")}` : `+${intent.weak} Weak`);
+  }
+  if (intent.vulnerable && intent.vulnerable > 0) {
+    parts.push(locale === "zh" ? `+${intent.vulnerable} ${text(locale, "vulnerable")}` : `+${intent.vulnerable} Vuln`);
+  }
+  if (intent.poison && intent.poison > 0) {
+    parts.push(locale === "zh" ? `+${intent.poison} ${text(locale, "poison")}` : `+${intent.poison} Poison`);
+  }
+  if (intent.selfStrength && intent.selfStrength > 0) {
+    parts.push(locale === "zh" ? `自身 +${intent.selfStrength} ${text(locale, "strength")}` : `Self +${intent.selfStrength} Str`);
+  }
+  if (intent.clearPlayerBlock) {
+    parts.push(locale === "zh" ? "清空格挡" : "Clear Block");
+  }
+  if (intent.cleanse) {
+    parts.push(locale === "zh" ? "净化" : "Cleanse");
+  }
+
+  return parts.join(" · ");
+}
+
+/** Short label for a passive effect, suitable for inline display. */
+export function formatPassiveEffectShort(passive: PassiveEffect, locale: Locale): string {
+  if (passive.kind === "retainBlock") {
+    return locale === "zh" ? "格挡不会在回合结束时失去" : "Block retained at end of turn";
+  }
+  if (passive.kind === "strikeBonusDamage") {
+    return locale === "zh" ? `打击牌额外 +${passive.value} 伤害` : `Strike cards +${passive.value} damage`;
+  }
+  if (passive.kind === "exhaustBlock") {
+    return locale === "zh" ? `消耗卡牌时获得 ${passive.value} 格挡` : `Exhaust a card → gain ${passive.value} Block`;
+  }
+  if (passive.kind === "attackPoison") {
+    return locale === "zh" ? `攻击附加 ${passive.value} 中毒` : `Attacks apply ${passive.value} Poison`;
+  }
+  if (passive.kind === "debuffBonusDamage") {
+    return locale === "zh" ? `对减益敌人额外 +${passive.value} 伤害` : `+${passive.value} damage vs debuffed`;
+  }
+  if (passive.kind === "debuffDraw") {
+    return locale === "zh" ? `施加减益时抽 ${passive.value} 张牌` : `Apply debuff → draw ${passive.value}`;
+  }
+  return `${passive.kind} ${passive.value}`;
 }
 
 export function localizeRelicDefinition(relic: RelicDefinition, locale: Locale): RelicDefinition {

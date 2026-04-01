@@ -338,6 +338,8 @@ export interface ObservedEnemy {
   totalPhases: number;
   status: CombatStatus;
   intent: EnemyIntent;
+  /** Per-hit damage after strength, weak, and vulnerable modifiers. Undefined when intent has no damage. */
+  effectiveDamagePerHit?: number;
 }
 
 interface ObservationBase {

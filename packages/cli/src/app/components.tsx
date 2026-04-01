@@ -6,8 +6,10 @@ import {
   formatBlessingName,
   formatCardEffectLines,
   formatCombatStatus,
+  formatCompactIntent,
   formatNodeLabel,
   formatPassiveEffect,
+  formatPassiveEffectShort,
   formatText,
   type CliCardDefinition,
   localizeCardDefinition,
@@ -87,7 +89,6 @@ export function StatusBar({
   const hpBar = renderHpBar(observation.hp, observation.maxHp, hpBarWidth);
   const hpColor = getHpColor(observation.hp, observation.maxHp);
   const showRelics = relicNames !== text(locale, "none");
-  const combatStatus = observation.phase === "combat" ? formatCombatStatus(observation.status, locale) : null;
 
   if (compact) {
     return (
@@ -118,13 +119,6 @@ export function StatusBar({
         <Text color={hpColor}>{hpBar}</Text>
         <Text> {observation.hp}/{observation.maxHp}</Text>
         <Text>{"  "}{text(locale, "gold")} {observation.gold}</Text>
-        {observation.phase === "combat" ? (
-          <>
-            <Text>{"  "}{text(locale, "energy")} {observation.energy}/{observation.baseEnergy}</Text>
-            <Text>{"  "}{text(locale, "block")} {observation.block}</Text>
-            {combatStatus ? <Text>{"  "}{combatStatus}</Text> : null}
-          </>
-        ) : null}
       </Text>
       {showRelics ? (
         <Text dimColor wrap="truncate-end">
@@ -132,49 +126,6 @@ export function StatusBar({
         </Text>
       ) : null}
     </Box>
-  );
-}
-
-export function CombatEffectsPanel({
-  effects,
-  locale,
-}: {
-  effects: ReadonlyArray<{ kind: string; value: number }>;
-  locale: Locale;
-}) {
-  if (effects.length === 0) {
-    return null;
-  }
-
-  return (
-    <>
-      <Text bold color="yellow" wrap="truncate-end">
-        {text(locale, "powers")}
-      </Text>
-      {effects.map((effect, index) => (
-        <Text key={`${effect.kind}-${effect.value}-${index}`} dimColor wrap="truncate-end">
-          - {formatPassiveEffect(effect as never, locale)}
-        </Text>
-      ))}
-    </>
-  );
-}
-
-export function CombatEffectsSummary({
-  effects,
-  locale,
-}: {
-  effects: ReadonlyArray<{ kind: string; value: number }>;
-  locale: Locale;
-}) {
-  if (effects.length === 0) {
-    return null;
-  }
-
-  return (
-    <Text dimColor>
-      {text(locale, "powers")}: {effects.map((effect) => formatPassiveEffect(effect as never, locale)).join(" · ")}
-    </Text>
   );
 }
 
@@ -254,6 +205,7 @@ export function PhaseBody({
   restUpgradePage,
   hpBarWidth,
   compactMapPhase,
+  availableWidth,
 }: {
   content: RunContent;
   observation: Observation;
@@ -267,6 +219,7 @@ export function PhaseBody({
   restUpgradePage: number;
   hpBarWidth: number;
   compactMapPhase: boolean;
+  availableWidth?: number;
 }) {
   if (observation.phase === "combat") {
     const totalPages = Math.max(1, Math.ceil(observation.hand.length / COMBAT_HAND_PAGE_SIZE));
@@ -276,31 +229,60 @@ export function PhaseBody({
     const enemyHpBar = renderHpBar(observation.enemy.hp, observation.enemy.maxHp, Math.min(15, hpBarWidth));
     const enemyHpColor = getHpColor(observation.enemy.hp, observation.enemy.maxHp);
     const enemyStatus = formatCombatStatus(observation.enemy.status, locale);
+    const playerStatus = formatCombatStatus(observation.status, locale);
+    const activePassives = observation.activePassives ?? [];
+    const width = availableWidth ?? 80;
+    const useTwoColumn = width >= 60;
+    const enemyWidth = useTwoColumn ? Math.max(24, Math.min(38, Math.floor(width * 0.38))) : 0;
 
-    return (
-      <>
+    const header = (
+      <Text wrap="truncate-end">
+        <Text bold color="red">
+          {text(locale, "combat")}
+          {totalPages > 1 ? ` ${formatText(locale, "pageStatus", { current: currentPage + 1, total: totalPages })}` : ""}
+        </Text>
+        <Text dimColor>{"  "}{text(locale, "draw")} {observation.drawPileCount} {"·"} {text(locale, "discard")} {observation.discardPileCount}</Text>
+      </Text>
+    );
+
+    const enemyPanel = (
+      <Box flexDirection="column" width={useTwoColumn ? enemyWidth : undefined} flexShrink={0} overflow="hidden">
         <Text wrap="truncate-end">
-          <Text bold color="red">
-            {text(locale, "combat")}
-            {totalPages > 1 ? ` ${formatText(locale, "pageStatus", { current: currentPage + 1, total: totalPages })}` : ""}
-          </Text>
-          <Text dimColor>{"  "}{text(locale, "draw")} {observation.drawPileCount} {"·"} {text(locale, "discard")} {observation.discardPileCount}</Text>
+          <Text bold>{observation.enemy.name}</Text>
         </Text>
         <Text wrap="truncate-end">
-          <Text>{observation.enemy.name} </Text>
           <Text color={enemyHpColor}>{enemyHpBar}</Text>
           <Text> {observation.enemy.hp}/{observation.enemy.maxHp}</Text>
-          {observation.enemy.block > 0 ? <Text dimColor> {text(locale, "block")} {observation.enemy.block}</Text> : null}
-          {observation.enemy.strength > 0 ? <Text dimColor> {text(locale, "strength")} {observation.enemy.strength}</Text> : null}
-          {observation.enemy.totalPhases > 1 ? <Text dimColor> P{observation.enemy.phase}/{observation.enemy.totalPhases}</Text> : null}
-          <Text dimColor> {"→"} </Text>
-          <Text>{observation.enemy.intent.description}</Text>
         </Text>
-        {enemyStatus ? (
-          <Text dimColor wrap="truncate-end">
-            {text(locale, "status")}: {enemyStatus}
+        {observation.enemy.block > 0 || observation.enemy.strength > 0 || enemyStatus ? (
+          <Text wrap="truncate-end">
+            {observation.enemy.block > 0 ? <Text>{text(locale, "block")} {observation.enemy.block}{"  "}</Text> : null}
+            {observation.enemy.strength > 0 ? <Text color="red">{text(locale, "strength")} {observation.enemy.strength}{"  "}</Text> : null}
+            {enemyStatus ? <Text color="magenta">{enemyStatus}</Text> : null}
           </Text>
         ) : null}
+        {observation.enemy.totalPhases > 1 ? (
+          <Text dimColor wrap="truncate-end">P{observation.enemy.phase}/{observation.enemy.totalPhases}</Text>
+        ) : null}
+        <Text bold color="yellow" wrap="truncate-end">
+          {"→ "}{formatCompactIntent(observation.enemy, locale)}
+        </Text>
+      </Box>
+    );
+
+    const playerPanel = (
+      <>
+        <Text>
+          <Text>{text(locale, "energy")} {observation.energy}/{observation.baseEnergy}</Text>
+          <Text>{"  "}{text(locale, "block")} {observation.block}</Text>
+          {playerStatus ? <Text color="magenta">{"  "}{playerStatus}</Text> : null}
+        </Text>
+        {activePassives.map((effect, index) => (
+          <Text key={`passive-${index}`} dimColor>
+            {formatPassiveEffectShort(effect as never, locale)}
+          </Text>
+        ))}
+        <Text>{" "}</Text>
         {pageCards.length > 0 ? (
           pageCards.map((card, index) => (
             <CardBlock
@@ -315,6 +297,40 @@ export function PhaseBody({
         ) : (
           <Text dimColor>{text(locale, "emptyHand")}</Text>
         )}
+      </>
+    );
+
+    if (useTwoColumn) {
+      return (
+        <Box flexDirection="column" overflow="hidden">
+          {header}
+          <Box flexDirection="row" flexGrow={1} overflow="hidden">
+            {enemyPanel}
+            <Box
+              flexDirection="column"
+              flexGrow={1}
+              borderStyle="single"
+              borderLeft
+              borderTop={false}
+              borderBottom={false}
+              borderRight={false}
+              borderColor="gray"
+              paddingLeft={1}
+              overflow="hidden"
+            >
+              {playerPanel}
+            </Box>
+          </Box>
+        </Box>
+      );
+    }
+
+    return (
+      <>
+        {header}
+        {enemyPanel}
+        <Text>{" "}</Text>
+        {playerPanel}
       </>
     );
   }
@@ -408,10 +424,22 @@ export function PhaseBody({
           {pageCards.length > 0 ? (
             pageCards.map((option, index) => (
               <Box key={`${option.deckIndex}-${option.card.id}`} flexDirection="column">
-                <Text dimColor wrap="truncate-end">
-                  {index + 1}. {option.card.name} → {option.upgradedCard.name}
+                <Text wrap="truncate-end">
+                  <Text dimColor>{index + 1}. {option.card.name} [{option.card.cost}]</Text>
+                  <Text>{" → "}</Text>
+                  <Text bold>{option.upgradedCard.name} </Text>
+                  <Text color="yellow">[{option.upgradedCard.cost}]</Text>
                 </Text>
-                <CardBlock card={option.upgradedCard} locale={locale} namePrefix="   " indent="      " />
+                {option.upgradedCard.keywords?.map((keyword) => (
+                  <Text key={`${option.card.id}-${keyword}`} color="yellow" bold wrap="truncate-end">
+                    {"      "}{localizeCardKeyword(keyword, locale)}
+                  </Text>
+                ))}
+                {formatCardEffectLines(option.upgradedCard, locale).map((line) => (
+                  <Text key={`${option.card.id}-${line}`} wrap="truncate-end">
+                    {"      "}{line}
+                  </Text>
+                ))}
               </Box>
             ))
           ) : (
@@ -419,9 +447,6 @@ export function PhaseBody({
               {text(locale, "noUpgradableDeckCards")}
             </Text>
           )}
-          <Text dimColor wrap="truncate-end">
-            {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
-          </Text>
         </>
       );
     }
@@ -435,9 +460,6 @@ export function PhaseBody({
             {index + 1}. {option.label} - {option.description}
           </Text>
         ))}
-        <Text dimColor wrap="truncate-end">
-          {text(locale, "next")}: {observation.nextNodes.map((node) => formatNodeLabel(node, locale)).join(", ")}
-        </Text>
       </>
     );
   }

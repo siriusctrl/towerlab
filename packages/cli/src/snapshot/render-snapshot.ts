@@ -7,8 +7,9 @@ import {
   formatBlessingName,
   formatCardEffectLines,
   formatCombatStatus,
+  formatCompactIntent,
   formatNodeLabel,
-  formatPassiveEffects,
+  formatPassiveEffectShort,
   formatText,
   formatLogEntries,
   localizeCardDefinition,
@@ -62,25 +63,22 @@ function renderObservation(content: RunContent, observation: Observation, locale
   ];
 
   if (observation.phase === "combat") {
-    lines.push(
-      `${text(locale, "combat")}  ${text(locale, "draw")} ${observation.drawPileCount} ${text(locale, "discard")} ${observation.discardPileCount}`,
-      `${observation.enemy.name} ${text(locale, "hp")} ${observation.enemy.hp}/${observation.enemy.maxHp} ${text(locale, "block")} ${observation.enemy.block}${observation.enemy.strength > 0 ? `  ${text(locale, "strength")} ${observation.enemy.strength}` : ""}${observation.enemy.totalPhases > 1 ? `  P${observation.enemy.phase}/${observation.enemy.totalPhases}` : ""} → ${observation.enemy.intent.description}`,
-      `${text(locale, "energy")} ${observation.energy}/${observation.baseEnergy}  ${text(locale, "block")} ${observation.block}`,
-    );
-
     const playerStatus = formatCombatStatus(observation.status, locale);
     const enemyStatus = formatCombatStatus(observation.enemy.status, locale);
 
-    if (playerStatus) {
-      lines.push(`${text(locale, "status")}: ${playerStatus}`);
-    }
+    lines.push(
+      `${text(locale, "combat")}  ${text(locale, "draw")} ${observation.drawPileCount} ${text(locale, "discard")} ${observation.discardPileCount}`,
+    );
+    lines.push(
+      `${observation.enemy.name} ${text(locale, "hp")} ${observation.enemy.hp}/${observation.enemy.maxHp} ${text(locale, "block")} ${observation.enemy.block}${observation.enemy.strength > 0 ? `  ${text(locale, "strength")} ${observation.enemy.strength}` : ""}${observation.enemy.totalPhases > 1 ? `  P${observation.enemy.phase}/${observation.enemy.totalPhases}` : ""}${enemyStatus ? `  ${enemyStatus}` : ""}`,
+    );
+    lines.push(`→ ${formatCompactIntent(observation.enemy, locale)}`);
+    lines.push(
+      `${text(locale, "energy")} ${observation.energy}/${observation.baseEnergy}  ${text(locale, "block")} ${observation.block}${playerStatus ? `  ${playerStatus}` : ""}`,
+    );
 
-    if (observation.activePassives.length > 0) {
-      lines.push(`${text(locale, "powers")}: ${formatPassiveEffects(observation.activePassives, locale)}`);
-    }
-
-    if (enemyStatus) {
-      lines.push(`${text(locale, "enemy")} ${text(locale, "status")}: ${enemyStatus}`);
+    for (const passive of observation.activePassives) {
+      lines.push(`  ${formatPassiveEffectShort(passive, locale)}`);
     }
 
     for (const [index, card] of observation.hand.entries()) {

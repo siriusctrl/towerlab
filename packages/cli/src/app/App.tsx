@@ -7,8 +7,6 @@ import { DEFAULT_LOCALE, formatLogEntries, localizeCharacterName, localizeObserv
 import { readShopAction, SHOP_BUY_PAGE_SIZE, SHOP_REMOVE_PAGE_SIZE, type ShopMenuMode } from "../shop.js";
 import { getMapCompactLegendLine } from "../view.js";
 import {
-  CombatEffectsPanel,
-  CombatEffectsSummary,
   CharacterSelectScreen,
   Controls,
   COMBAT_HAND_PAGE_SIZE,
@@ -66,13 +64,19 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     () => characters.map((character) => createSeededContent(seed, character.id as CharacterId)),
     [seed],
   );
-  const view = content && state ? localizeObservation(observeRun(content, state), locale, content) : null;
-  const currentMap = content && view ? content.acts[view.act - 1]?.map ?? [] : [];
+  const view = useMemo(
+    () => (content && state ? localizeObservation(observeRun(content, state), locale, content) : null),
+    [content, state, locale],
+  );
+  const currentMap = useMemo(() => (content && view ? content.acts[view.act - 1]?.map ?? [] : []), [content, view]);
   const restUpgradeCards = useMemo<RestDeckUpgradeCard[]>(() => (view?.phase === "rest" ? view.upgradableDeckCards : []), [view]);
-  const recentLogEntries = content && view ? formatLogEntries(content, view.log, locale) : [];
-  const relicNames = view && view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none");
-  const characterName = selectedCharacterId ? localizeCharacterName(selectedCharacterId, locale) : "";
-  const compactLegendLine = getMapCompactLegendLine(locale);
+  const recentLogEntries = useMemo(() => (content && view ? formatLogEntries(content, view.log, locale) : []), [content, view, locale]);
+  const relicNames = useMemo(
+    () => (view && view.relics.length > 0 ? view.relics.map((relic) => relic.name).join(", ") : text(locale, "none")),
+    [view, locale],
+  );
+  const characterName = useMemo(() => (selectedCharacterId ? localizeCharacterName(selectedCharacterId, locale) : ""), [selectedCharacterId, locale]);
+  const compactLegendLine = useMemo(() => getMapCompactLegendLine(locale), [locale]);
   const defaultSidebarWidth = Math.max(32, Math.min(52, Math.max(getTerminalTextWidth(compactLegendLine) + 4, Math.floor(columns * 0.35))));
   const combatSidebarWidth = Math.max(34, Math.min(44, Math.max(getTerminalTextWidth(compactLegendLine) + 4, Math.floor(columns * 0.32))));
   const sidebarWidth = view?.phase === "combat" ? combatSidebarWidth : defaultSidebarWidth;
@@ -591,9 +595,6 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
     <Box flexDirection="column" width={columns} height={rows} overflow="hidden">
       <Box flexDirection="column" flexShrink={0} paddingX={1} overflow="hidden">
         <StatusBar observation={view} locale={locale} characterName={characterName} relicNames={relicNames} hpBarWidth={hpBarWidth} compact={compactMapPhase} />
-        {!showSidebar && view.phase === "combat" ? (
-          <CombatEffectsSummary effects={view.activePassives ?? []} locale={locale} />
-        ) : null}
       </Box>
       {!compactMapPhase ? (
         <Text dimColor wrap="truncate-end">
@@ -633,12 +634,8 @@ export function App({ seed, characterId, locale = DEFAULT_LOCALE }: AppProps) {
                 restUpgradePage={restUpgradePage}
                 hpBarWidth={hpBarWidth}
                 compactMapPhase={compactMapPhase}
+                availableWidth={mainPaneWidth - (showSidebar && !showInspectorSidebar ? sidebarWidth + 3 : 0)}
               />
-              {view.phase === "combat" && showSidebar && (view.activePassives?.length ?? 0) > 0 ? (
-                <Box marginTop={1} flexDirection="column" overflow="hidden">
-                  <CombatEffectsPanel effects={view.activePassives ?? []} locale={locale} />
-                </Box>
-              ) : null}
               {showInlineLog ? (
                 <Box marginTop={1} flexDirection="column" overflow="hidden">
                   <RecentLogPanel entries={recentLogEntries} locale={locale} limit={recentLogLimit} />
