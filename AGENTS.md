@@ -1,125 +1,77 @@
-Principles for agents contributing to this repository.
+# AGENTS.md
 
-## Mission
+This file is the operating map for agents working in this repo. Keep product
+vision in `README.md`, durable design rules in `docs/`, and roadmap details in
+`docs/plans/`.
 
-Build a CLI-native deckbuilding tower game for humans and agents.
+## Source Map
 
-The project has two goals:
-1. Be genuinely playable in a terminal.
-2. Be a clean harness for testing long-horizon planning and agentic decision making.
+- `packages/core/`: pure game state, deterministic rules, combat, rewards, map,
+  progression, RNG, and validation.
+- `packages/content/`: cards, enemies, relics, and starter content data.
+- `packages/cli/`: terminal UI, local CLI entrypoint, rendering, policies, eval,
+  and generated run helpers.
+- `docs/architecture.md`: package boundaries and design rules.
+- `docs/golden-principles.md`: durable gameplay and codebase invariants.
+- `docs/plans/INDEX.md`: roadmap source of truth.
+- `docs/tui-debugging.md`: terminal UI verification workflow.
+- `docs/agent-interface.md`: agent-facing interface and replay expectations.
 
-## Core Principles
+## Engineering Invariants
 
-1. **KISS**
-   - Prefer the simplest solution that works.
-   - Avoid premature abstraction.
-   - If a function is enough, do not create a class.
-   - If one package is enough, do not invent a framework.
-
-2. **No speculative forward-compatibility**
-   - Do not add extension points, plugin systems, version shims, or migration layers unless explicitly requested.
-   - Build for the current requirements, not imaginary future ones.
-
-3. **Prefer strongest end-state solutions**
-   - When the right design is clear and requested, implement the strongest coherent end state directly.
-   - Do not add transitional shims, compatibility layers, or staged intermediate designs unless explicitly requested.
-   - Do not intentionally land partial architectures as stepping stones to the real design.
-
-4. **Conventional Commits with real bodies**
-   - Use Conventional Commits for every commit.
-   - Do not write title-only commits.
-   - In the commit body, explain both:
-     - what changed
-     - why the change was made
-
-## Navigation
-
-Use the docs to understand constraints first. Use the package directories only after you know which part of the system you need to change.
-
-Keep this file coarse-grained. Do not try to mirror every subdirectory here. For detailed structure inside a package, inspect that package directly when needed.
-
-### Read these docs first
-
-- `README.md` — project overview, local development, and entrypoints.
-- `docs/architecture.md` — package boundaries and design rules.
-- `docs/golden-principles.md` — durable codebase invariants.
-- `docs/plans/INDEX.md` — roadmap and milestone source of truth.
-
-### Read these docs when the task matches
-
-- Planning or milestone changes:
-  - Read `docs/plans/INDEX.md` first.
-  - Then read the relevant file in `docs/plans/*.md`.
-  - If scope or status changes, update the plan doc and the index in the same change.
-
-- Rendering or terminal UI work:
-  - Read `docs/tui-debugging.md` before touching renderer code.
-
-- Architecture or package-boundary changes:
-  - Read `docs/architecture.md` before editing code.
-
-- Rules, determinism, or core gameplay invariants:
-  - Read `docs/golden-principles.md` before editing code.
-
-### Top-level source map
-
-- `packages/core` — pure game state and deterministic rules.
-- `packages/content` — cards, map, and starter data.
-- `packages/cli` — terminal rendering and local entrypoint.
-
-## Task Routing
-
-When starting work, route yourself by task type:
-
-- For an unfamiliar task, start with `README.md`, then read only the relevant docs from the navigation section above.
-- For a code change, read the relevant docs first, then inspect the matching top-level package.
-- For a plan or milestone change, treat `docs/plans/INDEX.md` as the source of truth and update the relevant plan doc in the same change.
-- For renderer work, read `docs/tui-debugging.md` before changing code in `packages/cli`.
-- For gameplay rules or state transitions, inspect `packages/core`.
-- For cards, map generation inputs, or starter data, inspect `packages/content`.
-- For terminal rendering or the local CLI entrypoint, inspect `packages/cli`.
-
-## Engineering Rules
-
-- TypeScript everywhere.
 - Keep game rules pure and deterministic.
 - All randomness must be seedable.
 - Renderer output is a view, never the source of truth.
 - Validate external input at boundaries.
 - Prefer plain objects and functions over inheritance.
-- Update docs when the architecture or development contract changes.
-- Treat `docs/plans/INDEX.md` as the roadmap source of truth.
-- When milestone scope or status changes, update the relevant plan doc and the index in the same change.
+- Keep the CLI genuinely playable in a terminal.
+- Keep agent/evaluation affordances explicit; do not hide gameplay state in UI
+  side effects.
+- Avoid speculative extension points, version shims, or migration layers unless
+  explicitly requested.
+- When a plan scope or status changes, update the relevant plan doc and
+  `docs/plans/INDEX.md` in the same change.
 
-## Verification Requirements
+## Task Routing
 
-- Do not claim a TUI or renderer change is done without running the built CLI and the relevant tests.
-- For terminal UI work, follow `docs/tui-debugging.md` instead of relying on reasoning or raw ANSI output.
-- Minimum bar for TUI changes:
-  - `corepack pnpm build`
-  - `corepack pnpm test`
-  - non-TTY snapshot check against `dist/`
-  - `ink-testing-library` frame check for the affected terminal sizes
-- If the change affects interactive map rendering, also verify a real TTY state after taking at least one in-game action.
-- If the change affects map generation, map routing, compact map layout, minimaps, or connector rendering, verify at least five seeds, not just one happy-path seed.
-- When using `tmux` or other terminal harnesses for verification, always close temporary sessions after use. Do not leave idle terminals behind.
+- Unfamiliar task: start with `README.md`, then route through `docs/INDEX`-like
+  links above.
+- Gameplay rules, state transitions, validation, RNG: inspect `packages/core/`
+  and read `docs/golden-principles.md`.
+- Cards, enemies, relics, starter data: inspect `packages/content/`.
+- Terminal rendering or local CLI: read `docs/tui-debugging.md`, then inspect
+  `packages/cli/`.
+- Planning or milestone changes: start at `docs/plans/INDEX.md`.
+- Agent interface, replay, or evaluation work: read `docs/agent-interface.md`
+  and `docs/evaluation.md`.
 
-## Collaboration Preferences
+## Verification
 
-- Use direct engineering judgment.
-- Keep implementations small and legible.
-- Optimize for code that future agents can read in one pass.
-- Hold the requested quality bar. Do not quietly retreat to a weaker, partial, or more convenient option just to finish faster.
-- If the original goal appears infeasible, blocked by constraints, or materially more complex than requested, stop and discuss the constraint before lowering the target.
-- When work can be cleanly parallelized into low-conflict chunks, prefer using multiple agents.
-- Keep one main agent responsible for decomposition, integration, and final quality decisions.
+- Run `corepack pnpm build`.
+- Run `corepack pnpm test`.
+- Run `corepack pnpm typecheck`.
+- For terminal UI work, follow `docs/tui-debugging.md`; do not rely only on raw
+  ANSI output.
+- For interactive map rendering, verify a real TTY state after taking at least
+  one in-game action.
+- For map generation, routing, compact map layout, minimaps, or connector
+  rendering, verify at least five seeds.
+- When using `tmux` or other terminal harnesses, close temporary sessions before
+  finishing.
 
-## Agent Strategy Defaults
+## Docs Update Rules
 
-Use these as default choices, not absolute rules.
+- User-visible CLI behavior: update `README.md` and relevant `docs/cli.md`
+  content.
+- Architecture or package-boundary changes: update `docs/architecture.md`.
+- Gameplay invariants: update `docs/golden-principles.md`.
+- Plan or milestone changes: update the relevant `docs/plans/*.md` file and
+  `docs/plans/INDEX.md`.
+- TUI verification changes: update `docs/tui-debugging.md`.
+- Agent-facing interface or replay changes: update `docs/agent-interface.md`.
 
-- Prefer multiple agents when work can be split into clear, low-conflict chunks with separable ownership.
-- Do not delegate the immediate critical-path blocker if the main agent needs that answer before it can proceed.
-- For broad reasoning, tricky review, architectural judgment, or ambiguous debugging, prefer Codex subagents running `gpt-5.4` with `high` or `xhigh` reasoning.
-- For explicit, bounded, coding-centric implementation tasks, prefer Codex subagents running `gpt-5.3-codex-spark` because it is usually faster.
-- The main agent should stay responsible for decomposition, integration, final review, verification, and merge-quality decisions.
+## Commit Rules
+
+- Use Conventional Commits with a body.
+- Keep commits focused and reviewable.
+- Do not revert unrelated user changes.
